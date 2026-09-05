@@ -2,6 +2,38 @@ const prisma = require('../../config/prisma');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
 
+function extractEmployeeData(data) {
+  let firstName = data.firstName;
+  let lastName = data.lastName;
+
+  if (!firstName && data.name) {
+    const parts = data.name.trim().split(/\s+/);
+    firstName = parts[0] || 'Employee';
+    lastName = parts.slice(1).join(' ') || '.';
+  }
+
+  const clean = {};
+  if (firstName !== undefined) clean.firstName = firstName;
+  if (lastName !== undefined) clean.lastName = lastName;
+  if (data.email !== undefined && data.email !== null) clean.email = data.email.toLowerCase().trim();
+  if (data.phone !== undefined) clean.phone = data.phone || null;
+  if (data.jobPosition !== undefined) clean.jobPosition = data.jobPosition;
+  if (data.employeeType !== undefined) clean.employeeType = data.employeeType;
+  if (data.status !== undefined) clean.status = data.status;
+  if (data.departmentId !== undefined) clean.departmentId = data.departmentId || null;
+  if (data.managerId !== undefined) clean.managerId = data.managerId || null;
+  if (data.scheduleId !== undefined) clean.scheduleId = data.scheduleId || null;
+  if (data.userId !== undefined) clean.userId = data.userId || null;
+  if (data.bankName !== undefined) clean.bankName = data.bankName || null;
+  if (data.bankAccountNumber !== undefined) clean.bankAccountNumber = data.bankAccountNumber || null;
+  if (data.bankIfscOrRouting !== undefined || data.bankIfsc !== undefined) {
+    clean.bankIfscOrRouting = data.bankIfscOrRouting || data.bankIfsc || null;
+  }
+  if (data.taxId !== undefined) clean.taxId = data.taxId || null;
+
+  return clean;
+}
+
 async function listEmployees(query, scopedEmployeeId = null) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { search, department, status, type } = query;
@@ -147,17 +179,19 @@ async function getEmployeeById(id, scopedEmployeeId = null) {
 }
 
 async function createEmployee(data) {
+  const cleanData = extractEmployeeData(data);
+
   const existing = await prisma.employee.findUnique({
-    where: { email: data.email.toLowerCase().trim() },
+    where: { email: cleanData.email },
   });
 
   if (existing) {
     throw new AppError('DUPLICATE_EMAIL', 'An employee with this email already exists', 409);
   }
 
-  if (data.userId) {
+  if (cleanData.userId) {
     const userAlreadyLinked = await prisma.employee.findUnique({
-      where: { userId: data.userId },
+      where: { userId: cleanData.userId },
     });
     if (userAlreadyLinked) {
       throw new AppError('USER_ALREADY_LINKED', 'This user is already linked to another employee', 409);
@@ -165,23 +199,7 @@ async function createEmployee(data) {
   }
 
   return prisma.employee.create({
-    data: {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email.toLowerCase().trim(),
-      phone: data.phone || null,
-      jobPosition: data.jobPosition,
-      employeeType: data.employeeType || 'FULL_TIME',
-      status: data.status || 'ACTIVE',
-      departmentId: data.departmentId || null,
-      managerId: data.managerId || null,
-      scheduleId: data.scheduleId || null,
-      userId: data.userId || null,
-      bankName: data.bankName || null,
-      bankAccountNumber: data.bankAccountNumber || null,
-      bankIfscOrRouting: data.bankIfscOrRouting || null,
-      taxId: data.taxId || null,
-    },
+    data: cleanData,
     include: {
       department: true,
       schedule: true,
@@ -196,21 +214,20 @@ async function updateEmployee(id, data) {
     throw new AppError('EMPLOYEE_NOT_FOUND', 'Employee not found', 404);
   }
 
-  if (data.email && data.email.toLowerCase().trim() !== employee.email) {
+  const cleanData = extractEmployeeData(data);
+
+  if (cleanData.email && cleanData.email !== employee.email) {
     const existing = await prisma.employee.findUnique({
-      where: { email: data.email.toLowerCase().trim() },
+      where: { email: cleanData.email },
     });
     if (existing) {
       throw new AppError('DUPLICATE_EMAIL', 'An employee with this email already exists', 409);
     }
   }
 
-  const updateData = { ...data };
-  if (updateData.email) updateData.email = updateData.email.toLowerCase().trim();
-
   return prisma.employee.update({
     where: { id },
-    data: updateData,
+    data: cleanData,
     include: {
       department: true,
       schedule: true,
