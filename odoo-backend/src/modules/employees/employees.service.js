@@ -35,13 +35,8 @@ function extractEmployeeData(data) {
 }
 
 const employeeListCache = new Map();
-const EMP_CACHE_TTL = 5 * 60 * 1000;
+const EMP_CACHE_TTL = 15 * 1000;
 let cachedEmpTotal = 0;
-
-function invalidateEmployeeCache() {
-  employeeListCache.clear();
-  cachedEmpTotal = 0;
-}
 
 function getEmpCacheKey(query, scopedEmployeeId) {
   return `${scopedEmployeeId || 'all'}:${JSON.stringify(query || {})}`;
@@ -243,7 +238,7 @@ async function createEmployee(data) {
     }
   }
 
-  const created = await prisma.employee.create({
+  return prisma.employee.create({
     data: cleanData,
     include: {
       department: true,
@@ -251,8 +246,6 @@ async function createEmployee(data) {
       manager: { select: { id: true, firstName: true, lastName: true } },
     },
   });
-  invalidateEmployeeCache();
-  return created;
 }
 
 async function updateEmployee(id, data) {
@@ -275,7 +268,7 @@ async function updateEmployee(id, data) {
     }
   }
 
-  const updated = await prisma.employee.update({
+  return prisma.employee.update({
     where: { id },
     data: cleanData,
     include: {
@@ -284,8 +277,6 @@ async function updateEmployee(id, data) {
       manager: { select: { id: true, firstName: true, lastName: true } },
     },
   });
-  invalidateEmployeeCache();
-  return updated;
 }
 
 async function deleteEmployee(id) {
@@ -295,7 +286,6 @@ async function deleteEmployee(id) {
   }
 
   await prisma.employee.delete({ where: { id } });
-  invalidateEmployeeCache();
   return { message: 'Employee deleted successfully' };
 }
 
@@ -305,5 +295,4 @@ module.exports = {
   createEmployee,
   updateEmployee,
   deleteEmployee,
-  invalidateEmployeeCache,
 };
