@@ -1,0 +1,390 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  HR_MANAGER
+  HR_PAYROLL_USER
+  HR_PAYROLL_MANAGER
+  EMPLOYEE
+}
+
+enum EmployeeType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+  TERMINATED
+}
+
+enum ContractStatus {
+  DRAFT
+  RUNNING
+  EXPIRED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  OVERTIME
+  MISSING_CHECKOUT
+  ABSENT
+}
+
+enum TimeOffUnit {
+  DAYS
+  HOURS
+}
+
+enum AllocationStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REFUSED
+}
+
+enum TimeOffRequestStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REFUSED
+}
+
+enum SalaryRuleCategory {
+  BASIC
+  ALLOWANCE
+  DEDUCTION
+  GROSS
+  NET
+}
+
+enum ComputationType {
+  FIXED
+  PERCENTAGE
+  FORMULA
+}
+
+enum PayrunStatus {
+  DRAFT
+  COMPUTED
+  VALIDATED
+  PAID
+}
+
+enum PayslipStatus {
+  DRAFT
+  COMPUTED
+  VALIDATED
+  PAID
+}
+
+enum WarningType {
+  MISSING_BANK_DETAILS
+  MISSING_SCHEDULE
+  MISSING_CONTRACT
+  DUPLICATE_PAYSLIP
+  NEGATIVE_NET
+}
+
+enum WarningSeverity {
+  WARNING
+  CRITICAL
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role      @default(EMPLOYEE)
+  employee     Employee?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Department {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  code        String     @unique
+  managerId   String?
+  manager     Employee?  @relation("DepartmentManager", fields: [managerId], references: [id])
+  employees   Employee[] @relation("DepartmentEmployees")
+  contracts   Contract[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model WorkingSchedule {
+  id               String                @id @default(uuid())
+  name             String
+  type             String                @default("STANDARD")
+  totalWeeklyHours Float                 @default(40.0)
+  lines            WorkingScheduleLine[]
+  employees        Employee[]
+  contracts        Contract[]
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+}
+
+model WorkingScheduleLine {
+  id           String          @id @default(uuid())
+  scheduleId   String
+  schedule     WorkingSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  dayOfWeek    Int             // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime    String          // "09:00"
+  endTime      String          // "18:00"
+  breakMinutes Int             @default(60)
+  hours        Float
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model Employee {
+  id                 String            @id @default(uuid())
+  userId             String?           @unique
+  user               User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  firstName          String
+  lastName           String
+  email              String            @unique
+  phone              String?
+  jobPosition        String
+  employeeType       EmployeeType      @default(FULL_TIME)
+  status             EmployeeStatus    @default(ACTIVE)
+  departmentId       String?
+  department         Department?       @relation("DepartmentEmployees", fields: [departmentId], references: [id], onDelete: SetNull)
+  managerId          String?
+  manager            Employee?         @relation("EmployeeHierarchy", fields: [managerId], references: [id], onDelete: SetNull)
+  subordinates       Employee[]        @relation("EmployeeHierarchy")
+  managedDepartments Department[]      @relation("DepartmentManager")
+  scheduleId         String?
+  schedule           WorkingSchedule?  @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  
+  // Bank / Payroll Details
+  bankName           String?
+  bankAccountNumber  String?
+  bankIfscOrRouting  String?
+  taxId              String?
+
+  contracts          Contract[]
+  attendance         Attendance[]
+  timeOffRequests    TimeOffRequest[]
+  allocations        LeaveAllocation[]
+  payslips           Payslip[]
+  payrunEmployees    PayrunEmployee[]
+  warnings           PayrollWarning[]
+
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+}
+
+model Contract {
+  id                String           @id @default(uuid())
+  employeeId        String
+  employee          Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name              String
+  wage              Float
+  startDate         DateTime
+  endDate           DateTime?
+  salaryStructureId String
+  salaryStructure   SalaryStructure  @relation(fields: [salaryStructureId], references: [id])
+  scheduleId        String?
+  schedule          WorkingSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  departmentId      String?
+  department        Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  jobPosition       String?
+  status            ContractStatus   @default(DRAFT)
+  payslips          Payslip[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model Attendance {
+  id                 String           @id @default(uuid())
+  employeeId         String
+  employee           Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  checkIn            DateTime
+  checkOut           DateTime?
+  workedHours        Float?
+  status             AttendanceStatus @default(PRESENT)
+  isManualEdit       Boolean          @default(false)
+  correctedByUserId  String?
+  note               String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model TimeOffType {
+  id                 String            @id @default(uuid())
+  name               String            @unique
+  code               String            @unique
+  requiresAllocation Boolean           @default(true)
+  unit               TimeOffUnit       @default(DAYS)
+  allocations        LeaveAllocation[]
+  requests           TimeOffRequest[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+}
+
+model LeaveAllocation {
+  id              String           @id @default(uuid())
+  employeeId      String
+  employee        Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  timeOffTypeId   String
+  timeOffType     TimeOffType      @relation(fields: [timeOffTypeId], references: [id], onDelete: Cascade)
+  allocatedAmount Float
+  takenAmount     Float            @default(0.0)
+  validFrom       DateTime
+  validTo         DateTime
+  status          AllocationStatus @default(APPROVED)
+  requests        TimeOffRequest[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model TimeOffRequest {
+  id               String               @id @default(uuid())
+  employeeId       String
+  employee         Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  timeOffTypeId    String
+  timeOffType      TimeOffType          @relation(fields: [timeOffTypeId], references: [id], onDelete: Cascade)
+  allocationId     String?
+  allocation       LeaveAllocation?     @relation(fields: [allocationId], references: [id], onDelete: SetNull)
+  startDate        DateTime
+  endDate          DateTime
+  duration         Float
+  reason           String?
+  status           TimeOffRequestStatus @default(PENDING)
+  approvedByUserId String?
+  refusalReason    String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+}
+
+model SalaryStructure {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  code        String       @unique
+  isActive    Boolean      @default(true)
+  rules       SalaryRule[]
+  contracts   Contract[]
+  payruns     Payrun[]
+  payslips    Payslip[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model SalaryRule {
+  id                 String             @id @default(uuid())
+  salaryStructureId  String
+  salaryStructure    SalaryStructure    @relation(fields: [salaryStructureId], references: [id], onDelete: Cascade)
+  name               String
+  code               String
+  category           SalaryRuleCategory
+  sequence           Int                @default(1)
+  computationType    ComputationType    @default(FIXED)
+  amount             Float?
+  percentage         Float?
+  percentageBasisCode String?
+  formula            String?
+  payslipLines       PayslipLine[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@unique([salaryStructureId, code])
+}
+
+model Payrun {
+  id                String           @id @default(uuid())
+  name              String
+  periodStart       DateTime
+  periodEnd         DateTime
+  salaryStructureId String
+  salaryStructure   SalaryStructure  @relation(fields: [salaryStructureId], references: [id])
+  status            PayrunStatus     @default(DRAFT)
+  payrunEmployees   PayrunEmployee[]
+  payslips          Payslip[]
+  warnings          PayrollWarning[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model PayrunEmployee {
+  id         String   @id @default(uuid())
+  payrunId   String
+  payrun     Payrun   @relation(fields: [payrunId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([payrunId, employeeId])
+}
+
+model Payslip {
+  id                String           @id @default(uuid())
+  payrunId          String
+  payrun            Payrun           @relation(fields: [payrunId], references: [id], onDelete: Cascade)
+  employeeId        String
+  employee          Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  contractId        String?
+  contract          Contract?        @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  salaryStructureId String
+  salaryStructure   SalaryStructure  @relation(fields: [salaryStructureId], references: [id])
+  periodStart       DateTime
+  periodEnd         DateTime
+  workedDays        Float            @default(0.0)
+  totalDays         Float            @default(0.0)
+  basic             Float            @default(0.0)
+  gross             Float            @default(0.0)
+  net               Float            @default(0.0)
+  status            PayslipStatus    @default(DRAFT)
+  lines             PayslipLine[]
+  warnings          PayrollWarning[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([payrunId, employeeId])
+}
+
+model PayslipLine {
+  id           String             @id @default(uuid())
+  payslipId    String
+  payslip      Payslip            @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  salaryRuleId String?
+  salaryRule   SalaryRule?        @relation(fields: [salaryRuleId], references: [id], onDelete: SetNull)
+  name         String
+  code         String
+  category     SalaryRuleCategory
+  sequence     Int                @default(1)
+  amount       Float              @default(0.0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+}
+
+model PayrollWarning {
+  id           String          @id @default(uuid())
+  payrunId     String
+  payrun       Payrun          @relation(fields: [payrunId], references: [id], onDelete: Cascade)
+  payslipId    String?
+  payslip      Payslip?        @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  employeeId   String?
+  employee     Employee?       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  warningType  WarningType
+  severity     WarningSeverity @default(WARNING)
+  message      String
+  isResolved   Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
