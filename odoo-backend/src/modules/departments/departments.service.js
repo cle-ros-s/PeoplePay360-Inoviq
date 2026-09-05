@@ -81,23 +81,38 @@ async function getDepartmentById(id) {
 }
 
 async function createDepartment(data) {
-  const existing = await prisma.department.findFirst({
+  let deptCode = data.code ? data.code.trim().toUpperCase() : '';
+  if (!deptCode) {
+    deptCode = data.name
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, 8);
+    if (!deptCode) deptCode = `DEPT_${Date.now().toString().slice(-4)}`;
+  }
+
+  // Check if code exists, append random digits if collision
+  const existingCode = await prisma.department.findUnique({
+    where: { code: deptCode },
+  });
+  if (existingCode) {
+    deptCode = `${deptCode.slice(0, 5)}_${Math.floor(100 + Math.random() * 900)}`;
+  }
+
+  const existingName = await prisma.department.findFirst({
     where: {
-      OR: [
-        { name: { equals: data.name, mode: 'insensitive' } },
-        { code: { equals: data.code, mode: 'insensitive' } },
-      ],
+      name: { equals: data.name.trim(), mode: 'insensitive' },
     },
   });
 
-  if (existing) {
-    throw new AppError('DUPLICATE_DEPARTMENT', 'Department name or code already exists', 409);
+  if (existingName) {
+    throw new AppError('DUPLICATE_DEPARTMENT', 'A department with this name already exists', 409);
   }
 
   return prisma.department.create({
     data: {
-      name: data.name,
-      code: data.code.toUpperCase(),
+      name: data.name.trim(),
+      code: deptCode,
       managerId: data.managerId || null,
     },
     include: {

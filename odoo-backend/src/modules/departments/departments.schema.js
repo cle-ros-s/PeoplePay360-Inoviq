@@ -4,7 +4,7 @@ const { optionalUuid, requiredUuid } = require('../../utils/schemaTypes');
 const createDepartmentSchema = {
   body: z.object({
     name: z.string().min(1, 'Department name is required'),
-    code: z.string().min(1, 'Department code is required'),
+    code: z.string().optional().nullable(),
     managerId: optionalUuid,
   }),
 };
@@ -15,7 +15,7 @@ const updateDepartmentSchema = {
   }),
   body: z.object({
     name: z.string().min(1).optional(),
-    code: z.string().min(1).optional(),
+    code: z.string().optional().nullable(),
     managerId: optionalUuid,
   }),
 };

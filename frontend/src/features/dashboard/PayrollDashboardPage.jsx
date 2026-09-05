@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '../../api/dashboard.api';
 import { departmentsApi } from '../../api/departments.api';
 import PageHeader from '../../components/common/PageHeader';
@@ -10,17 +10,45 @@ import BarChartCard from '../../components/charts/BarChartCard';
 import LineChartCard from '../../components/charts/LineChartCard';
 import DonutStatusCard from '../../components/charts/DonutStatusCard';
 import StatusBadge from '../../components/common/StatusBadge';
-import { DollarSign, Users, FileCheck, Palmtree, Clock, AlertTriangle, Filter, UserPlus, Plus } from 'lucide-react';
+import Modal from '../../components/common/Modal';
+import FormField from '../../components/common/FormField';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import {
+  DollarSign,
+  Users,
+  FileCheck,
+  Palmtree,
+  Clock,
+  AlertTriangle,
+  Filter,
+  UserPlus,
+  Plus,
+  Building,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
 import { formatCurrency, formatEnumLabel } from '../../utils/formatters';
 import { EmployeeType } from '../../utils/constants';
 import { usePermissions } from '../../hooks/usePermissions';
 
+const deptSchema = z.object({
+  name: z.string().min(1, 'Department name is required'),
+  code: z.string().optional().nullable(),
+});
+
 export default function PayrollDashboardPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { can } = usePermissions();
+
   const [period, setPeriod] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [employeeType, setEmployeeType] = useState('');
+
+  const [deptModalOpen, setDeptModalOpen] = useState(false);
+  const [deptFeedback, setDeptFeedback] = useState({ type: '', message: '' });
 
   const params = {
     period: period || undefined,
@@ -71,6 +99,39 @@ export default function PayrollDashboardPage() {
     queryFn: () => dashboardApi.getWarnings(params),
   });
 
+  const {
+    register: registerDept,
+    handleSubmit: handleDeptSubmit,
+    reset: resetDept,
+    formState: { errors: deptErrors },
+  } = useForm({
+    resolver: zodResolver(deptSchema),
+    defaultValues: { name: '', code: '' },
+  });
+
+  const createDeptMutation = useMutation({
+    mutationFn: departmentsApi.createDepartment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-salary-cost'] });
+      setDeptModalOpen(false);
+      resetDept();
+      setDeptFeedback({ type: 'success', message: 'New department successfully created and saved!' });
+    },
+    onError: (err) => {
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to create department';
+      setDeptFeedback({ type: 'error', message: msg });
+    },
+  });
+
+  const onDeptFormSubmit = (values) => {
+    setDeptFeedback({ type: '', message: '' });
+    createDeptMutation.mutate({
+      name: values.name.trim(),
+      code: values.code ? values.code.trim().toUpperCase() : undefined,
+    });
+  };
+
   const handleResetFilters = () => {
     setPeriod('');
     setDepartmentId('');
@@ -100,7 +161,7 @@ export default function PayrollDashboardPage() {
         title="Payroll & Operational Dashboard"
         description="Aggregated real-time metrics across employees, working schedules, attendance, leave allocations, and payroll batches."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {can('MANAGE_EMPLOYEES') && (
               <button
                 type="button"
@@ -109,6 +170,20 @@ export default function PayrollDashboardPage() {
               >
                 <UserPlus className="w-4 h-4" />
                 New Employee
+              </button>
+            )}
+            {can('MANAGE_DEPARTMENTS') && (
+              <button
+                type="button"
+                onClick={() => {
+                  resetDept({ name: '', code: '' });
+                  setDeptFeedback({ type: '', message: '' });
+                  setDeptModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg shadow-sm transition-colors"
+              >
+                <Building className="w-4 h-4 text-gray-500" />
+                Add Department
               </button>
             )}
             {can('CREATE_PAYRUN') && (
@@ -124,6 +199,35 @@ export default function PayrollDashboardPage() {
           </div>
         }
       />
+
+      {/* Quick feedback banner for dashboard actions */}
+      {deptFeedback.message && (
+        <div
+          className={`p-4 rounded-xl border flex items-start justify-between gap-3 text-sm shadow-sm ${
+            deptFeedback.type === 'error'
+              ? 'bg-red-50 border-red-200 text-red-700'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {deptFeedback.type === 'error' ? (
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            )}
+            <div>
+              <p className="font-semibold">{deptFeedback.type === 'error' ? 'Department Action Failed' : 'Department Created'}</p>
+              <p className="text-xs mt-0.5">{deptFeedback.message}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setDeptFeedback({ type: '', message: '' })}
+            className="text-xs font-semibold underline opacity-80 hover:opacity-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Top Filter Bar */}
       <FilterBar filters={filterConfigs} onReset={handleResetFilters}>
@@ -291,6 +395,48 @@ export default function PayrollDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Add Department Modal Directly Accessible from Dashboard */}
+      <Modal
+        isOpen={deptModalOpen}
+        onClose={() => setDeptModalOpen(false)}
+        title="Create New Department"
+        description="Specify a department name and optional unique code for organizational payroll distribution."
+      >
+        <form onSubmit={handleDeptSubmit(onDeptFormSubmit)} className="space-y-4">
+          <FormField
+            label="Department Name"
+            name="name"
+            register={registerDept}
+            error={deptErrors.name}
+            required
+            placeholder="e.g. Sales & Marketing, IT Support"
+          />
+          <FormField
+            label="Department Code (Optional)"
+            name="code"
+            register={registerDept}
+            error={deptErrors.code}
+            placeholder="e.g. SALES, IT (auto-generated if omitted)"
+          />
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
+            <button
+              type="button"
+              onClick={() => setDeptModalOpen(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createDeptMutation.isPending}
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm disabled:opacity-50 transition-colors"
+            >
+              {createDeptMutation.isPending ? 'Creating Department...' : 'Create Department'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -19,21 +19,21 @@ router.get('/:id', validate(getDepartmentByIdSchema), departmentsController.getD
 
 router.post(
   '/',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(createDepartmentSchema),
   departmentsController.createDepartment
 );
 
 router.patch(
   '/:id',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(updateDepartmentSchema),
   departmentsController.updateDepartment
 );
 
 router.delete(
   '/:id',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(getDepartmentByIdSchema),
   departmentsController.deleteDepartment
 );
