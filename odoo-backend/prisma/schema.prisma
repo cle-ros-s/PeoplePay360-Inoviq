@@ -188,6 +188,9 @@ model Employee {
 
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+
+  @@index([status, departmentId])
+  @@index([employeeType, status])
 }
 
 model Contract {
@@ -209,6 +212,8 @@ model Contract {
   payslips          Payslip[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+
+  @@index([employeeId, status])
 }
 
 model Attendance {
@@ -224,6 +229,9 @@ model Attendance {
   note               String?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
+
+  @@index([employeeId, status])
+  @@index([status])
 }
 
 model TimeOffType {
@@ -252,6 +260,9 @@ model LeaveAllocation {
   requests        TimeOffRequest[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+
+  @@index([employeeId, status])
+  @@index([timeOffTypeId, status])
 }
 
 model TimeOffRequest {
@@ -271,6 +282,10 @@ model TimeOffRequest {
   refusalReason    String?
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
+
+  @@index([employeeId, status])
+  @@index([timeOffTypeId, status])
+  @@index([status])
 }
 
 model SalaryStructure {
@@ -319,6 +334,8 @@ model Payrun {
   warnings          PayrollWarning[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+
+  @@index([status, periodStart])
 }
 
 model PayrunEmployee {
@@ -356,6 +373,9 @@ model Payslip {
   updatedAt         DateTime         @updatedAt
 
   @@unique([payrunId, employeeId])
+  @@index([status, periodStart])
+  @@index([employeeId, status])
+  @@index([payrunId, status])
 }
 
 model PayslipLine {
@@ -387,4 +407,6 @@ model PayrollWarning {
   isResolved   Boolean         @default(false)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+
+  @@index([isResolved, severity])
 }
