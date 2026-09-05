@@ -30,7 +30,7 @@ export const payslipsApi = {
   },
 
   getPayslipPdfUrl: (id) => {
-    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     const token = localStorage.getItem('peoplepay360_token');
     return `${baseURL}/payslips/${id}/pdf?token=${token}`;
   },
