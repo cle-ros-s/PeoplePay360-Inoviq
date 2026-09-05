@@ -22,36 +22,24 @@ export default function Modal({ isOpen, onClose, title, description, children, m
   if (!isOpen) return null;
 
   const modalContent = (
-    <>
-      {/* Full viewport fixed backdrop overlay */}
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+      }}
+      onClick={onClose}
+    >
       <div
-        className="fixed inset-0 z-[99990]"
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: 'blur(4px)',
-          WebkitBackdropFilter: 'blur(4px)',
-        }}
-        onClick={onClose}
-      />
-
-      {/* Direct viewport fixed centered modal dialog */}
-      <div
-        className={`w-full ${maxWidth} bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-gray-100 text-left z-[99999] animate-fadeInUp`}
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          margin: 0,
-          boxSizing: 'border-box',
-        }}
+        className={`w-full ${maxWidth} bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-gray-100 text-left my-auto mx-auto`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -74,11 +62,12 @@ export default function Modal({ isOpen, onClose, title, description, children, m
         {/* Content */}
         <div className="px-6 py-5 overflow-y-auto flex-1 bg-white">{children}</div>
       </div>
-    </>
+    </div>
   );
 
   return createPortal(modalContent, document.body);
 }
+
 
 
 
