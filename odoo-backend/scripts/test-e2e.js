@@ -171,6 +171,33 @@ async function runE2ETests() {
     const ptoTypes = await request('GET', '/api/time-off-types', null, tokens.EMPLOYEE);
     const ptoTypeId = ptoTypes.body.data.find((t) => t.code === 'PTO').id;
 
+    // Ensure employee has active allocation with balance for testing
+    const testEmp = await prisma.employee.findFirst({ where: { email: 'employee@peoplepay360.dev' } });
+    const empId = testEmp ? testEmp.id : null;
+    if (empId) {
+      const existingAlloc = await prisma.leaveAllocation.findFirst({
+        where: { employeeId: empId, timeOffTypeId: ptoTypeId, status: 'APPROVED' },
+      });
+      if (existingAlloc) {
+        await prisma.leaveAllocation.update({
+          where: { id: existingAlloc.id },
+          data: { takenAmount: 0.0, allocatedAmount: 50.0 },
+        });
+      } else {
+        await prisma.leaveAllocation.create({
+          data: {
+            employeeId: empId,
+            timeOffTypeId: ptoTypeId,
+            allocatedAmount: 50.0,
+            takenAmount: 0.0,
+            validFrom: new Date('2026-01-01T00:00:00Z'),
+            validTo: new Date('2026-12-31T23:59:59Z'),
+            status: 'APPROVED',
+          },
+        });
+      }
+    }
+
     // Create 3 days request
     const leaveReq = await request(
       'POST',

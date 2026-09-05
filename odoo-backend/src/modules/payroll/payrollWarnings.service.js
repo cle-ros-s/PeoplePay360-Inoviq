@@ -46,6 +46,27 @@ async function generatePayrunWarnings(payrunId, tx = prisma) {
 
   if (!payrun) return [];
 
+  const employeeIds = payrun.payrunEmployees.map((pe) => pe.employee.id);
+
+  // Batch query duplicate payslips across employees in a single query
+  const duplicatePayslips = await tx.payslip.findMany({
+    where: {
+      employeeId: { in: employeeIds },
+      payrunId: { not: payrunId },
+      periodStart: { lte: payrun.periodEnd },
+      periodEnd: { gte: payrun.periodStart },
+      status: { in: ['COMPUTED', 'VALIDATED', 'PAID'] },
+    },
+    include: { payrun: true },
+  });
+
+  const duplicateMap = new Map();
+  for (const dp of duplicatePayslips) {
+    if (!duplicateMap.has(dp.employeeId)) {
+      duplicateMap.set(dp.employeeId, dp);
+    }
+  }
+
   const warningsToCreate = [];
 
   for (const pe of payrun.payrunEmployees) {
@@ -98,16 +119,7 @@ async function generatePayrunWarnings(payrunId, tx = prisma) {
     }
 
     // 4. Check Duplicate Payslip in another payrun (CRITICAL)
-    const duplicatePayslip = await tx.payslip.findFirst({
-      where: {
-        employeeId: employee.id,
-        payrunId: { not: payrunId },
-        periodStart: { lte: payrun.periodEnd },
-        periodEnd: { gte: payrun.periodStart },
-        status: { in: ['COMPUTED', 'VALIDATED', 'PAID'] },
-      },
-      include: { payrun: true },
-    });
+    const duplicatePayslip = duplicateMap.get(employee.id);
 
     if (duplicatePayslip) {
       warningsToCreate.push({
