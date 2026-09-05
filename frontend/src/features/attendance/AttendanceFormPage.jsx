@@ -97,7 +97,7 @@ export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }
       onClose={onClose}
       title="Manual Attendance Correction"
       description="Update shift timing, presence status, and log manual adjustment notes."
-      maxWidth="max-w-xl"
+      maxWidth="max-w-[780px]"
     >
       {/* Employee context box matching screenshot */}
       <div className="bg-[#F8FAFC] p-4 rounded-2xl border border-gray-100 mb-5 flex items-center justify-between">

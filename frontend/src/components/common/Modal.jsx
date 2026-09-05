@@ -1,30 +1,49 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
-export default function Modal({ isOpen, onClose, title, description, children, maxWidth = 'max-w-xl' }) {
+export default function Modal({ isOpen, onClose, title, description, children, maxWidth = 'max-w-[780px]' }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
-      style={{ background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{
+        background: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+      }}
+      onClick={onClose}
     >
       <div
-        className={`w-full ${maxWidth} bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 animate-fadeInUp my-auto`}
+        className={`w-full ${maxWidth} bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-gray-100 text-left animate-fadeInUp`}
+        style={{
+          position: 'fixed',
+          top: '48%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          margin: 0,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 flex items-start justify-between border-b border-gray-100 bg-white">
+        <div className="px-6 pt-6 pb-4 flex items-start justify-between border-b border-gray-100 bg-white shrink-0">
           <div>
             <h3 className="text-lg font-bold text-gray-900">{title}</h3>
             {description && (
@@ -32,6 +51,7 @@ export default function Modal({ isOpen, onClose, title, description, children, m
             )}
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
           >
@@ -44,5 +64,8 @@ export default function Modal({ isOpen, onClose, title, description, children, m
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
+
 
