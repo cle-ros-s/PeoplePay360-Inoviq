@@ -17,48 +17,32 @@ export default function Modal({ isOpen, onClose, title, description, children, m
   return (
     <div
       className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
-      style={{ background: 'rgba(33,33,33,0.45)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+      style={{ background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
     >
       <div
-        className={`w-full ${maxWidth} overflow-hidden flex flex-col max-h-[90vh] animate-fadeInUp`}
+        className={`w-full ${maxWidth} bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 animate-fadeInUp my-auto`}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          border: '1px solid rgba(113,75,103,0.18)',
-          boxShadow: '0 24px 64px rgba(33,33,33,0.22)',
-          borderRadius: '1.25rem',
-        }}
       >
         {/* Header */}
-        <div
-          className="px-6 py-4 flex items-center justify-between"
-          style={{
-            background: 'linear-gradient(135deg, rgba(113,75,103,0.06) 0%, rgba(1,126,132,0.04) 100%)',
-            borderBottom: '1px solid rgba(113,75,103,0.10)',
-          }}
-        >
+        <div className="px-6 pt-6 pb-4 flex items-start justify-between border-b border-gray-100 bg-white">
           <div>
-            <h3 className="text-base font-bold" style={{ color: '#212121' }}>{title}</h3>
+            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
             {description && (
-              <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>{description}</p>
+              <p className="text-xs text-gray-500 mt-1">{description}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl transition-all"
-            style={{ color: '#9CA3AF' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(113,75,103,0.08)'; e.currentTarget.style.color = '#714B67'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9CA3AF'; }}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="px-6 py-5 overflow-y-auto flex-1">{children}</div>
+        <div className="px-6 py-5 overflow-y-auto flex-1 bg-white">{children}</div>
       </div>
     </div>
   );
 }
+
