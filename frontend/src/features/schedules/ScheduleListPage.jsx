@@ -5,7 +5,7 @@ import { schedulesApi } from '../../api/schedules.api';
 import PageHeader from '../../components/common/PageHeader';
 import DataTable from '../../components/common/DataTable';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import { Plus, Edit2, Trash2, Calendar, Clock } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { formatEnumLabel, formatHours } from '../../utils/formatters';
 
 export default function ScheduleListPage() {
@@ -14,6 +14,7 @@ export default function ScheduleListPage() {
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
+  const [feedback, setFeedback] = useState({ type: '', message: '' });
 
   const { data: scheduleData, isLoading } = useQuery({
     queryKey: ['schedules'],
@@ -27,6 +28,12 @@ export default function ScheduleListPage() {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
       setDeleteConfirmOpen(false);
       setScheduleToDelete(null);
+      setFeedback({ type: 'success', message: 'Working schedule removed successfully.' });
+    },
+    onError: (err) => {
+      setDeleteConfirmOpen(false);
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to delete schedule';
+      setFeedback({ type: 'error', message: msg });
     },
   });
 
@@ -88,35 +95,64 @@ export default function ScheduleListPage() {
   ];
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Working Schedules"
-        description="Define weekly work patterns, start/end hours, and break durations. Total weekly hours are calculated authoritatively by the backend."
+        description="Define standard, part-time, and flexible shift patterns. Working hours are automatically calculated on the server."
         actions={
           <button
             onClick={() => navigate('/schedules/new')}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Create Working Schedule
+            Create Schedule
           </button>
         }
       />
+
+      {feedback.message && (
+        <div
+          className={`p-4 rounded-xl border flex items-start justify-between gap-3 text-sm shadow-sm ${
+            feedback.type === 'error'
+              ? 'bg-red-50 border-red-200 text-red-700'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {feedback.type === 'error' ? (
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            )}
+            <div>
+              <p className="font-semibold">{feedback.type === 'error' ? 'Action Failed' : 'Success'}</p>
+              <p className="text-xs mt-0.5">{feedback.message}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setFeedback({ type: '', message: '' })}
+            className="text-xs font-semibold underline opacity-80 hover:opacity-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <DataTable
         columns={columns}
         data={schedulesList}
         isLoading={isLoading}
-        emptyMessage="No working schedules found. Click 'Create Working Schedule' to define one."
+        emptyMessage="No working schedules configured. Click 'Create Schedule' to set up a new shift pattern."
       />
 
       <ConfirmDialog
         isOpen={deleteConfirmOpen}
         onClose={() => setDeleteConfirmOpen(false)}
         onConfirm={() => deleteMutation.mutate(scheduleToDelete.id)}
-        title="Delete Working Schedule"
-        message={`Are you sure you want to delete schedule "${scheduleToDelete?.name}"?`}
+        title="Delete Schedule"
+        message={`Are you sure you want to delete working schedule "${scheduleToDelete?.name}"?`}
         isLoading={deleteMutation.isPending}
+        variant="danger"
       />
     </div>
   );

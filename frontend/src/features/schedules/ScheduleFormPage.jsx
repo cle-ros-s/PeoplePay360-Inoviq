@@ -11,14 +11,14 @@ import SelectField from '../../components/common/SelectField';
 import LoadingState from '../../components/common/LoadingState';
 import { ScheduleType, DAYS_OF_WEEK } from '../../utils/constants';
 import { formatEnumLabel, formatHours } from '../../utils/formatters';
-import { ArrowLeft, Save, Clock } from 'lucide-react';
+import { ArrowLeft, Save, Clock, CheckCircle2, AlertCircle, List, PlusCircle } from 'lucide-react';
 
 const scheduleLineSchema = z.object({
   dayOfWeek: z.number(),
   enabled: z.boolean().default(true),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
-  breakMinutes: z.preprocess((v) => parseInt(v, 10), z.number().min(0)),
+  breakMinutes: z.preprocess((v) => (v === '' || v === null ? 0 : parseInt(v, 10)), z.number().min(0)),
 });
 
 const scheduleSchema = z.object({
@@ -42,6 +42,8 @@ export default function ScheduleFormPage() {
   const isNewMode = !id || id === 'new';
 
   const [serverTotalWeeklyHours, setServerTotalWeeklyHours] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Fetch schedule details if editing
   const { data: scheduleData, isLoading: scheduleLoading } = useQuery({
@@ -109,8 +111,15 @@ export default function ScheduleFormPage() {
     mutationFn: schedulesApi.createSchedule,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-warnings'] });
       setServerTotalWeeklyHours(data.totalWeeklyHours);
-      navigate('/schedules');
+      setSuccessMessage(`Schedule "${data.name}" created successfully with ${data.totalWeeklyHours} weekly hours!`);
+      setErrorMessage('');
+    },
+    onError: (err) => {
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to create schedule';
+      setErrorMessage(msg);
+      setSuccessMessage('');
     },
   });
 
@@ -119,12 +128,22 @@ export default function ScheduleFormPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
       queryClient.invalidateQueries({ queryKey: ['schedule', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-warnings'] });
       setServerTotalWeeklyHours(data.totalWeeklyHours);
-      navigate('/schedules');
+      setSuccessMessage(`Schedule "${data.name}" updated successfully with ${data.totalWeeklyHours} weekly hours!`);
+      setErrorMessage('');
+    },
+    onError: (err) => {
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to update schedule';
+      setErrorMessage(msg);
+      setSuccessMessage('');
     },
   });
 
   const onSubmit = (formData) => {
+    setErrorMessage('');
+    setSuccessMessage('');
+
     // Filter only enabled day lines to send to backend
     const activeLines = formData.lines
       .filter((l) => l.enabled)
@@ -132,11 +151,16 @@ export default function ScheduleFormPage() {
         dayOfWeek: l.dayOfWeek,
         startTime: l.startTime,
         endTime: l.endTime,
-        breakMinutes: l.breakMinutes,
+        breakMinutes: Number(l.breakMinutes) || 0,
       }));
 
+    if (activeLines.length === 0) {
+      setErrorMessage('Please select and enable at least one working day for this schedule.');
+      return;
+    }
+
     const payload = {
-      name: formData.name,
+      name: formData.name.trim(),
       type: formData.type,
       lines: activeLines,
     };
@@ -164,7 +188,7 @@ export default function ScheduleFormPage() {
           <button
             type="button"
             onClick={() => navigate('/schedules')}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Schedules
@@ -172,8 +196,60 @@ export default function ScheduleFormPage() {
         }
       />
 
+      {/* Success Notification Banner */}
+      {successMessage && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start justify-between gap-4 text-sm text-emerald-900 shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-emerald-800">Schedule Saved</p>
+              <p className="text-xs mt-0.5 text-emerald-700">{successMessage}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/schedules')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
+            >
+              <List className="w-3.5 h-3.5" />
+              View Schedules
+            </button>
+            {isNewMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSuccessMessage('');
+                  setServerTotalWeeklyHours(null);
+                  reset({
+                    name: '',
+                    type: ScheduleType.FULL_TIME,
+                    lines: defaultLines,
+                  });
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                Add Another
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Error Notification Banner */}
+      {errorMessage && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-sm text-red-700 shadow-sm animate-in fade-in duration-200">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Unable to save schedule</p>
+            <p className="text-xs mt-0.5">{errorMessage}</p>
+          </div>
+        </div>
+      )}
+
       {serverTotalWeeklyHours !== null && serverTotalWeeklyHours !== undefined && (
-        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
+        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-3 text-emerald-900 font-semibold text-sm">
             <Clock className="w-5 h-5 text-emerald-600" />
             <span>Server-Calculated Total Weekly Hours:</span>
@@ -191,7 +267,8 @@ export default function ScheduleFormPage() {
         </div>
 
         <div className="border-t border-gray-100 pt-6">
-          <h3 className="text-base font-bold text-gray-900 mb-4">Weekly Schedule Pattern (Monday — Sunday)</h3>
+          <h3 className="text-base font-bold text-gray-900 mb-1">Weekly Working Pattern</h3>
+          <p className="text-xs text-gray-500 mb-4">Toggle working days and customize shift timings.</p>
           
           <div className="space-y-3">
             {fields.map((field, index) => {
@@ -210,7 +287,7 @@ export default function ScheduleFormPage() {
                       type="checkbox"
                       id={`lines.${index}.enabled`}
                       {...register(`lines.${index}.enabled`)}
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                     />
                     <label htmlFor={`lines.${index}.enabled`} className="text-sm font-semibold text-gray-900 cursor-pointer">
                       {dayLabel}
@@ -224,7 +301,7 @@ export default function ScheduleFormPage() {
                         <input
                           type="time"
                           {...register(`lines.${index}.startTime`)}
-                          className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg"
+                          className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
 
@@ -233,7 +310,7 @@ export default function ScheduleFormPage() {
                         <input
                           type="time"
                           {...register(`lines.${index}.endTime`)}
-                          className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg"
+                          className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
 
@@ -244,7 +321,7 @@ export default function ScheduleFormPage() {
                           min="0"
                           step="15"
                           {...register(`lines.${index}.breakMinutes`)}
-                          className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg"
+                          className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -268,7 +345,7 @@ export default function ScheduleFormPage() {
           <button
             type="submit"
             disabled={createMutation.isPending || updateMutation.isPending}
-            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm disabled:opacity-50 transition-colors"
           >
             <Save className="w-4 h-4" />
             {createMutation.isPending || updateMutation.isPending ? 'Calculating & Saving...' : isNewMode ? 'Create Schedule' : 'Save Schedule'}

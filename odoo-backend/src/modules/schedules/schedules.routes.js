@@ -19,21 +19,21 @@ router.get('/:id', validate(getScheduleByIdSchema), schedulesController.getSched
 
 router.post(
   '/',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(createScheduleSchema),
   schedulesController.createSchedule
 );
 
 router.patch(
   '/:id',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(updateScheduleSchema),
   schedulesController.updateSchedule
 );
 
 router.delete(
   '/:id',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(getScheduleByIdSchema),
   schedulesController.deleteSchedule
 );
