@@ -116,10 +116,11 @@ export default function AttendanceListPage() {
         can('MANUAL_ATTENDANCE_CORRECTION') && (
           <button
             onClick={() => handleOpenCorrection(a)}
-            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/60 rounded-lg transition-all shadow-xs"
             title="Manual Correction"
           >
-            <Edit2 className="w-4 h-4" />
+            <Edit2 className="w-3.5 h-3.5" />
+            <span>Edit</span>
           </button>
         )
       ),
@@ -154,19 +155,25 @@ export default function AttendanceListPage() {
 
       <FilterBar filters={filterConfigs} onReset={() => setSearchParams({})}>
         <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={fromFilter}
-            onChange={(e) => handleFilterChange('from', e.target.value)}
-            className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-sm"
-          />
-          <span className="text-xs text-gray-400">to</span>
-          <input
-            type="date"
-            value={toFilter}
-            onChange={(e) => handleFilterChange('to', e.target.value)}
-            className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-sm"
-          />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">From Date</span>
+            <input
+              type="date"
+              value={fromFilter}
+              onChange={(e) => handleFilterChange('from', e.target.value)}
+              className="px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg shadow-xs focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+            />
+          </div>
+          <span className="text-xs text-gray-400 self-end pb-2">to</span>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">To Date</span>
+            <input
+              type="date"
+              value={toFilter}
+              onChange={(e) => handleFilterChange('to', e.target.value)}
+              className="px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg shadow-xs focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+            />
+          </div>
         </div>
       </FilterBar>
 
