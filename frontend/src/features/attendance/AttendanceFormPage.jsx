@@ -44,7 +44,7 @@ export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }
     defaultValues: {
       checkIn: '',
       checkOut: '',
-      status: AttendanceStatus.MANUALLY_EDITED,
+      status: AttendanceStatus.LATE,
       notes: '',
     },
   });
@@ -55,7 +55,7 @@ export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }
       reset({
         checkIn: attendanceRecord.checkIn ? new Date(attendanceRecord.checkIn).toISOString().slice(0, 16) : '',
         checkOut: attendanceRecord.checkOut ? new Date(attendanceRecord.checkOut).toISOString().slice(0, 16) : '',
-        status: attendanceRecord.status || AttendanceStatus.MANUALLY_EDITED,
+        status: attendanceRecord.status || AttendanceStatus.LATE,
         notes: attendanceRecord.notes || '',
       });
     }

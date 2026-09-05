@@ -39,7 +39,6 @@ export const AttendanceStatus = {
   ABSENT: 'ABSENT',
   OVERTIME: 'OVERTIME',
   MISSING_CHECKOUT: 'MISSING_CHECKOUT',
-  MANUALLY_EDITED: 'MANUALLY_EDITED',
 };
 
 export const TimeOffUnit = {
