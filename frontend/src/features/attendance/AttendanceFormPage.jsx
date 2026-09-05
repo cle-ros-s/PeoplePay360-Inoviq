@@ -126,8 +126,8 @@ export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <FormField
             label="Check In Time"
             name="checkIn"
@@ -135,6 +135,7 @@ export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }
             register={register}
             error={errors.checkIn}
             required
+            className="mb-0"
           />
           <FormField
             label="Check Out Time"
@@ -142,6 +143,7 @@ export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }
             type="datetime-local"
             register={register}
             error={errors.checkOut}
+            className="mb-0"
           />
         </div>
 
@@ -152,9 +154,10 @@ export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }
           register={register}
           error={errors.status}
           required
+          className="mb-4"
         />
 
-        <div>
+        <div className="mb-4">
           <label htmlFor="notes" className="form-label">
             Correction Reason / Audit Notes
           </label>
@@ -170,7 +173,7 @@ export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 mt-5">
           <button
             type="button"
             onClick={onClose}

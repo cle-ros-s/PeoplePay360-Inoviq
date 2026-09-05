@@ -12,10 +12,10 @@ export default function FormField({
   step,
   min,
   max,
-  className = '',
+  className = 'mb-4',
 }) {
   return (
-    <div className={`mb-4 ${className}`}>
+    <div className={className}>
       {label && (
         <label htmlFor={name} className="form-label">
           {label} {required && <span style={{ color: '#EF4444' }}>*</span>}
@@ -40,3 +40,4 @@ export default function FormField({
     </div>
   );
 }
+

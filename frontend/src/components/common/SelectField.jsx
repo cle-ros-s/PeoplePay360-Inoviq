@@ -9,10 +9,10 @@ export default function SelectField({
   required = false,
   disabled = false,
   placeholder = 'Select option...',
-  className = '',
+  className = 'mb-4',
 }) {
   return (
-    <div className={`mb-4 ${className}`}>
+    <div className={className}>
       {label && (
         <label htmlFor={name} className="form-label">
           {label} {required && <span style={{ color: '#EF4444' }}>*</span>}
