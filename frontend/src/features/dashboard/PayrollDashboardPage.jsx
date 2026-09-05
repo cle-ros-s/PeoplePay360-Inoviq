@@ -12,6 +12,7 @@ import DonutStatusCard from '../../components/charts/DonutStatusCard';
 import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
 import FormField from '../../components/common/FormField';
+import TimeOffRequestFormPage from '../timeOff/TimeOffRequestFormPage';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -49,6 +50,7 @@ export default function PayrollDashboardPage() {
 
   const [deptModalOpen, setDeptModalOpen] = useState(false);
   const [deptFeedback, setDeptFeedback] = useState({ type: '', message: '' });
+  const [timeOffModalOpen, setTimeOffModalOpen] = useState(false);
 
   const params = {
     period: period || undefined,
@@ -169,6 +171,16 @@ export default function PayrollDashboardPage() {
               >
                 <Building className="w-4 h-4 text-gray-500" />
                 Add Department
+              </button>
+            )}
+            {can('VIEW_TIME_OFF_REQUESTS') && (
+              <button
+                type="button"
+                onClick={() => setTimeOffModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg shadow-sm transition-colors"
+              >
+                <Palmtree className="w-4 h-4 text-amber-500" />
+                Request Time Off
               </button>
             )}
             {can('CREATE_PAYRUN') && (
@@ -422,6 +434,12 @@ export default function PayrollDashboardPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Request Time Off Modal Directly Accessible from Dashboard */}
+      <TimeOffRequestFormPage
+        isOpen={timeOffModalOpen}
+        onClose={() => setTimeOffModalOpen(false)}
+      />
     </div>
   );
 }
