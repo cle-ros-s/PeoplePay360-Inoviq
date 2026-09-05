@@ -19,21 +19,21 @@ router.get('/:id', validate(getTimeOffTypeByIdSchema), timeOffTypesController.ge
 
 router.post(
   '/',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(createTimeOffTypeSchema),
   timeOffTypesController.createTimeOffType
 );
 
 router.patch(
   '/:id',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(updateTimeOffTypeSchema),
   timeOffTypesController.updateTimeOffType
 );
 
 router.delete(
   '/:id',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(getTimeOffTypeByIdSchema),
   timeOffTypesController.deleteTimeOffType
 );

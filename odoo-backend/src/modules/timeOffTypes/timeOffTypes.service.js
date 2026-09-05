@@ -62,11 +62,15 @@ async function getTimeOffTypeById(id) {
 }
 
 async function createTimeOffType(data) {
+  const code = (data.code && data.code.trim())
+    ? data.code.trim().toUpperCase()
+    : data.name.trim().toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 15);
+
   const existing = await prisma.timeOffType.findFirst({
     where: {
       OR: [
-        { name: { equals: data.name, mode: 'insensitive' } },
-        { code: { equals: data.code, mode: 'insensitive' } },
+        { name: { equals: data.name.trim(), mode: 'insensitive' } },
+        { code: { equals: code, mode: 'insensitive' } },
       ],
     },
   });
@@ -77,8 +81,8 @@ async function createTimeOffType(data) {
 
   return prisma.timeOffType.create({
     data: {
-      name: data.name,
-      code: data.code.toUpperCase(),
+      name: data.name.trim(),
+      code,
       requiresAllocation: data.requiresAllocation !== undefined ? data.requiresAllocation : true,
       unit: data.unit || 'DAYS',
     },

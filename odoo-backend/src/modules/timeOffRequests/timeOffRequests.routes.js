@@ -22,14 +22,14 @@ router.post('/', scopeEmployee, validate(createTimeOffRequestSchema), timeOffReq
 
 router.patch(
   '/:id/approve',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(getTimeOffRequestByIdSchema),
   timeOffRequestsController.approveTimeOffRequest
 );
 
 router.patch(
   '/:id/refuse',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(refuseRequestSchema),
   timeOffRequestsController.refuseTimeOffRequest
 );

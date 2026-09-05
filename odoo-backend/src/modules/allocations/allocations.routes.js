@@ -20,21 +20,21 @@ router.get('/:id', scopeEmployee, validate(getAllocationByIdSchema), allocations
 
 router.post(
   '/',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(createAllocationSchema),
   allocationsController.createAllocation
 );
 
 router.patch(
   '/:id',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(updateAllocationSchema),
   allocationsController.updateAllocation
 );
 
 router.delete(
   '/:id',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(getAllocationByIdSchema),
   allocationsController.deleteAllocation
 );

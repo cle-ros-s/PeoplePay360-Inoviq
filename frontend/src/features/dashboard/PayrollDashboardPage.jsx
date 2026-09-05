@@ -13,6 +13,7 @@ import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
 import FormField from '../../components/common/FormField';
 import TimeOffRequestFormPage from '../timeOff/TimeOffRequestFormPage';
+import TimeOffTypeFormPage from '../timeOff/TimeOffTypeFormPage';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -29,6 +30,7 @@ import {
   Building,
   CheckCircle2,
   AlertCircle,
+  Calendar,
 } from 'lucide-react';
 import { formatCurrency, formatEnumLabel } from '../../utils/formatters';
 import { EmployeeType } from '../../utils/constants';
@@ -51,6 +53,7 @@ export default function PayrollDashboardPage() {
   const [deptModalOpen, setDeptModalOpen] = useState(false);
   const [deptFeedback, setDeptFeedback] = useState({ type: '', message: '' });
   const [timeOffModalOpen, setTimeOffModalOpen] = useState(false);
+  const [timeOffTypeModalOpen, setTimeOffTypeModalOpen] = useState(false);
 
   const params = {
     period: period || undefined,
@@ -181,6 +184,16 @@ export default function PayrollDashboardPage() {
               >
                 <Palmtree className="w-4 h-4 text-amber-500" />
                 Request Time Off
+              </button>
+            )}
+            {can('VIEW_TIME_OFF_TYPES') && (
+              <button
+                type="button"
+                onClick={() => setTimeOffTypeModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg shadow-sm transition-colors"
+              >
+                <Plus className="w-4 h-4 text-emerald-600" />
+                Add Time Off Type
               </button>
             )}
             {can('CREATE_PAYRUN') && (
@@ -371,23 +384,43 @@ export default function PayrollDashboardPage() {
         </div>
 
         {/* Time Off Summary */}
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <Palmtree className="w-4 h-4 text-amber-600" />
-            Time Off & Leave Summary
-          </h3>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <span className="text-xs text-blue-700 font-medium block">Pending Requests</span>
-              <span className="text-lg font-bold text-blue-900">{timeOffOverview?.pendingRequests || 0}</span>
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <Palmtree className="w-4 h-4 text-amber-600" />
+                Time Off & Leave Summary
+              </h3>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setTimeOffModalOpen(true)}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md transition-colors"
+                >
+                  + Request Leave
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimeOffTypeModalOpen(true)}
+                  className="text-xs font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-md transition-colors"
+                >
+                  + Leave Type
+                </button>
+              </div>
             </div>
-            <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-              <span className="text-xs text-emerald-700 font-medium block">Approved Days</span>
-              <span className="text-lg font-bold text-emerald-900">{timeOffOverview?.approvedDays || 0} days</span>
-            </div>
-            <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-              <span className="text-xs text-indigo-700 font-medium block">Active Allocations</span>
-              <span className="text-lg font-bold text-indigo-900">{timeOffOverview?.activeAllocations || 0}</span>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <span className="text-xs text-blue-700 font-medium block">Pending Requests</span>
+                <span className="text-lg font-bold text-blue-900">{timeOffOverview?.pendingRequests || 0}</span>
+              </div>
+              <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                <span className="text-xs text-emerald-700 font-medium block">Approved Days</span>
+                <span className="text-lg font-bold text-emerald-900">{timeOffOverview?.approvedDays || 0} days</span>
+              </div>
+              <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                <span className="text-xs text-indigo-700 font-medium block">Active Allocations</span>
+                <span className="text-lg font-bold text-indigo-900">{timeOffOverview?.activeAllocations || 0}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -439,6 +472,12 @@ export default function PayrollDashboardPage() {
       <TimeOffRequestFormPage
         isOpen={timeOffModalOpen}
         onClose={() => setTimeOffModalOpen(false)}
+      />
+
+      {/* Add Time Off Type Modal Directly Accessible from Dashboard */}
+      <TimeOffTypeFormPage
+        isOpen={timeOffTypeModalOpen}
+        onClose={() => setTimeOffTypeModalOpen(false)}
       />
     </div>
   );
