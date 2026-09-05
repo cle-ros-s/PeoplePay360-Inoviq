@@ -301,13 +301,15 @@ async function computePayrun(id) {
       await tx.payslipLine.createMany({ data: allLinesToCreate });
     }
 
-    for (const update of payslipUpdates) {
-      const { id: psId, ...data } = update;
-      await tx.payslip.update({
-        where: { id: psId },
-        data,
-      });
-    }
+    await Promise.all(
+      payslipUpdates.map((update) => {
+        const { id: psId, ...data } = update;
+        return tx.payslip.update({
+          where: { id: psId },
+          data,
+        });
+      })
+    );
 
     await tx.payrun.update({
       where: { id: payrun.id },
@@ -576,7 +578,19 @@ async function deletePayrun(id) {
     throw new AppError('CANNOT_DELETE_PAID_PAYRUN', 'Cannot delete a paid payrun; historical records are immutable', 400);
   }
 
-  await prisma.payrun.delete({ where: { id } });
+  await executeTx(async (tx) => {
+    const payslips = await tx.payslip.findMany({ where: { payrunId: id }, select: { id: true } });
+    const payslipIds = payslips.map((p) => p.id);
+
+    if (payslipIds.length > 0) {
+      await tx.payslipLine.deleteMany({ where: { payslipId: { in: payslipIds } } });
+    }
+    await tx.payrollWarning.deleteMany({ where: { payrunId: id } });
+    await tx.payslip.deleteMany({ where: { payrunId: id } });
+    await tx.payrunEmployee.deleteMany({ where: { payrunId: id } });
+    await tx.payrun.delete({ where: { id } });
+  });
+
   return { message: 'Payrun deleted successfully' };
 }
 
