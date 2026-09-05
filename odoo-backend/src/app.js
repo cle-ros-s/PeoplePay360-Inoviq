@@ -10,8 +10,8 @@ const app = express();
 // CORS configuration
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow all in development or when matched with CLIENT_ORIGIN
-    if (!origin || env.NODE_ENV !== 'production' || origin === env.CLIENT_ORIGIN) {
+    // Allow all in development or when matched with CLIENT_ORIGIN or localhost
+    if (!origin || env.NODE_ENV !== 'production' || origin === env.CLIENT_ORIGIN || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
