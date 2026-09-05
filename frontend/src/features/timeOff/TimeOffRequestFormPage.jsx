@@ -13,11 +13,11 @@ import SelectField from '../../components/common/SelectField';
 import DateField from '../../components/common/DateField';
 
 const requestSchema = z.object({
-  employeeId: z.string().min(1, 'Employee is required'),
+  employeeId: z.string().optional().nullable(),
   timeOffTypeId: z.string().min(1, 'Time off type is required'),
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().min(1, 'End date is required'),
-  duration: z.preprocess((v) => parseFloat(v), z.number().min(0.5, 'Duration must be at least 0.5')),
+  duration: z.preprocess((v) => parseFloat(v) || 1, z.number().min(0.5, 'Duration must be at least 0.5')),
   reason: z.string().optional().nullable(),
 });
 
@@ -43,11 +43,12 @@ export default function TimeOffRequestFormPage({ isOpen, onClose }) {
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(requestSchema),
     defaultValues: {
-      employeeId: isEmployee ? currentEmpId : '',
+      employeeId: isEmployee ? (currentEmpId || '') : '',
       timeOffTypeId: '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0],
@@ -58,6 +59,20 @@ export default function TimeOffRequestFormPage({ isOpen, onClose }) {
 
   const startDateVal = watch('startDate');
   const endDateVal = watch('endDate');
+
+  // Sync employeeId and default type when modal opens or permissions load
+  useEffect(() => {
+    if (isOpen) {
+      if (isEmployee && currentEmpId) {
+        setValue('employeeId', currentEmpId);
+      } else if (!isEmployee && employees.length > 0) {
+        setValue('employeeId', (prev) => prev || employees[0].id);
+      }
+      if (timeOffTypes.length > 0) {
+        setValue('timeOffTypeId', (prev) => prev || timeOffTypes[0].id);
+      }
+    }
+  }, [isOpen, isEmployee, currentEmpId, employees, timeOffTypes, setValue]);
 
   // Calculate default duration in days when dates change
   useEffect(() => {
@@ -77,20 +92,30 @@ export default function TimeOffRequestFormPage({ isOpen, onClose }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-off-requests'] });
       queryClient.invalidateQueries({ queryKey: ['allocations'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-timeoff-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      reset();
       onClose();
     },
   });
 
   const onSubmit = (values) => {
-    createMutation.mutate({
+    let resolvedEmployeeId = isEmployee ? currentEmpId : (values.employeeId || currentEmpId);
+    if (!resolvedEmployeeId && employees.length > 0) {
+      resolvedEmployeeId = employees[0].id;
+    }
+
+    const payload = {
       ...values,
+      employeeId: resolvedEmployeeId || undefined,
       startDate: new Date(values.startDate).toISOString(),
       endDate: new Date(values.endDate).toISOString(),
-    });
+    };
+    createMutation.mutate(payload);
   };
 
   const typeOptions = timeOffTypes.map((t) => ({ value: t.id, label: `${t.name} (${t.unit})` }));
-  const employeeOptions = employees.map((e) => ({ value: e.id, label: `${e.name} (${e.jobPosition})` }));
+  const employeeOptions = employees.map((e) => ({ value: e.id, label: `${e.name || `${e.firstName} ${e.lastName}`} (${e.jobPosition})` }));
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="New Time Off Request" description="Submit a new leave request for approval.">

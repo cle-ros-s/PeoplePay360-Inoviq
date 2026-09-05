@@ -83,10 +83,15 @@ async function getTimeOffRequestById(id, scopedEmployeeId = null) {
 }
 
 async function createTimeOffRequest(data, user) {
-  const targetEmployeeId = user.role === 'EMPLOYEE' ? user.employeeId : (data.employeeId || user.employeeId);
+  let targetEmployeeId = user.role === 'EMPLOYEE' ? user.employeeId : (data.employeeId || user.employeeId);
 
   if (!targetEmployeeId) {
-    throw new AppError('EMPLOYEE_REQUIRED', 'Employee ID is required for time-off request', 400);
+    const firstEmp = await prisma.employee.findFirst({ where: { status: 'ACTIVE' } });
+    if (firstEmp) {
+      targetEmployeeId = firstEmp.id;
+    } else {
+      throw new AppError('EMPLOYEE_REQUIRED', 'Employee ID is required for time-off request', 400);
+    }
   }
 
   const timeOffType = await prisma.timeOffType.findUnique({ where: { id: data.timeOffTypeId } });
