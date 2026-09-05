@@ -25,61 +25,67 @@ function buildDashboardFilters(query = {}) {
 }
 
 /**
- * KPI aggregation endpoint
+ * KPI aggregation endpoint (Optimized with Promise.all parallel database queries)
  */
 async function getKpis(query) {
   const { employeeWhere } = buildDashboardFilters(query);
 
-  // 1. Total Net Salary Paid (SUM(net) WHERE status = PAID)
-  const paidPayslipsAgg = await prisma.payslip.aggregate({
-    where: {
-      status: 'PAID',
-      employee: employeeWhere,
-    },
-    _sum: { net: true, gross: true, basic: true },
-    _avg: { net: true },
-    _count: { id: true },
-  });
+  const [
+    paidPayslipsAgg,
+    totalPayslipsCount,
+    approvedTimeOffAgg,
+    pendingTimeOffCount,
+    attendanceCounts,
+    activeEmployeesCount,
+    unresolvedWarningsCount,
+  ] = await Promise.all([
+    prisma.payslip.aggregate({
+      where: {
+        status: 'PAID',
+        employee: employeeWhere,
+      },
+      _sum: { net: true, gross: true, basic: true },
+      _avg: { net: true },
+      _count: { id: true },
+    }),
+    prisma.payslip.count({
+      where: { employee: employeeWhere },
+    }),
+    prisma.timeOffRequest.aggregate({
+      where: {
+        status: 'APPROVED',
+        employee: employeeWhere,
+      },
+      _count: { id: true },
+      _sum: { duration: true },
+    }),
+    prisma.timeOffRequest.count({
+      where: {
+        status: 'PENDING',
+        employee: employeeWhere,
+      },
+    }),
+    prisma.attendance.groupBy({
+      by: ['status'],
+      where: {
+        employee: employeeWhere,
+      },
+      _count: { id: true },
+    }),
+    prisma.employee.count({
+      where: employeeWhere,
+    }),
+    prisma.payrollWarning.count({
+      where: { isResolved: false },
+    }),
+  ]);
 
   const totalNetPaid = paidPayslipsAgg._sum.net || 0;
   const totalGrossPaid = paidPayslipsAgg._sum.gross || 0;
   const averageNetSalary = Math.round((paidPayslipsAgg._avg.net || 0) * 100) / 100;
   const paidPayslipCount = paidPayslipsAgg._count.id;
-
-  // 2. All Payslips Count
-  const totalPayslipsCount = await prisma.payslip.count({
-    where: { employee: employeeWhere },
-  });
-
-  // 3. Approved Time Off Count & Days
-  const approvedTimeOffAgg = await prisma.timeOffRequest.aggregate({
-    where: {
-      status: 'APPROVED',
-      employee: employeeWhere,
-    },
-    _count: { id: true },
-    _sum: { duration: true },
-  });
-
   const approvedTimeOffCount = approvedTimeOffAgg._count.id;
   const approvedTimeOffDays = approvedTimeOffAgg._sum.duration || 0;
-
-  // 4. Pending Time Off Count
-  const pendingTimeOffCount = await prisma.timeOffRequest.count({
-    where: {
-      status: 'PENDING',
-      employee: employeeWhere,
-    },
-  });
-
-  // 5. Attendance Health: (PRESENT + OVERTIME) / total * 100
-  const attendanceCounts = await prisma.attendance.groupBy({
-    by: ['status'],
-    where: {
-      employee: employeeWhere,
-    },
-    _count: { id: true },
-  });
 
   let totalAttendanceRows = 0;
   let healthyAttendanceRows = 0;
@@ -95,16 +101,6 @@ async function getKpis(query) {
     totalAttendanceRows > 0
       ? Math.round((healthyAttendanceRows / totalAttendanceRows) * 10000) / 100
       : 100.0;
-
-  // 6. Active Employees Count
-  const activeEmployeesCount = await prisma.employee.count({
-    where: employeeWhere,
-  });
-
-  // 7. Unresolved Critical Warnings Count
-  const unresolvedWarningsCount = await prisma.payrollWarning.count({
-    where: { isResolved: false },
-  });
 
   return {
     totalNetPaid: Math.round(totalNetPaid * 100) / 100,
@@ -128,20 +124,26 @@ async function getKpis(query) {
 }
 
 /**
- * Salary cost breakdown grouped by Department
+ * Salary cost breakdown grouped by Department (Lean queries & memory projection)
  */
 async function getSalaryCostByDepartment(query) {
   const departments = await prisma.department.findMany({
-    include: {
+    select: {
+      id: true,
+      name: true,
+      code: true,
       employees: {
         where: { status: 'ACTIVE' },
-        include: {
+        select: {
+          id: true,
           contracts: {
             where: { status: 'RUNNING' },
+            select: { wage: true },
             take: 1,
           },
           payslips: {
             where: { status: { in: ['COMPUTED', 'VALIDATED', 'PAID'] } },
+            select: { gross: true, net: true },
             orderBy: { periodStart: 'desc' },
             take: 1,
           },
@@ -188,19 +190,32 @@ async function getSalaryCostByDepartment(query) {
 async function getNetSalaryTrend() {
   const payruns = await prisma.payrun.findMany({
     orderBy: { periodStart: 'asc' },
-    include: {
+    take: 12,
+    select: {
+      id: true,
+      name: true,
+      periodStart: true,
+      periodEnd: true,
+      status: true,
       payslips: {
-        select: { basic: true, gross: true, net: true, status: true },
+        select: { basic: true, gross: true, net: true },
       },
     },
   });
 
-  return payruns.map((p) => {
-    const totalBasic = p.payslips.reduce((sum, ps) => sum + (ps.basic || 0), 0);
-    const totalGross = p.payslips.reduce((sum, ps) => sum + (ps.gross || 0), 0);
-    const totalNet = p.payslips.reduce((sum, ps) => sum + (ps.net || 0), 0);
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return payruns.map((p) => {
+    let totalBasic = 0;
+    let totalGross = 0;
+    let totalNet = 0;
+
+    for (const ps of p.payslips) {
+      totalBasic += ps.basic || 0;
+      totalGross += ps.gross || 0;
+      totalNet += ps.net || 0;
+    }
+
     const d = new Date(p.periodStart);
     const month = `${monthNames[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 
@@ -303,12 +318,12 @@ async function getAttendanceOverview(query) {
 }
 
 /**
- * Time Off Overview
+ * Time Off Overview (Parallelized)
  */
 async function getTimeOffOverview(query) {
   const { employeeWhere } = buildDashboardFilters(query);
 
-  const [statusGroups, typeGroups, activeAllocations] = await Promise.all([
+  const [statusGroups, typeGroups, activeAllocations, types] = await Promise.all([
     prisma.timeOffRequest.groupBy({
       by: ['status'],
       where: { employee: employeeWhere },
@@ -324,9 +339,11 @@ async function getTimeOffOverview(query) {
     prisma.leaveAllocation.count({
       where: { status: 'APPROVED' },
     }),
+    prisma.timeOffType.findMany({
+      select: { id: true, name: true },
+    }),
   ]);
 
-  const types = await prisma.timeOffType.findMany();
   const typeMap = {};
   types.forEach((t) => {
     typeMap[t.id] = t.name;
@@ -367,16 +384,55 @@ async function getDashboardWarnings() {
   const warnings = await prisma.payrollWarning.findMany({
     where: { isResolved: false },
     orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
-    include: {
+    select: {
+      id: true,
+      type: true,
+      message: true,
+      severity: true,
+      isResolved: true,
+      createdAt: true,
       payrun: { select: { id: true, name: true, status: true } },
       employee: { select: { id: true, firstName: true, lastName: true, email: true } },
     },
-    take: 50,
+    take: 20,
   });
 
   return {
     criticalCount: warnings.filter((w) => w.severity === 'CRITICAL').length,
     warningCount: warnings.filter((w) => w.severity === 'WARNING').length,
+    warnings,
+  };
+}
+
+/**
+ * Single High-Speed Unified Summary endpoint
+ */
+async function getDashboardSummary(query = {}) {
+  const [
+    kpis,
+    salaryCost,
+    netTrend,
+    payslipBreakdown,
+    attendanceOverview,
+    timeOffOverview,
+    warnings,
+  ] = await Promise.all([
+    getKpis(query),
+    getSalaryCostByDepartment(query),
+    getNetSalaryTrend(),
+    getPayslipStatusBreakdown(query),
+    getAttendanceOverview(query),
+    getTimeOffOverview(query),
+    getDashboardWarnings(),
+  ]);
+
+  return {
+    kpis,
+    salaryCost,
+    netTrend,
+    payslipBreakdown,
+    attendanceOverview,
+    timeOffOverview,
     warnings,
   };
 }
@@ -389,4 +445,5 @@ module.exports = {
   getAttendanceOverview,
   getTimeOffOverview,
   getDashboardWarnings,
+  getDashboardSummary,
 };

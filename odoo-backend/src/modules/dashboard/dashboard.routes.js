@@ -8,6 +8,7 @@ const router = express.Router();
 router.use(authenticate);
 router.use(requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER'));
 
+router.get('/summary', dashboardController.getDashboardSummary);
 router.get('/kpis', dashboardController.getKpis);
 router.get('/salary-cost-by-department', dashboardController.getSalaryCostByDepartment);
 router.get('/net-salary-trend', dashboardController.getNetSalaryTrend);

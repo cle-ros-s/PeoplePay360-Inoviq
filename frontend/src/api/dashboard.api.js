@@ -1,6 +1,16 @@
 import axiosClient from './axiosClient';
 
 export const dashboardApi = {
+  getSummary: async (params) => {
+    try {
+      const response = await axiosClient.get('/dashboard/summary', { params });
+      return response.data;
+    } catch (error) {
+      if (error.response) throw error;
+      return null;
+    }
+  },
+
   getKpis: async (params) => {
     try {
       const response = await axiosClient.get('/dashboard/kpis', { params });

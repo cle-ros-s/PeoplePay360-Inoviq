@@ -63,41 +63,25 @@ export default function PayrollDashboardPage() {
   });
   const departmentsList = deptData?.data || (Array.isArray(deptData) ? deptData : []);
 
-  // Live API Dashboard Queries
-  const { data: kpis, isLoading: kpiLoading } = useQuery({
-    queryKey: ['dashboard-kpis', params],
-    queryFn: () => dashboardApi.getKpis(params),
+  // Live API Dashboard Queries - Single High-Speed Unified Summary
+  const { data: summaryData, isLoading: summaryLoading } = useQuery({
+    queryKey: ['dashboard-summary', params],
+    queryFn: () => dashboardApi.getSummary(params),
+    staleTime: 60 * 1000,
   });
 
-  const { data: salaryCost, isLoading: salaryCostLoading } = useQuery({
-    queryKey: ['dashboard-salary-cost', params],
-    queryFn: () => dashboardApi.getSalaryCostByDepartment(params),
-  });
+  const kpis = summaryData?.kpis;
+  const salaryCost = summaryData?.salaryCost;
+  const netTrend = summaryData?.netTrend;
+  const payslipBreakdown = summaryData?.payslipBreakdown;
+  const attendanceOverview = summaryData?.attendanceOverview;
+  const timeOffOverview = summaryData?.timeOffOverview;
+  const warningsData = summaryData?.warnings;
 
-  const { data: netTrend, isLoading: netTrendLoading } = useQuery({
-    queryKey: ['dashboard-net-trend', params],
-    queryFn: () => dashboardApi.getNetSalaryTrend(params),
-  });
-
-  const { data: payslipBreakdown, isLoading: breakdownLoading } = useQuery({
-    queryKey: ['dashboard-payslip-breakdown', params],
-    queryFn: () => dashboardApi.getPayslipStatusBreakdown(params),
-  });
-
-  const { data: attendanceOverview } = useQuery({
-    queryKey: ['dashboard-attendance-overview', params],
-    queryFn: () => dashboardApi.getAttendanceOverview(params),
-  });
-
-  const { data: timeOffOverview } = useQuery({
-    queryKey: ['dashboard-timeoff-overview', params],
-    queryFn: () => dashboardApi.getTimeOffOverview(params),
-  });
-
-  const { data: warningsData } = useQuery({
-    queryKey: ['dashboard-warnings', params],
-    queryFn: () => dashboardApi.getWarnings(params),
-  });
+  const kpiLoading = summaryLoading;
+  const salaryCostLoading = summaryLoading;
+  const netTrendLoading = summaryLoading;
+  const breakdownLoading = summaryLoading;
 
   const {
     register: registerDept,
@@ -113,6 +97,7 @@ export default function PayrollDashboardPage() {
     mutationFn: departmentsApi.createDepartment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-salary-cost'] });
       setDeptModalOpen(false);
       resetDept();
