@@ -10,7 +10,9 @@ function signToken(user) {
   const payload = {
     sub: user.id,
     role: user.role,
-    employeeId: user.employeeId || null,
+    email: user.email,
+    name: user.name,
+    employeeId: user.employeeId || (user.employee ? user.employee.id : null),
   };
 
   return jwt.sign(payload, env.JWT_SECRET, {

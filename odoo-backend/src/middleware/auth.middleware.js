@@ -29,8 +29,22 @@ async function authenticate(req, res, next) {
 
     const userId = decoded.sub;
     const now = Date.now();
-    const cachedUser = userAuthCache.get(userId);
 
+    // Zero-DB Fast-Path: If JWT token contains full user metadata, populate req.user in 0.001ms
+    if (decoded.sub && decoded.role && (decoded.email || decoded.name)) {
+      req.user = {
+        id: decoded.sub,
+        email: decoded.email || decoded.sub,
+        name: decoded.name || 'User',
+        role: decoded.role,
+        employeeId: decoded.employeeId || null,
+        employee: decoded.employeeId ? { id: decoded.employeeId } : null,
+      };
+      userAuthCache.set(userId, { timestamp: now, user: req.user });
+      return next();
+    }
+
+    const cachedUser = userAuthCache.get(userId);
     if (cachedUser && now - cachedUser.timestamp < USER_CACHE_TTL) {
       req.user = cachedUser.user;
       return next();

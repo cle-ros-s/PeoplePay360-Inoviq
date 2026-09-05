@@ -3,6 +3,14 @@ const { comparePassword } = require('../../utils/password');
 const { signToken } = require('../../utils/jwt');
 const { AppError } = require('../../utils/responseFormatter');
 
+const meCache = new Map();
+const ME_CACHE_TTL = 5 * 60 * 1000;
+
+function invalidateMeCache(userId) {
+  if (userId) meCache.delete(userId);
+  else meCache.clear();
+}
+
 async function login(email, password) {
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase().trim() },
@@ -31,6 +39,8 @@ async function login(email, password) {
 
   const token = signToken({
     id: user.id,
+    email: user.email,
+    name: user.name,
     role: user.role,
     employeeId: user.employee ? user.employee.id : null,
   });
@@ -49,13 +59,29 @@ async function login(email, password) {
 }
 
 async function getMe(userId) {
+  const cached = meCache.get(userId);
+  if (cached && Date.now() - cached.timestamp < ME_CACHE_TTL) {
+    return cached.data;
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: {
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
       employee: {
-        include: {
-          department: true,
-          schedule: true,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          jobPosition: true,
+          departmentId: true,
+          department: {
+            select: { id: true, name: true, code: true },
+          },
         },
       },
     },
@@ -65,7 +91,7 @@ async function getMe(userId) {
     throw new AppError('USER_NOT_FOUND', 'User record not found', 404);
   }
 
-  return {
+  const resData = {
     id: user.id,
     email: user.email,
     name: user.name,
@@ -73,9 +99,13 @@ async function getMe(userId) {
     employeeId: user.employee ? user.employee.id : null,
     employee: user.employee,
   };
+
+  meCache.set(userId, { timestamp: Date.now(), data: resData });
+  return resData;
 }
 
 module.exports = {
   login,
   getMe,
+  invalidateMeCache,
 };
