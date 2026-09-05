@@ -144,6 +144,19 @@ async function runE2ETests() {
 
     // 6. Attendance Flow (Check-in, Check-out, Status derivation)
     console.log('\n[6] Testing Attendance Check-in, Check-out & Status...');
+    await prisma.attendance.deleteMany({
+      where: {
+        OR: [
+          { checkOut: null },
+          {
+            checkIn: {
+              gte: new Date('2026-09-01T00:00:00.000Z'),
+              lte: new Date('2026-09-01T23:59:59.999Z'),
+            },
+          },
+        ],
+      },
+    });
     const checkInRes = await request(
       'POST',
       '/api/attendance',

@@ -52,7 +52,12 @@ async function listPayslips(query, scopedEmployeeId = null) {
     payrunId: p.payrunId,
     payrun: p.payrun,
     employeeId: p.employeeId,
-    employee: p.employee,
+    employee: p.employee
+      ? {
+          ...p.employee,
+          name: `${p.employee.firstName || ''} ${p.employee.lastName || ''}`.trim(),
+        }
+      : null,
     contractId: p.contractId,
     salaryStructureId: p.salaryStructureId,
     salaryStructure: p.salaryStructure,

@@ -42,7 +42,12 @@ async function listAllocations(query, scopedEmployeeId = null) {
   const formatted = allocations.map((a) => ({
     id: a.id,
     employeeId: a.employeeId,
-    employee: a.employee,
+    employee: a.employee
+      ? {
+          ...a.employee,
+          name: `${a.employee.firstName || ''} ${a.employee.lastName || ''}`.trim(),
+        }
+      : null,
     timeOffTypeId: a.timeOffTypeId,
     timeOffType: a.timeOffType,
     allocatedAmount: a.allocatedAmount,

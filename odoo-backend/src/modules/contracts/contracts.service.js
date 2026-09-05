@@ -41,7 +41,17 @@ async function listContracts(query, scopedEmployeeId = null) {
     prisma.contract.count({ where }),
   ]);
 
-  return formatListResponse(contracts, total, page, pageSize);
+  const formattedContracts = contracts.map((c) => ({
+    ...c,
+    employee: c.employee
+      ? {
+          ...c.employee,
+          name: `${c.employee.firstName || ''} ${c.employee.lastName || ''}`.trim(),
+        }
+      : null,
+  }));
+
+  return formatListResponse(formattedContracts, total, page, pageSize);
 }
 
 async function getContractById(id, scopedEmployeeId = null) {

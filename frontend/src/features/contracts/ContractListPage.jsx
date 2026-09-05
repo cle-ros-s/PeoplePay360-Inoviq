@@ -94,7 +94,7 @@ export default function ContractListPage() {
       render: (c) => (
         <div>
           <div className="font-semibold text-gray-900">
-            {c.employee?.name || `${c.employee?.firstName || ''} ${c.employee?.lastName || ''}`.trim() || 'Unassigned'}
+            {c.employee?.name || (c.employee ? `${c.employee.firstName || ''} ${c.employee.lastName || ''}`.trim() : null) || 'Unassigned'}
           </div>
           <div className="text-xs text-gray-500 font-mono">{c.name || c.jobPosition}</div>
         </div>

@@ -538,8 +538,19 @@ async function getPayrunById(id, db = prisma) {
   const totalNet = payrun.payslips.reduce((sum, ps) => sum + (ps.net || 0), 0);
   const criticalWarnings = payrun.warnings.filter((w) => w.severity === 'CRITICAL' && !w.isResolved);
 
+  const formattedPayslips = payrun.payslips.map((ps) => ({
+    ...ps,
+    employee: ps.employee
+      ? {
+          ...ps.employee,
+          name: `${ps.employee.firstName || ''} ${ps.employee.lastName || ''}`.trim(),
+        }
+      : null,
+  }));
+
   return {
     ...payrun,
+    payslips: formattedPayslips,
     employeeCount: payrun.payrunEmployees.length,
     payslipCount: payrun.payslips.length,
     totalBasic: Math.round(totalBasic * 100) / 100,

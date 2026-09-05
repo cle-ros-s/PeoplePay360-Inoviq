@@ -46,7 +46,17 @@ async function listAttendance(query, scopedEmployeeId = null) {
     prisma.attendance.count({ where }),
   ]);
 
-  return formatListResponse(records, total, page, pageSize);
+  const formattedRecords = records.map((r) => ({
+    ...r,
+    employee: r.employee
+      ? {
+          ...r.employee,
+          name: `${r.employee.firstName || ''} ${r.employee.lastName || ''}`.trim(),
+        }
+      : null,
+  }));
+
+  return formatListResponse(formattedRecords, total, page, pageSize);
 }
 
 async function getAttendanceById(id, scopedEmployeeId = null) {

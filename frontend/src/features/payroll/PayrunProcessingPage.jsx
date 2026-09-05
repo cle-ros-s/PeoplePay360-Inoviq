@@ -90,7 +90,9 @@ export default function PayrunProcessingPage() {
       accessorKey: 'employee',
       render: (p) => (
         <div>
-          <div className="font-semibold text-gray-900">{p.employee?.name || 'Unassigned'}</div>
+          <div className="font-semibold text-gray-900">
+            {p.employee?.name || (p.employee ? `${p.employee.firstName || ''} ${p.employee.lastName || ''}`.trim() : null) || 'Unassigned'}
+          </div>
           <div className="text-xs text-gray-500">{p.employee?.jobPosition}</div>
         </div>
       ),

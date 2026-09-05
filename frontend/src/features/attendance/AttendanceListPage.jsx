@@ -74,7 +74,9 @@ export default function AttendanceListPage() {
       accessorKey: 'employee',
       render: (a) => (
         <div>
-          <div className="font-semibold text-gray-900">{a.employee?.name || 'Unassigned'}</div>
+          <div className="font-semibold text-gray-900">
+            {a.employee?.name || (a.employee ? `${a.employee.firstName || ''} ${a.employee.lastName || ''}`.trim() : null) || 'Unassigned'}
+          </div>
           <div className="text-xs text-gray-500">{a.employee?.jobPosition}</div>
         </div>
       ),

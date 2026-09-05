@@ -49,7 +49,17 @@ async function listTimeOffRequests(query, scopedEmployeeId = null) {
     prisma.timeOffRequest.count({ where }),
   ]);
 
-  return formatListResponse(requests, total, page, pageSize);
+  const formattedRequests = requests.map((req) => ({
+    ...req,
+    employee: req.employee
+      ? {
+          ...req.employee,
+          name: `${req.employee.firstName || ''} ${req.employee.lastName || ''}`.trim(),
+        }
+      : null,
+  }));
+
+  return formatListResponse(formattedRequests, total, page, pageSize);
 }
 
 async function getTimeOffRequestById(id, scopedEmployeeId = null) {
@@ -77,6 +87,10 @@ async function getTimeOffRequestById(id, scopedEmployeeId = null) {
 
   if (scopedEmployeeId && request.employeeId !== scopedEmployeeId) {
     throw new AppError('FORBIDDEN', 'Access denied to this time-off request', 403);
+  }
+
+  if (request.employee) {
+    request.employee.name = `${request.employee.firstName || ''} ${request.employee.lastName || ''}`.trim();
   }
 
   return request;

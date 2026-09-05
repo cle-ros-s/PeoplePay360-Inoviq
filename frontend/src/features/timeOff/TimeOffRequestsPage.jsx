@@ -81,7 +81,9 @@ export default function TimeOffRequestsPage() {
       accessorKey: 'employee',
       render: (r) => (
         <div>
-          <div className="font-semibold text-gray-900">{r.employee?.name || 'Unassigned'}</div>
+          <div className="font-semibold text-gray-900">
+            {r.employee?.name || (r.employee ? `${r.employee.firstName || ''} ${r.employee.lastName || ''}`.trim() : null) || 'Unassigned'}
+          </div>
           <div className="text-xs text-gray-500">{r.employee?.jobPosition}</div>
         </div>
       ),
@@ -156,7 +158,10 @@ export default function TimeOffRequestsPage() {
       label: 'Filter Employee',
       value: employeeIdFilter,
       onChange: (val) => handleFilterChange('employeeId', val),
-      options: employeesList.map((e) => ({ value: e.id, label: e.name })),
+      options: employeesList.map((e) => ({
+        value: e.id,
+        label: e.name || `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.email || 'Unknown',
+      })),
     });
   }
   filterConfigs.push({
