@@ -67,10 +67,10 @@ async function getEligibleEmployees(query) {
 
 async function executeTx(fn) {
   try {
-    return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+    return await prisma.$transaction(fn, { maxWait: 20000, timeout: 60000 });
   } catch (err) {
     if (err.code === 'P2028' || err.message?.includes('Transaction')) {
-      return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+      return await prisma.$transaction(fn, { maxWait: 20000, timeout: 60000 });
     }
     throw err;
   }
@@ -150,11 +150,11 @@ async function createPayrun(data) {
       })),
     });
 
-    // Generate initial warnings
-    await generatePayrunWarnings(payrun.id, tx);
-
     return payrun.id;
   });
+
+  // Generate initial warnings after transaction commit
+  await generatePayrunWarnings(createdPayrunId);
 
   return getPayrunById(createdPayrunId);
 }
@@ -309,9 +309,6 @@ async function computePayrun(id) {
       });
     }
 
-    // Regenerate warnings
-    await generatePayrunWarnings(payrun.id, tx);
-
     await tx.payrun.update({
       where: { id: payrun.id },
       data: { status: 'COMPUTED' },
@@ -319,6 +316,9 @@ async function computePayrun(id) {
 
     return payrun.id;
   });
+
+  // Regenerate warnings after compute transaction commits
+  await generatePayrunWarnings(id);
 
   return getPayrunById(id);
 }
