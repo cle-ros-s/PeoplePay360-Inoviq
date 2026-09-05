@@ -128,14 +128,18 @@ export default function TimeOffRequestsPage() {
       header: 'Actions',
       render: (r) => {
         const isPending = r.status === 'PENDING' || r.status === 'SUBMITTED' || r.status === 'DRAFT';
+        const isApproved = r.status === 'APPROVED';
+        const isRefused = r.status === 'REFUSED';
+        const hasApprovalRights = can('APPROVE_TIME_OFF') || !isEmployee;
+
         return (
           <div className="flex items-center gap-2">
-            {can('APPROVE_TIME_OFF') && isPending && (
+            {hasApprovalRights && isPending && (
               <>
                 <button
                   onClick={() => approveMutation.mutate(r.id)}
                   disabled={approveMutation.isPending}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
                   title="Approve Leave Request"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
@@ -144,13 +148,37 @@ export default function TimeOffRequestsPage() {
                 <button
                   onClick={() => refuseMutation.mutate(r.id)}
                   disabled={refuseMutation.isPending}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
                   title="Refuse Leave Request"
                 >
                   <XCircle className="w-3.5 h-3.5" />
                   Refuse
                 </button>
               </>
+            )}
+
+            {hasApprovalRights && isApproved && (
+              <button
+                onClick={() => refuseMutation.mutate(r.id)}
+                disabled={refuseMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
+                title="Revoke / Refuse Leave Request"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                Refuse
+              </button>
+            )}
+
+            {hasApprovalRights && isRefused && (
+              <button
+                onClick={() => approveMutation.mutate(r.id)}
+                disabled={approveMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
+                title="Re-Approve Leave Request"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                Approve
+              </button>
             )}
           </div>
         );
