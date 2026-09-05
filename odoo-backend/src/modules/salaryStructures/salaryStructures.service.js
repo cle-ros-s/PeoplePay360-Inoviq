@@ -114,6 +114,17 @@ async function updateSalaryStructure(id, data) {
   });
 }
 
+async function executeTx(fn) {
+  try {
+    return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+  } catch (err) {
+    if (err.code === 'P2028' || err.message?.includes('Transaction')) {
+      return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+    }
+    throw err;
+  }
+}
+
 async function reorderRules(id, ruleOrders) {
   const structure = await prisma.salaryStructure.findUnique({
     where: { id },
@@ -124,7 +135,7 @@ async function reorderRules(id, ruleOrders) {
     throw new AppError('SALARY_STRUCTURE_NOT_FOUND', 'Salary structure not found', 404);
   }
 
-  return prisma.$transaction(async (tx) => {
+  return executeTx(async (tx) => {
     for (const item of ruleOrders) {
       await tx.salaryRule.update({
         where: { id: item.ruleId },

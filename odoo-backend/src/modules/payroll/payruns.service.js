@@ -65,6 +65,17 @@ async function getEligibleEmployees(query) {
   });
 }
 
+async function executeTx(fn) {
+  try {
+    return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+  } catch (err) {
+    if (err.code === 'P2028' || err.message?.includes('Transaction')) {
+      return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+    }
+    throw err;
+  }
+}
+
 /**
  * Creates a new payrun in DRAFT status with initial payslips.
  */
@@ -87,7 +98,7 @@ async function createPayrun(data) {
 
   const totalDays = Math.max(1, differenceInCalendarDays(pEnd, pStart) + 1);
 
-  return prisma.$transaction(async (tx) => {
+  return executeTx(async (tx) => {
     const payrun = await tx.payrun.create({
       data: {
         name: data.name,
@@ -184,7 +195,7 @@ async function computePayrun(id) {
 
   const totalDays = Math.max(1, differenceInCalendarDays(new Date(payrun.periodEnd), new Date(payrun.periodStart)) + 1);
 
-  return prisma.$transaction(async (tx) => {
+  return executeTx(async (tx) => {
     for (const payslip of payrun.payslips) {
       const employee = payslip.employee;
 
@@ -313,7 +324,7 @@ async function validatePayrun(id) {
     );
   }
 
-  return prisma.$transaction(async (tx) => {
+  return executeTx(async (tx) => {
     await tx.payslip.updateMany({
       where: { payrunId: id },
       data: { status: 'VALIDATED' },
@@ -350,7 +361,7 @@ async function markPayrunAsPaid(id) {
     );
   }
 
-  return prisma.$transaction(async (tx) => {
+  return executeTx(async (tx) => {
     await tx.payslip.updateMany({
       where: { payrunId: id },
       data: { status: 'PAID' },

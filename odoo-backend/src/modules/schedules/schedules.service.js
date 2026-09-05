@@ -82,6 +82,17 @@ async function createSchedule(data) {
   });
 }
 
+async function executeTx(fn) {
+  try {
+    return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+  } catch (err) {
+    if (err.code === 'P2028' || err.message?.includes('Transaction')) {
+      return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+    }
+    throw err;
+  }
+}
+
 async function updateSchedule(id, data) {
   const schedule = await prisma.workingSchedule.findUnique({ where: { id } });
   if (!schedule) {
@@ -91,7 +102,7 @@ async function updateSchedule(id, data) {
   if (data.lines) {
     const { processedLines, totalWeeklyHours } = processScheduleLines(data.lines);
 
-    return prisma.$transaction(async (tx) => {
+    return executeTx(async (tx) => {
       await tx.workingScheduleLine.deleteMany({ where: { scheduleId: id } });
 
       return tx.workingSchedule.update({

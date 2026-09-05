@@ -108,20 +108,19 @@ async function getPayslipById(id, scopedEmployeeId = null) {
   return payslip;
 }
 
-async function updatePayslip(id, data) {
-  const payslip = await prisma.payslip.findUnique({
-    where: { id },
-    include: {
-      contract: true,
-      salaryStructure: {
-        include: { rules: { orderBy: { sequence: 'asc' } } },
-      },
-    },
-  });
-
-  if (!payslip) {
-    throw new AppError('PAYSLIP_NOT_FOUND', 'Payslip not found', 404);
+async function executeTx(fn) {
+  try {
+    return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+  } catch (err) {
+    if (err.code === 'P2028' || err.message?.includes('Transaction')) {
+      return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+    }
+    throw err;
   }
+}
+
+async function updatePayslip(id, data, scopedEmployeeId = null) {
+  const payslip = await getPayslipById(id, scopedEmployeeId);
 
   if (payslip.status === 'PAID') {
     throw new AppError('PAYSLIP_ALREADY_PAID', 'Cannot modify paid payslips; historical records are immutable', 400);
@@ -151,7 +150,7 @@ async function updatePayslip(id, data) {
     lines = calc.lines;
   }
 
-  return prisma.$transaction(async (tx) => {
+  return executeTx(async (tx) => {
     if (lines.length > 0) {
       await tx.payslipLine.deleteMany({ where: { payslipId: id } });
       await tx.payslipLine.createMany({
