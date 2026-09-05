@@ -57,7 +57,7 @@ Copy `.env.example` to `.env` and configure your credentials:
 ```env
 DATABASE_URL="postgresql://postgres@localhost:5432/peoplepay360?schema=public"
 JWT_SECRET="peoplepay360-super-secret-jwt-key-for-development-and-testing-2026"
-PORT=4000
+PORT=5000
 CLIENT_ORIGIN="http://localhost:5173"
 
 # Optional SMTP configuration
