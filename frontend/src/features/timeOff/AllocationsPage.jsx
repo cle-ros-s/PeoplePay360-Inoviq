@@ -116,22 +116,54 @@ export default function AllocationsPage() {
     {
       header: 'Actions',
       render: (a) => (
-        can('MANAGE_ALLOCATIONS') && a.status === AllocationStatus.PENDING && (
+        (can('MANAGE_ALLOCATIONS') || !isEmployee) && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => updateStatusMutation.mutate({ id: a.id, status: AllocationStatus.APPROVED })}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs"
-            >
-              <CheckCircle className="w-3.5 h-3.5" />
-              Approve
-            </button>
-            <button
-              onClick={() => updateStatusMutation.mutate({ id: a.id, status: AllocationStatus.REFUSED })}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-lg"
-            >
-              <XCircle className="w-3.5 h-3.5" />
-              Refuse
-            </button>
+            {(a.status === AllocationStatus.PENDING || a.status === 'PENDING' || a.status === 'DRAFT') && (
+              <>
+                <button
+                  onClick={() => updateStatusMutation.mutate({ id: a.id, status: AllocationStatus.APPROVED })}
+                  disabled={updateStatusMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
+                  title="Approve Leave Allocation"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Approve
+                </button>
+                <button
+                  onClick={() => updateStatusMutation.mutate({ id: a.id, status: AllocationStatus.REFUSED })}
+                  disabled={updateStatusMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
+                  title="Refuse Leave Allocation"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  Refuse
+                </button>
+              </>
+            )}
+
+            {a.status === AllocationStatus.APPROVED && (
+              <button
+                onClick={() => updateStatusMutation.mutate({ id: a.id, status: AllocationStatus.REFUSED })}
+                disabled={updateStatusMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
+                title="Revoke / Refuse Allocation"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                Refuse
+              </button>
+            )}
+
+            {a.status === AllocationStatus.REFUSED && (
+              <button
+                onClick={() => updateStatusMutation.mutate({ id: a.id, status: AllocationStatus.APPROVED })}
+                disabled={updateStatusMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
+                title="Re-Approve Allocation"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                Approve
+              </button>
+            )}
           </div>
         )
       ),
