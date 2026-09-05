@@ -215,6 +215,9 @@ async function updateEmployee(id, data) {
   }
 
   const cleanData = extractEmployeeData(data);
+  if (cleanData.managerId === id) {
+    cleanData.managerId = null;
+  }
 
   if (cleanData.email && cleanData.email !== employee.email) {
     const existing = await prisma.employee.findUnique({

@@ -15,10 +15,21 @@ import SmartButton from '../../components/common/SmartButton';
 import LoadingState from '../../components/common/LoadingState';
 import { EmployeeStatus, EmployeeType } from '../../utils/constants';
 import { formatEnumLabel } from '../../utils/formatters';
-import { FileText, Clock, Palmtree, ArrowLeft, Save, AlertCircle, UserCheck } from 'lucide-react';
+import {
+  FileText,
+  Clock,
+  Palmtree,
+  ArrowLeft,
+  Save,
+  AlertCircle,
+  CheckCircle2,
+  UserCheck,
+  Edit2,
+  Eye,
+} from 'lucide-react';
 
 const employeeSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, 'Full name is required'),
   email: z.string().min(1, 'Email is required').email('Invalid email address'),
   phone: z.string().optional().nullable(),
   avatarUrl: z.string().optional().nullable(),
@@ -38,7 +49,9 @@ export default function EmployeeFormPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const isEditMode = location.pathname.endsWith('/edit');
   const isNewMode = !id || id === 'new';
@@ -152,11 +165,14 @@ export default function EmployeeFormPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      setSuccessMessage('New employee successfully registered in database!');
+      setErrorMessage('');
       navigate(data?.id ? `/employees/${data.id}` : '/employees');
     },
     onError: (err) => {
       const msg = err.response?.data?.error?.message || err.message || 'Failed to create employee';
       setErrorMessage(msg);
+      setSuccessMessage('');
     },
   });
 
@@ -166,16 +182,20 @@ export default function EmployeeFormPage() {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['employee', id] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      setSuccessMessage('Employee profile updated and saved successfully!');
+      setErrorMessage('');
       navigate(`/employees/${id}`);
     },
     onError: (err) => {
       const msg = err.response?.data?.error?.message || err.message || 'Failed to update employee';
       setErrorMessage(msg);
+      setSuccessMessage('');
     },
   });
 
   const onSubmit = (formData) => {
     setErrorMessage('');
+    setSuccessMessage('');
     const payload = {
       ...formData,
       departmentId: formData.departmentId || null,
@@ -190,7 +210,7 @@ export default function EmployeeFormPage() {
   };
 
   if (empLoading && !isNewMode) {
-    return <LoadingState message="Loading employee record..." />;
+    return <LoadingState message="Loading employee profile..." />;
   }
 
   const departmentOptions = departments.map((d) => ({ value: d.id, label: d.name }));
@@ -205,33 +225,56 @@ export default function EmployeeFormPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={isNewMode ? 'Create New Employee' : employeeData?.name || 'Employee Details'}
-        description={isNewMode ? 'Add a new staff member to master data.' : `${employeeData?.jobPosition || ''}`}
+        title={isNewMode ? 'Create New Employee' : isEditMode ? `Edit Profile: ${employeeData?.name || 'Employee'}` : employeeData?.name || 'Employee Details'}
+        description={isNewMode ? 'Add a new staff member to master data.' : `${employeeData?.jobPosition || ''} · ${employeeData?.email || ''}`}
         actions={
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => navigate('/employees')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back
+              Directory
             </button>
             {isDetailMode && (
               <button
                 type="button"
                 onClick={() => navigate(`/employees/${id}/edit`)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
               >
+                <Edit2 className="w-4 h-4" />
                 Edit Profile
+              </button>
+            )}
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={() => navigate(`/employees/${id}`)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <Eye className="w-4 h-4" />
+                View Profile
               </button>
             )}
           </div>
         }
       />
 
+      {/* Success Notification Banner */}
+      {successMessage && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 text-sm text-emerald-800 shadow-sm animate-in fade-in duration-200">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Profile Saved</p>
+            <p className="text-xs mt-0.5 text-emerald-700">{successMessage}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error Notification Banner */}
       {errorMessage && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-sm text-red-700">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-sm text-red-700 shadow-sm animate-in fade-in duration-200">
           <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold">Unable to save employee record</p>
@@ -243,7 +286,7 @@ export default function EmployeeFormPage() {
       {/* Connected Smart Buttons Hub */}
       {!isNewMode && (
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-wrap items-center gap-3">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mr-2">Connected HR Data:</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mr-2">Connected HR Records:</p>
           <SmartButton
             icon={FileText}
             label="Contracts"
@@ -274,16 +317,23 @@ export default function EmployeeFormPage() {
       {/* Main Employee Form Card */}
       <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
         <fieldset disabled={isDetailMode} className="space-y-6">
-          <div className="border-b border-gray-100 pb-4">
-            <h3 className="text-base font-bold text-gray-900 mb-1">Identity & Work Position</h3>
-            <p className="text-xs text-gray-500">Core master data and employment status details.</p>
+          <div className="border-b border-gray-100 pb-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-gray-900 mb-1">Identity & Work Position</h3>
+              <p className="text-xs text-gray-500">Core master data and employment status details.</p>
+            </div>
+            {isDetailMode && (
+              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+                Read-Only View
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FormField label="Full Name" name="name" register={register} error={errors.name} required />
-            <FormField label="Work Email" name="email" type="email" register={register} error={errors.email} required />
-            <FormField label="Phone Number" name="phone" register={register} error={errors.phone} />
-            <FormField label="Job Position" name="jobPosition" register={register} error={errors.jobPosition} required />
+            <FormField label="Full Name" name="name" register={register} error={errors.name} required placeholder="e.g. Jane Doe" />
+            <FormField label="Work Email" name="email" type="email" register={register} error={errors.email} required placeholder="e.g. jane.doe@company.com" />
+            <FormField label="Phone Number" name="phone" register={register} error={errors.phone} placeholder="e.g. +1 555-0199" />
+            <FormField label="Job Position" name="jobPosition" register={register} error={errors.jobPosition} required placeholder="e.g. Senior Software Engineer" />
             <SelectField label="Employee Status" name="status" options={statusOptions} register={register} error={errors.status} required />
             <SelectField label="Employment Type" name="employeeType" options={typeOptions} register={register} error={errors.employeeType} required />
             <DateField label="Joining Date" name="joiningDate" register={register} error={errors.joiningDate} />
@@ -316,15 +366,15 @@ export default function EmployeeFormPage() {
           <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
             <button
               type="button"
-              onClick={() => navigate('/employees')}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              onClick={() => (isEditMode ? navigate(`/employees/${id}`) : navigate('/employees'))}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
-              className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm disabled:opacity-50 transition-colors"
             >
               <Save className="w-4 h-4" />
               {createMutation.isPending || updateMutation.isPending ? 'Saving Record...' : isNewMode ? 'Create Employee' : 'Save Changes'}
