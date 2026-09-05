@@ -3,13 +3,75 @@ const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
+const SIXTY_PROFILES = [
+  { email: 'admin@payflux.com', firstName: 'Tony', lastName: 'Stark', role: 'ADMIN', jobPosition: 'Chief Executive Officer', deptCode: 'OPS', wage: 150000 },
+  { email: 'admin2@payflux.com', firstName: 'Bruce', lastName: 'Wayne', role: 'ADMIN', jobPosition: 'Chief People Officer', deptCode: 'HR', wage: 140000 },
+  { email: 'hr.manager@payflux.com', firstName: 'Sarah', lastName: 'Connor', role: 'HR_MANAGER', jobPosition: 'Director of HR', deptCode: 'HR', wage: 95000 },
+  { email: 'payroll.manager@payflux.com', firstName: 'Dwight', lastName: 'Schrute', role: 'HR_PAYROLL_MANAGER', jobPosition: 'Payroll Manager', deptCode: 'FIN', wage: 98000 },
+  { email: 'payroll.user@payflux.com', firstName: 'Michael', lastName: 'Scott', role: 'HR_PAYROLL_USER', jobPosition: 'Payroll Specialist', deptCode: 'FIN', wage: 75000 },
+  { email: 'employee@payflux.com', firstName: 'Jim', lastName: 'Halpert', role: 'EMPLOYEE', jobPosition: 'Sales Lead', deptCode: 'SALES', wage: 72000 },
+  { email: 'pam.beesly@payflux.com', firstName: 'Pam', lastName: 'Beesly', role: 'EMPLOYEE', jobPosition: 'Office Administrator', deptCode: 'HR', wage: 52000 },
+  { email: 'alice.chen@payflux.com', firstName: 'Alice', lastName: 'Chen', role: 'HR_MANAGER', jobPosition: 'VP of Engineering', deptCode: 'ENG', wage: 135000 },
+  { email: 'ethan.hunt@payflux.com', firstName: 'Ethan', lastName: 'Hunt', role: 'EMPLOYEE', jobPosition: 'Senior Software Engineer', deptCode: 'ENG', wage: 110000 },
+  { email: 'bob.smith@payflux.com', firstName: 'Bob', lastName: 'Smith', role: 'EMPLOYEE', jobPosition: 'Frontend Engineer', deptCode: 'ENG', wage: 85000 },
+  { email: 'carlos.mendoza@payflux.com', firstName: 'Carlos', lastName: 'Mendoza', role: 'EMPLOYEE', jobPosition: 'Backend Architect', deptCode: 'ENG', wage: 125000 },
+  { email: 'diana.prince@payflux.com', firstName: 'Diana', lastName: 'Prince', role: 'EMPLOYEE', jobPosition: 'DevOps Lead', deptCode: 'ENG', wage: 118000 },
+  { email: 'edward.nygma@payflux.com', firstName: 'Edward', lastName: 'Nygma', role: 'EMPLOYEE', jobPosition: 'Data Engineer', deptCode: 'ENG', wage: 92000 },
+  { email: 'fiona.gallagher@payflux.com', firstName: 'Fiona', lastName: 'Gallagher', role: 'EMPLOYEE', jobPosition: 'QA Lead', deptCode: 'ENG', wage: 80000 },
+  { email: 'george.clark@payflux.com', firstName: 'George', lastName: 'Clark', role: 'EMPLOYEE', jobPosition: 'Full Stack Developer', deptCode: 'ENG', wage: 90000 },
+  { email: 'hannah.abbott@payflux.com', firstName: 'Hannah', lastName: 'Abbott', role: 'EMPLOYEE', jobPosition: 'UI/UX Designer', deptCode: 'ENG', wage: 82000 },
+  { email: 'ian.malcolm@payflux.com', firstName: 'Ian', lastName: 'Malcolm', role: 'EMPLOYEE', jobPosition: 'SRE Lead', deptCode: 'ENG', wage: 105000 },
+  { email: 'jessica.jones@payflux.com', firstName: 'Jessica', lastName: 'Jones', role: 'EMPLOYEE', jobPosition: 'Security Engineer', deptCode: 'ENG', wage: 112000 },
+  { email: 'kevin.flynn@payflux.com', firstName: 'Kevin', lastName: 'Flynn', role: 'EMPLOYEE', jobPosition: 'Systems Engineer', deptCode: 'ENG', wage: 94000 },
+  { email: 'marcus.brooks@payflux.com', firstName: 'Marcus', lastName: 'Brooks', role: 'HR_MANAGER', jobPosition: 'VP of Global Sales', deptCode: 'SALES', wage: 130000 },
+  { email: 'sophia.patel@payflux.com', firstName: 'Sophia', lastName: 'Patel', role: 'EMPLOYEE', jobPosition: 'Senior Account Executive', deptCode: 'SALES', wage: 88000 },
+  { email: 'julia.roberts@payflux.com', firstName: 'Julia', lastName: 'Roberts', role: 'EMPLOYEE', jobPosition: 'Marketing Director', deptCode: 'SALES', wage: 96000 },
+  { email: 'kevin.bacon@payflux.com', firstName: 'Kevin', lastName: 'Bacon', role: 'EMPLOYEE', jobPosition: 'Account Manager', deptCode: 'SALES', wage: 75000 },
+  { email: 'laura.croft@payflux.com', firstName: 'Laura', lastName: 'Croft', role: 'EMPLOYEE', jobPosition: 'Content Strategist', deptCode: 'SALES', wage: 68000 },
+  { email: 'martin.freeman@payflux.com', firstName: 'Martin', lastName: 'Freeman', role: 'EMPLOYEE', jobPosition: 'SEO Specialist', deptCode: 'SALES', wage: 85000 },
+  { email: 'nina.patel@payflux.com', firstName: 'Nina', lastName: 'Patel', role: 'EMPLOYEE', jobPosition: 'Sales Representative', deptCode: 'SALES', wage: 62000 },
+  { email: 'oscar.martinez@payflux.com', firstName: 'Oscar', lastName: 'Martinez', role: 'HR_PAYROLL_USER', jobPosition: 'Sales Operations Analyst', deptCode: 'SALES', wage: 78000 },
+  { email: 'peter.parker@payflux.com', firstName: 'Peter', lastName: 'Parker', role: 'EMPLOYEE', jobPosition: 'Digital Media Specialist', deptCode: 'SALES', wage: 58000 },
+  { email: 'quinn.fabray@payflux.com', firstName: 'Quinn', lastName: 'Fabray', role: 'EMPLOYEE', jobPosition: 'Brand Manager', deptCode: 'SALES', wage: 84000 },
+  { email: 'rachel.amber@payflux.com', firstName: 'Rachel', lastName: 'Amber', role: 'EMPLOYEE', jobPosition: 'Event Coordinator', deptCode: 'SALES', wage: 64000 },
+  { email: 'sam.winchester@payflux.com', firstName: 'Sam', lastName: 'Winchester', role: 'EMPLOYEE', jobPosition: 'Partner Manager', deptCode: 'SALES', wage: 89000 },
+  { email: 'liam.wright@payflux.com', firstName: 'Liam', lastName: 'Wright', role: 'HR_PAYROLL_MANAGER', jobPosition: 'Financial Controller', deptCode: 'FIN', wage: 115000 },
+  { email: 'rachel.green@payflux.com', firstName: 'Rachel', lastName: 'Green', role: 'HR_PAYROLL_USER', jobPosition: 'Senior Accountant', deptCode: 'FIN', wage: 82000 },
+  { email: 'steven.strange@payflux.com', firstName: 'Steven', lastName: 'Strange', role: 'HR_PAYROLL_USER', jobPosition: 'Financial Analyst', deptCode: 'FIN', wage: 88000 },
+  { email: 'tina.fey@payflux.com', firstName: 'Tina', lastName: 'Fey', role: 'HR_PAYROLL_USER', jobPosition: 'Tax Specialist', deptCode: 'FIN', wage: 86000 },
+  { email: 'ulysses.grant@payflux.com', firstName: 'Ulysses', lastName: 'Grant', role: 'EMPLOYEE', jobPosition: 'Accounts Payable Clerk', deptCode: 'FIN', wage: 54000 },
+  { email: 'victor.von@payflux.com', firstName: 'Victor', lastName: 'Von', role: 'HR_PAYROLL_MANAGER', jobPosition: 'Internal Auditor', deptCode: 'FIN', wage: 94000 },
+  { email: 'wanda.maximoff@payflux.com', firstName: 'Wanda', lastName: 'Maximoff', role: 'EMPLOYEE', jobPosition: 'Treasury Analyst', deptCode: 'FIN', wage: 89000 },
+  { email: 'xavier.charles@payflux.com', firstName: 'Xavier', lastName: 'Charles', role: 'HR_PAYROLL_MANAGER', jobPosition: 'Risk Officer', deptCode: 'FIN', wage: 108000 },
+  { email: 'yara.shahidi@payflux.com', firstName: 'Yara', lastName: 'Shahidi', role: 'EMPLOYEE', jobPosition: 'Billing Specialist', deptCode: 'FIN', wage: 58000 },
+  { email: 'zack.snyder@payflux.com', firstName: 'Zack', lastName: 'Snyder', role: 'EMPLOYEE', jobPosition: 'Budget Analyst', deptCode: 'FIN', wage: 76000 },
+  { email: 'amy.poehler@payflux.com', firstName: 'Amy', lastName: 'Poehler', role: 'HR_PAYROLL_USER', jobPosition: 'Payroll Auditor', deptCode: 'FIN', wage: 81000 },
+  { email: 'ben.wyatt@payflux.com', firstName: 'Ben', lastName: 'Wyatt', role: 'HR_PAYROLL_MANAGER', jobPosition: 'Senior Accountant', deptCode: 'FIN', wage: 97000 },
+  { email: 'david.kim@payflux.com', firstName: 'David', lastName: 'Kim', role: 'HR_MANAGER', jobPosition: 'Talent Acquisition Partner', deptCode: 'HR', wage: 85000 },
+  { email: 'angela.martin@payflux.com', firstName: 'Angela', lastName: 'Martin', role: 'HR_MANAGER', jobPosition: 'HR Business Partner', deptCode: 'HR', wage: 88000 },
+  { email: 'carol.danvers@payflux.com', firstName: 'Carol', lastName: 'Danvers', role: 'EMPLOYEE', jobPosition: 'Technical Recruiter', deptCode: 'HR', wage: 75000 },
+  { email: 'daniel.craig@payflux.com', firstName: 'Daniel', lastName: 'Craig', role: 'EMPLOYEE', jobPosition: 'HR Operations Lead', deptCode: 'HR', wage: 78000 },
+  { email: 'elena.gilbert@payflux.com', firstName: 'Elena', lastName: 'Gilbert', role: 'EMPLOYEE', jobPosition: 'Benefits Specialist', deptCode: 'HR', wage: 70000 },
+  { email: 'frank.castle@payflux.com', firstName: 'Frank', lastName: 'Castle', role: 'EMPLOYEE', jobPosition: 'Safety & Compliance Lead', deptCode: 'HR', wage: 82000 },
+  { email: 'grace.hopper@payflux.com', firstName: 'Grace', lastName: 'Hopper', role: 'EMPLOYEE', jobPosition: 'L&D Director', deptCode: 'HR', wage: 92000 },
+  { email: 'harry.potter@payflux.com', firstName: 'Harry', lastName: 'Potter', role: 'EMPLOYEE', jobPosition: 'HR Assistant', deptCode: 'HR', wage: 48000 },
+  { email: 'iris.west@payflux.com', firstName: 'Iris', lastName: 'West', role: 'EMPLOYEE', jobPosition: 'Employee Experience Manager', deptCode: 'HR', wage: 83000 },
+  { email: 'emma.clark@payflux.com', firstName: 'Emma', lastName: 'Clark', role: 'EMPLOYEE', jobPosition: 'IT Operations Specialist', deptCode: 'OPS', wage: 65000 },
+  { email: 'jack.sparrow@payflux.com', firstName: 'Jack', lastName: 'Sparrow', role: 'HR_MANAGER', jobPosition: 'VP of Infrastructure', deptCode: 'OPS', wage: 128000 },
+  { email: 'karen.filippelli@payflux.com', firstName: 'Karen', lastName: 'Filippelli', role: 'EMPLOYEE', jobPosition: 'System Administrator', deptCode: 'OPS', wage: 82000 },
+  { email: 'luke.skywalker@payflux.com', firstName: 'Luke', lastName: 'Skywalker', role: 'EMPLOYEE', jobPosition: 'Cloud Architect', deptCode: 'OPS', wage: 115000 },
+  { email: 'mia.thermapolis@payflux.com', firstName: 'Mia', lastName: 'Thermapolis', role: 'EMPLOYEE', jobPosition: 'Operations Manager', deptCode: 'OPS', wage: 95000 },
+  { email: 'nathan.drake@payflux.com', firstName: 'Nathan', lastName: 'Drake', role: 'EMPLOYEE', jobPosition: 'IT Support Engineer', deptCode: 'OPS', wage: 62000 },
+  { email: 'olivia.pope@payflux.com', firstName: 'Olivia', lastName: 'Pope', role: 'EMPLOYEE', jobPosition: 'Procurement Specialist', deptCode: 'OPS', wage: 78000 },
+  { email: 'paul.atreides@payflux.com', firstName: 'Paul', lastName: 'Atreides', role: 'EMPLOYEE', jobPosition: 'Security Analyst', deptCode: 'OPS', wage: 88000 }
+];
+
 async function seed() {
-  console.log('🌱 Starting Comprehensive PeoplePay360 database seed...');
+  console.log('🌱 Seeding PayFlux database with 60 full records...');
 
   const passwordHash = await bcrypt.hash('Password123!', 10);
 
-  // 1. Seed Working Schedules
-  console.log('  -> Seeding Working Schedules...');
+  // 1. Working Schedules
   const standardLines = [
     { dayOfWeek: 1, startTime: '09:00', endTime: '18:00', breakMinutes: 60, hours: 8.0 },
     { dayOfWeek: 2, startTime: '09:00', endTime: '18:00', breakMinutes: 60, hours: 8.0 },
@@ -18,48 +80,15 @@ async function seed() {
     { dayOfWeek: 5, startTime: '09:00', endTime: '18:00', breakMinutes: 60, hours: 8.0 },
   ];
 
-  let standardSchedule = await prisma.workingSchedule.findFirst({
-    where: { name: '40 Hours / Week' },
-  });
+  let standardSchedule = await prisma.workingSchedule.findFirst({ where: { name: '40 Hours / Week' } });
   if (!standardSchedule) {
     standardSchedule = await prisma.workingSchedule.create({
-      data: {
-        name: '40 Hours / Week',
-        type: 'STANDARD',
-        totalWeeklyHours: 40.0,
-        lines: { create: standardLines },
-      },
+      data: { name: '40 Hours / Week', type: 'STANDARD', totalWeeklyHours: 40.0, lines: { create: standardLines } },
     });
   }
 
-  const partTimeLines = [
-    { dayOfWeek: 1, startTime: '09:00', endTime: '13:00', breakMinutes: 0, hours: 4.0 },
-    { dayOfWeek: 2, startTime: '09:00', endTime: '13:00', breakMinutes: 0, hours: 4.0 },
-    { dayOfWeek: 3, startTime: '09:00', endTime: '13:00', breakMinutes: 0, hours: 4.0 },
-    { dayOfWeek: 4, startTime: '09:00', endTime: '13:00', breakMinutes: 0, hours: 4.0 },
-    { dayOfWeek: 5, startTime: '09:00', endTime: '13:00', breakMinutes: 0, hours: 4.0 },
-  ];
-
-  let partTimeSchedule = await prisma.workingSchedule.findFirst({
-    where: { name: '20 Hours / Week (Part-Time)' },
-  });
-  if (!partTimeSchedule) {
-    partTimeSchedule = await prisma.workingSchedule.create({
-      data: {
-        name: '20 Hours / Week (Part-Time)',
-        type: 'PART_TIME',
-        totalWeeklyHours: 20.0,
-        lines: { create: partTimeLines },
-      },
-    });
-  }
-
-  // 2. Seed Salary Structures & Rules
-  console.log('  -> Seeding Salary Structures & Rules...');
-  let regularSalaryStructure = await prisma.salaryStructure.findUnique({
-    where: { code: 'REGULAR_SALARY' },
-  });
-
+  // 2. Salary Structures
+  let regularSalaryStructure = await prisma.salaryStructure.findUnique({ where: { code: 'REGULAR_SALARY' } });
   if (!regularSalaryStructure) {
     regularSalaryStructure = await prisma.salaryStructure.create({
       data: {
@@ -68,610 +97,165 @@ async function seed() {
         isActive: true,
         rules: {
           create: [
-            {
-              name: 'Basic Salary',
-              code: 'BASIC',
-              category: 'BASIC',
-              sequence: 1,
-              computationType: 'FIXED',
-              amount: null,
-            },
-            {
-              name: 'House Rent Allowance',
-              code: 'HRA',
-              category: 'ALLOWANCE',
-              sequence: 2,
-              computationType: 'PERCENTAGE',
-              percentage: 40,
-              percentageBasisCode: 'BASIC',
-            },
-            {
-              name: 'Provident Fund',
-              code: 'PF',
-              category: 'DEDUCTION',
-              sequence: 3,
-              computationType: 'PERCENTAGE',
-              percentage: 12,
-              percentageBasisCode: 'BASIC',
-            },
-            {
-              name: 'Gross Salary',
-              code: 'GROSS',
-              category: 'GROSS',
-              sequence: 4,
-              computationType: 'FORMULA',
-              formula: 'BASIC + HRA',
-            },
-            {
-              name: 'Net Salary',
-              code: 'NET',
-              category: 'NET',
-              sequence: 5,
-              computationType: 'FORMULA',
-              formula: 'GROSS - PF',
-            },
+            { name: 'Basic Salary', code: 'BASIC', category: 'BASIC', sequence: 1, computationType: 'FIXED' },
+            { name: 'House Rent Allowance', code: 'HRA', category: 'ALLOWANCE', sequence: 2, computationType: 'PERCENTAGE', percentage: 40, percentageBasisCode: 'BASIC' },
+            { name: 'Provident Fund', code: 'PF', category: 'DEDUCTION', sequence: 3, computationType: 'PERCENTAGE', percentage: 12, percentageBasisCode: 'BASIC' },
+            { name: 'Gross Salary', code: 'GROSS', category: 'GROSS', sequence: 4, computationType: 'FORMULA', formula: 'BASIC + HRA' },
+            { name: 'Net Salary', code: 'NET', category: 'NET', sequence: 5, computationType: 'FORMULA', formula: 'GROSS - PF' },
           ],
         },
       },
     });
   }
 
-  let executiveSalaryStructure = await prisma.salaryStructure.findUnique({
-    where: { code: 'EXEC_SALARY' },
-  });
-
-  if (!executiveSalaryStructure) {
-    executiveSalaryStructure = await prisma.salaryStructure.create({
-      data: {
-        name: 'Executive & Leadership Salary',
-        code: 'EXEC_SALARY',
-        isActive: true,
-        rules: {
-          create: [
-            {
-              name: 'Basic Executive Salary',
-              code: 'BASIC',
-              category: 'BASIC',
-              sequence: 1,
-              computationType: 'FIXED',
-              amount: null,
-            },
-            {
-              name: 'Executive Allowance',
-              code: 'EXEC_ALLOW',
-              category: 'ALLOWANCE',
-              sequence: 2,
-              computationType: 'PERCENTAGE',
-              percentage: 50,
-              percentageBasisCode: 'BASIC',
-            },
-            {
-              name: 'Performance Bonus',
-              code: 'PERF_BONUS',
-              category: 'ALLOWANCE',
-              sequence: 3,
-              computationType: 'FIXED',
-              amount: 5000,
-            },
-            {
-              name: 'Provident Fund',
-              code: 'PF',
-              category: 'DEDUCTION',
-              sequence: 4,
-              computationType: 'PERCENTAGE',
-              percentage: 12,
-              percentageBasisCode: 'BASIC',
-            },
-            {
-              name: 'Gross Salary',
-              code: 'GROSS',
-              category: 'GROSS',
-              sequence: 5,
-              computationType: 'FORMULA',
-              formula: 'BASIC + EXEC_ALLOW + PERF_BONUS',
-            },
-            {
-              name: 'Net Salary',
-              code: 'NET',
-              category: 'NET',
-              sequence: 6,
-              computationType: 'FORMULA',
-              formula: 'GROSS - PF',
-            },
-          ],
-        },
-      },
+  // 3. Departments
+  const deptMap = {};
+  const depts = [
+    { name: 'Engineering', code: 'ENG' },
+    { name: 'Human Resources', code: 'HR' },
+    { name: 'Sales & Marketing', code: 'SALES' },
+    { name: 'Payroll & Finance', code: 'FIN' },
+    { name: 'Operations & IT', code: 'OPS' },
+  ];
+  for (const d of depts) {
+    const created = await prisma.department.upsert({
+      where: { code: d.code },
+      update: {},
+      create: d,
     });
+    deptMap[d.code] = created.id;
   }
 
-  // 3. Seed Departments
-  console.log('  -> Seeding Departments...');
-  const engineeringDept = await prisma.department.upsert({
-    where: { code: 'ENG' },
-    update: {},
-    create: { name: 'Engineering', code: 'ENG' },
-  });
-
-  const hrDept = await prisma.department.upsert({
-    where: { code: 'HR' },
-    update: {},
-    create: { name: 'Human Resources', code: 'HR' },
-  });
-
-  const salesDept = await prisma.department.upsert({
-    where: { code: 'SALES' },
-    update: {},
-    create: { name: 'Sales & Marketing', code: 'SALES' },
-  });
-
-  const financeDept = await prisma.department.upsert({
-    where: { code: 'FIN' },
-    update: {},
-    create: { name: 'Finance & Accounting', code: 'FIN' },
-  });
-
-  const opsDept = await prisma.department.upsert({
-    where: { code: 'OPS' },
-    update: {},
-    create: { name: 'Operations & IT', code: 'OPS' },
-  });
-
-  // 4. Seed Time-Off Types
-  console.log('  -> Seeding Time-Off Types...');
+  // 4. Time Off Types
   const ptoType = await prisma.timeOffType.upsert({
     where: { code: 'PTO' },
     update: {},
-    create: {
-      name: 'Paid Time Off',
-      code: 'PTO',
-      requiresAllocation: true,
-      unit: 'DAYS',
-    },
-  });
-
-  const unpaidType = await prisma.timeOffType.upsert({
-    where: { code: 'UNPAID' },
-    update: {},
-    create: {
-      name: 'Unpaid Leave',
-      code: 'UNPAID',
-      requiresAllocation: false,
-      unit: 'DAYS',
-    },
+    create: { name: 'Paid Time Off', code: 'PTO', requiresAllocation: true, unit: 'DAYS' },
   });
 
   const sickType = await prisma.timeOffType.upsert({
     where: { code: 'SICK' },
     update: {},
-    create: {
-      name: 'Sick Leave',
-      code: 'SICK',
-      requiresAllocation: true,
-      unit: 'DAYS',
-    },
+    create: { name: 'Sick Leave', code: 'SICK', requiresAllocation: true, unit: 'DAYS' },
   });
 
-  // 5. Seed Users for all 5 Roles
-  console.log('  -> Seeding Users for all 5 roles...');
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@peoplepay360.dev' },
-    update: { passwordHash, role: 'ADMIN' },
-    create: {
-      email: 'admin@peoplepay360.dev',
-      passwordHash,
-      name: 'Platform Administrator',
-      role: 'ADMIN',
-    },
-  });
-
-  const hrManagerUser = await prisma.user.upsert({
-    where: { email: 'hr.manager@peoplepay360.dev' },
-    update: { passwordHash, role: 'HR_MANAGER' },
-    create: {
-      email: 'hr.manager@peoplepay360.dev',
-      passwordHash,
-      name: 'Helen Rogers (HR Manager)',
-      role: 'HR_MANAGER',
-    },
-  });
-
-  const hrPayrollUser = await prisma.user.upsert({
-    where: { email: 'payroll.user@peoplepay360.dev' },
-    update: { passwordHash, role: 'HR_PAYROLL_USER' },
-    create: {
-      email: 'payroll.user@peoplepay360.dev',
-      passwordHash,
-      name: 'Paul Vance (Payroll User)',
-      role: 'HR_PAYROLL_USER',
-    },
-  });
-
-  const hrPayrollManagerUser = await prisma.user.upsert({
-    where: { email: 'payroll.manager@peoplepay360.dev' },
-    update: { passwordHash, role: 'HR_PAYROLL_MANAGER' },
-    create: {
-      email: 'payroll.manager@peoplepay360.dev',
-      passwordHash,
-      name: 'Pamela Miller (Payroll Manager)',
-      role: 'HR_PAYROLL_MANAGER',
-    },
-  });
-
-  const employeeUser = await prisma.user.upsert({
-    where: { email: 'employee@peoplepay360.dev' },
-    update: { passwordHash, role: 'EMPLOYEE' },
-    create: {
-      email: 'employee@peoplepay360.dev',
-      passwordHash,
-      name: 'Ethan Hunt',
-      role: 'EMPLOYEE',
-    },
-  });
-
-  // 6. Seed Employees across Departments (~10 Employees)
-  console.log('  -> Seeding Employees...');
-  const employeesData = [
-    {
-      email: 'employee@peoplepay360.dev',
-      userId: employeeUser.id,
-      firstName: 'Ethan',
-      lastName: 'Hunt',
-      phone: '+1-555-0101',
-      jobPosition: 'Senior Software Engineer',
-      employeeType: 'FULL_TIME',
-      departmentId: engineeringDept.id,
-      scheduleId: standardSchedule.id,
-      wage: 65000,
-      bankName: 'Silicon Valley Bank',
-      bankAccountNumber: 'SVB-987654321',
-      bankIfscOrRouting: 'SVB0001',
-      taxId: 'TX-ETHAN-01',
-    },
-    {
-      email: 'alice.chen@peoplepay360.dev',
-      firstName: 'Alice',
-      lastName: 'Chen',
-      phone: '+1-555-0102',
-      jobPosition: 'VP of Engineering',
-      employeeType: 'FULL_TIME',
-      departmentId: engineeringDept.id,
-      scheduleId: standardSchedule.id,
-      structureId: executiveSalaryStructure.id,
-      wage: 110000,
-      bankName: 'Chase Bank',
-      bankAccountNumber: 'CHS-123456789',
-      bankIfscOrRouting: 'CHS0002',
-      taxId: 'TX-ALICE-02',
-    },
-    {
-      email: 'bob.smith@peoplepay360.dev',
-      firstName: 'Bob',
-      lastName: 'Smith',
-      phone: '+1-555-0103',
-      jobPosition: 'Frontend Developer',
-      employeeType: 'FULL_TIME',
-      departmentId: engineeringDept.id,
-      scheduleId: standardSchedule.id,
-      wage: 55000,
-      bankName: 'Wells Fargo',
-      bankAccountNumber: 'WF-555444333',
-      bankIfscOrRouting: 'WF0003',
-      taxId: 'TX-BOB-03',
-    },
-    {
-      email: 'hr.manager@peoplepay360.dev',
-      userId: hrManagerUser.id,
-      firstName: 'Helen',
-      lastName: 'Rogers',
-      phone: '+1-555-0104',
-      jobPosition: 'Director of People & HR',
-      employeeType: 'FULL_TIME',
-      departmentId: hrDept.id,
-      scheduleId: standardSchedule.id,
-      structureId: executiveSalaryStructure.id,
-      wage: 95000,
-      bankName: 'Bank of America',
-      bankAccountNumber: 'BOA-777888999',
-      bankIfscOrRouting: 'BOA0004',
-      taxId: 'TX-HELEN-04',
-    },
-    {
-      email: 'david.kim@peoplepay360.dev',
-      firstName: 'David',
-      lastName: 'Kim',
-      phone: '+1-555-0105',
-      jobPosition: 'Talent Acquisition Partner',
-      employeeType: 'FULL_TIME',
-      departmentId: hrDept.id,
-      scheduleId: standardSchedule.id,
-      wage: 48000,
-      bankName: 'Citibank',
-      bankAccountNumber: 'CITI-333222111',
-      bankIfscOrRouting: 'CITI0005',
-      taxId: 'TX-DAVID-05',
-    },
-    {
-      email: 'marcus.brooks@peoplepay360.dev',
-      firstName: 'Marcus',
-      lastName: 'Brooks',
-      phone: '+1-555-0106',
-      jobPosition: 'VP of Global Sales',
-      employeeType: 'FULL_TIME',
-      departmentId: salesDept.id,
-      scheduleId: standardSchedule.id,
-      structureId: executiveSalaryStructure.id,
-      wage: 105000,
-      bankName: 'Barclays',
-      bankAccountNumber: 'BARC-999000111',
-      bankIfscOrRouting: 'BARC0006',
-      taxId: 'TX-MARCUS-06',
-    },
-    {
-      email: 'sophia.patel@peoplepay360.dev',
-      firstName: 'Sophia',
-      lastName: 'Patel',
-      phone: '+1-555-0107',
-      jobPosition: 'Senior Account Executive',
-      employeeType: 'FULL_TIME',
-      departmentId: salesDept.id,
-      scheduleId: standardSchedule.id,
-      wage: 62000,
-      bankName: 'Chase Bank',
-      bankAccountNumber: 'CHS-444555666',
-      bankIfscOrRouting: 'CHS0007',
-      taxId: 'TX-SOPHIA-07',
-    },
-    {
-      email: 'liam.wright@peoplepay360.dev',
-      firstName: 'Liam',
-      lastName: 'Wright',
-      phone: '+1-555-0108',
-      jobPosition: 'Financial Controller',
-      employeeType: 'FULL_TIME',
-      departmentId: financeDept.id,
-      scheduleId: standardSchedule.id,
-      wage: 72000,
-      bankName: 'HSBC',
-      bankAccountNumber: 'HSBC-888777666',
-      bankIfscOrRouting: 'HSBC0008',
-      taxId: 'TX-LIAM-08',
-    },
-    {
-      email: 'emma.clark@peoplepay360.dev',
-      firstName: 'Emma',
-      lastName: 'Clark',
-      phone: '+1-555-0109',
-      jobPosition: 'IT Operations Specialist',
-      employeeType: 'PART_TIME',
-      departmentId: opsDept.id,
-      scheduleId: partTimeSchedule.id,
-      wage: 32000,
-      bankName: 'Capital One',
-      bankAccountNumber: 'CAP-112233445',
-      bankIfscOrRouting: 'CAP0009',
-      taxId: 'TX-EMMA-09',
-    },
-  ];
-
+  // 5 & 6. Seed 60 Users and 60 Employees
+  console.log('  -> Creating 60 User and Employee records...');
   const seededEmployees = [];
 
-  for (const emp of employeesData) {
-    const createdEmp = await prisma.employee.upsert({
-      where: { email: emp.email },
+  for (let i = 0; i < SIXTY_PROFILES.length; i++) {
+    const prof = SIXTY_PROFILES[i];
+    const num = String(i + 1).padStart(3, '0');
+
+    // Create User Account
+    const user = await prisma.user.upsert({
+      where: { email: prof.email },
+      update: { role: prof.role, passwordHash },
+      create: {
+        email: prof.email,
+        passwordHash,
+        name: `${prof.firstName} ${prof.lastName}`,
+        role: prof.role,
+      },
+    });
+
+    // Create Employee Profile linked to User
+    const emp = await prisma.employee.upsert({
+      where: { email: prof.email },
       update: {
-        firstName: emp.firstName,
-        lastName: emp.lastName,
-        phone: emp.phone,
-        jobPosition: emp.jobPosition,
-        employeeType: emp.employeeType,
-        status: 'ACTIVE',
-        departmentId: emp.departmentId,
-        scheduleId: emp.scheduleId,
-        bankName: emp.bankName,
-        bankAccountNumber: emp.bankAccountNumber,
-        bankIfscOrRouting: emp.bankIfscOrRouting,
-        taxId: emp.taxId,
-        userId: emp.userId || undefined,
+        firstName: prof.firstName,
+        lastName: prof.lastName,
+        phone: `+1-555-01${num}`,
+        jobPosition: prof.jobPosition,
+        employeeType: i % 10 === 0 ? 'PART_TIME' : 'FULL_TIME',
+        status: i === 56 ? 'ON_LEAVE' : 'ACTIVE',
+        departmentId: deptMap[prof.deptCode],
+        scheduleId: standardSchedule.id,
+        bankName: 'PayFlux Partner Bank',
+        bankAccountNumber: `ACC-98765432${num}`,
+        bankIfscOrRouting: 'PAYF0001',
+        taxId: `TX-PF-${num}`,
+        userId: user.id,
       },
       create: {
-        email: emp.email,
-        userId: emp.userId || undefined,
-        firstName: emp.firstName,
-        lastName: emp.lastName,
-        phone: emp.phone,
-        jobPosition: emp.jobPosition,
-        employeeType: emp.employeeType,
-        status: 'ACTIVE',
-        departmentId: emp.departmentId,
-        scheduleId: emp.scheduleId,
-        bankName: emp.bankName,
-        bankAccountNumber: emp.bankAccountNumber,
-        bankIfscOrRouting: emp.bankIfscOrRouting,
-        taxId: emp.taxId,
+        email: prof.email,
+        userId: user.id,
+        firstName: prof.firstName,
+        lastName: prof.lastName,
+        phone: `+1-555-01${num}`,
+        jobPosition: prof.jobPosition,
+        employeeType: i % 10 === 0 ? 'PART_TIME' : 'FULL_TIME',
+        status: i === 56 ? 'ON_LEAVE' : 'ACTIVE',
+        departmentId: deptMap[prof.deptCode],
+        scheduleId: standardSchedule.id,
+        bankName: 'PayFlux Partner Bank',
+        bankAccountNumber: `ACC-98765432${num}`,
+        bankIfscOrRouting: 'PAYF0001',
+        taxId: `TX-PF-${num}`,
       },
     });
 
-    seededEmployees.push({ ...createdEmp, wage: emp.wage, structureId: emp.structureId || regularSalaryStructure.id });
+    seededEmployees.push({ ...emp, wage: prof.wage, structureId: regularSalaryStructure.id });
 
-    // Seed Active Contract for each employee
+    // Seed Active Contract
     const existingContract = await prisma.contract.findFirst({
-      where: { employeeId: createdEmp.id, status: 'RUNNING' },
+      where: { employeeId: emp.id, status: 'RUNNING' },
     });
-
     if (!existingContract) {
       await prisma.contract.create({
         data: {
-          employeeId: createdEmp.id,
-          name: `Employment Contract - ${emp.firstName} ${emp.lastName}`,
-          wage: emp.wage,
+          employeeId: emp.id,
+          name: `Employment Contract - ${prof.firstName} ${prof.lastName}`,
+          wage: prof.wage,
           startDate: new Date('2026-01-01T00:00:00Z'),
-          endDate: null,
-          salaryStructureId: emp.structureId || regularSalaryStructure.id,
-          scheduleId: emp.scheduleId,
-          departmentId: emp.departmentId,
-          jobPosition: emp.jobPosition,
+          salaryStructureId: regularSalaryStructure.id,
+          scheduleId: standardSchedule.id,
+          departmentId: deptMap[prof.deptCode],
+          jobPosition: prof.jobPosition,
           status: 'RUNNING',
         },
       });
     }
 
-    // Seed PTO & Sick Allocations (20 days PTO, 10 days Sick)
+    // Seed PTO Allocations
     const existingPtoAlloc = await prisma.leaveAllocation.findFirst({
-      where: { employeeId: createdEmp.id, timeOffTypeId: ptoType.id },
+      where: { employeeId: emp.id, timeOffTypeId: ptoType.id },
     });
-
     if (!existingPtoAlloc) {
       await prisma.leaveAllocation.create({
         data: {
-          employeeId: createdEmp.id,
+          employeeId: emp.id,
           timeOffTypeId: ptoType.id,
           allocatedAmount: 20.0,
-          takenAmount: 0.0,
+          takenAmount: i % 5 === 0 ? 2.0 : 0.0,
           validFrom: new Date('2026-01-01T00:00:00Z'),
           validTo: new Date('2026-12-31T23:59:59Z'),
           status: 'APPROVED',
         },
       });
-    } else {
-      await prisma.leaveAllocation.update({
-        where: { id: existingPtoAlloc.id },
+    }
+
+    // Seed Attendance
+    const existingAtt = await prisma.attendance.findFirst({ where: { employeeId: emp.id } });
+    if (!existingAtt) {
+      await prisma.attendance.create({
         data: {
-          allocatedAmount: 20.0,
-          takenAmount: 0.0,
-          validFrom: new Date('2026-01-01T00:00:00Z'),
-          validTo: new Date('2026-12-31T23:59:59Z'),
-          status: 'APPROVED',
-        },
-      });
-    }
-
-    const existingSickAlloc = await prisma.leaveAllocation.findFirst({
-      where: { employeeId: createdEmp.id, timeOffTypeId: sickType.id },
-    });
-
-    if (!existingSickAlloc) {
-      await prisma.leaveAllocation.create({
-        data: {
-          employeeId: createdEmp.id,
-          timeOffTypeId: sickType.id,
-          allocatedAmount: 10.0,
-          takenAmount: 0.0,
-          validFrom: new Date('2026-01-01T00:00:00Z'),
-          validTo: new Date('2026-12-31T23:59:59Z'),
-          status: 'APPROVED',
+          employeeId: emp.id,
+          checkIn: new Date('2026-09-05T09:00:00Z'),
+          checkOut: new Date('2026-09-05T18:00:00Z'),
+          workedHours: 8.0,
+          status: i % 7 === 0 ? 'LATE' : i % 5 === 0 ? 'OVERTIME' : 'PRESENT',
+          isManualEdit: false,
         },
       });
     }
   }
 
-  // Set Department Managers
-  await prisma.department.update({
-    where: { id: engineeringDept.id },
-    data: { managerId: seededEmployees[1].id }, // Alice Chen
-  });
-  await prisma.department.update({
-    where: { id: hrDept.id },
-    data: { managerId: seededEmployees[3].id }, // Helen Rogers
-  });
-  await prisma.department.update({
-    where: { id: salesDept.id },
-    data: { managerId: seededEmployees[5].id }, // Marcus Brooks
-  });
-  await prisma.department.update({
-    where: { id: financeDept.id },
-    data: { managerId: seededEmployees[7].id }, // Liam Wright
-  });
-
-  // 7. Seed Attendance Logs
-  console.log('  -> Seeding Attendance logs...');
-  const attendanceDates = [
-    { in: '2026-08-10T09:00:00Z', out: '2026-08-10T18:00:00Z', status: 'PRESENT', hours: 8.0 },
-    { in: '2026-08-11T08:55:00Z', out: '2026-08-11T18:05:00Z', status: 'PRESENT', hours: 8.17 },
-    { in: '2026-08-12T09:25:00Z', out: '2026-08-12T18:00:00Z', status: 'LATE', hours: 7.58 },
-    { in: '2026-08-13T09:00:00Z', out: '2026-08-13T19:30:00Z', status: 'OVERTIME', hours: 9.5 },
-    { in: '2026-08-14T09:00:00Z', out: '2026-08-14T18:00:00Z', status: 'PRESENT', hours: 8.0 },
-    { in: '2026-08-17T09:00:00Z', out: '2026-08-17T18:00:00Z', status: 'PRESENT', hours: 8.0 },
-    { in: '2026-08-18T08:50:00Z', out: '2026-08-18T18:00:00Z', status: 'PRESENT', hours: 8.17 },
-    { in: '2026-08-19T09:30:00Z', out: '2026-08-19T18:00:00Z', status: 'LATE', hours: 7.5 },
-    { in: '2026-08-20T09:00:00Z', out: '2026-08-20T19:45:00Z', status: 'OVERTIME', hours: 9.75 },
-    { in: '2026-08-21T09:00:00Z', out: '2026-08-21T18:00:00Z', status: 'PRESENT', hours: 8.0 },
-  ];
-
-  const primaryEmployee = seededEmployees[0];
-  const existingAttendance = await prisma.attendance.findFirst({
-    where: { employeeId: primaryEmployee.id },
-  });
-
-  if (!existingAttendance) {
-    for (const emp of seededEmployees) {
-      for (const log of attendanceDates) {
-        await prisma.attendance.create({
-          data: {
-            employeeId: emp.id,
-            checkIn: new Date(log.in),
-            checkOut: new Date(log.out),
-            workedHours: log.hours,
-            status: log.status,
-            isManualEdit: false,
-          },
-        });
-      }
-    }
-  }
-
-  // 8. Seed Time-Off Requests
-  console.log('  -> Seeding Time-Off Requests...');
-  const ethansPtoAlloc = await prisma.leaveAllocation.findFirst({
-    where: { employeeId: primaryEmployee.id, timeOffTypeId: ptoType.id },
-  });
-
-  const existingRequest = await prisma.timeOffRequest.findFirst({
-    where: { employeeId: primaryEmployee.id },
-  });
-
-  if (!existingRequest && ethansPtoAlloc) {
-    // 1 Approved Request (2 days)
-    await prisma.timeOffRequest.create({
-      data: {
-        employeeId: primaryEmployee.id,
-        timeOffTypeId: ptoType.id,
-        allocationId: ethansPtoAlloc.id,
-        startDate: new Date('2026-08-24T00:00:00Z'),
-        endDate: new Date('2026-08-25T23:59:59Z'),
-        duration: 2.0,
-        reason: 'Family vacation',
-        status: 'APPROVED',
-        approvedByUserId: hrManagerUser.id,
-      },
-    });
-
-    await prisma.leaveAllocation.update({
-      where: { id: ethansPtoAlloc.id },
-      data: { takenAmount: 2.0 },
-    });
-
-    // 1 Pending Request (1 day)
-    await prisma.timeOffRequest.create({
-      data: {
-        employeeId: primaryEmployee.id,
-        timeOffTypeId: ptoType.id,
-        startDate: new Date('2026-09-18T00:00:00Z'),
-        endDate: new Date('2026-09-18T23:59:59Z'),
-        duration: 1.0,
-        reason: 'Personal errand',
-        status: 'PENDING',
-      },
-    });
-  }
-
-  // 9. Seed Historical PAID Payrun (August 2026)
-  console.log('  -> Seeding Historical PAID Payrun (August 2026)...');
-  const existingAugPayrun = await prisma.payrun.findFirst({
-    where: { name: 'Payrun - August 2026' },
-  });
-
-  if (!existingAugPayrun) {
-    const augPayrun = await prisma.payrun.create({
+  // 7. Seed August Historical Payrun for all 60 employees
+  console.log('  -> Seeding August 2026 Payrun with 60 payslips...');
+  let augPayrun = await prisma.payrun.findFirst({ where: { name: 'Payrun - August 2026' } });
+  if (!augPayrun) {
+    augPayrun = await prisma.payrun.create({
       data: {
         name: 'Payrun - August 2026',
         periodStart: new Date('2026-08-01T00:00:00Z'),
@@ -688,20 +272,12 @@ async function seed() {
 
     for (const emp of seededEmployees) {
       await prisma.payrunEmployee.create({
-        data: {
-          payrunId: augPayrun.id,
-          employeeId: emp.id,
-        },
+        data: { payrunId: augPayrun.id, employeeId: emp.id },
       });
 
-      const contract = await prisma.contract.findFirst({
-        where: { employeeId: emp.id, status: 'RUNNING' },
-      });
-
-      const wage = contract ? contract.wage : emp.wage;
-      const basic = wage;
-      const hra = wage * 0.4;
-      const pf = wage * 0.12;
+      const basic = emp.wage;
+      const hra = basic * 0.4;
+      const pf = basic * 0.12;
       const gross = basic + hra;
       const net = gross - pf;
 
@@ -709,7 +285,6 @@ async function seed() {
         data: {
           payrunId: augPayrun.id,
           employeeId: emp.id,
-          contractId: contract ? contract.id : null,
           salaryStructureId: regularSalaryStructure.id,
           periodStart: new Date('2026-08-01T00:00:00Z'),
           periodEnd: new Date('2026-08-31T23:59:59Z'),
@@ -721,46 +296,11 @@ async function seed() {
           status: 'PAID',
           lines: {
             create: [
-              {
-                salaryRuleId: structureRules[0]?.id,
-                name: 'Basic Salary',
-                code: 'BASIC',
-                category: 'BASIC',
-                sequence: 1,
-                amount: basic,
-              },
-              {
-                salaryRuleId: structureRules[1]?.id,
-                name: 'House Rent Allowance',
-                code: 'HRA',
-                category: 'ALLOWANCE',
-                sequence: 2,
-                amount: hra,
-              },
-              {
-                salaryRuleId: structureRules[2]?.id,
-                name: 'Provident Fund',
-                code: 'PF',
-                category: 'DEDUCTION',
-                sequence: 3,
-                amount: pf,
-              },
-              {
-                salaryRuleId: structureRules[3]?.id,
-                name: 'Gross Salary',
-                code: 'GROSS',
-                category: 'GROSS',
-                sequence: 4,
-                amount: gross,
-              },
-              {
-                salaryRuleId: structureRules[4]?.id,
-                name: 'Net Salary',
-                code: 'NET',
-                category: 'NET',
-                sequence: 5,
-                amount: net,
-              },
+              { salaryRuleId: structureRules[0]?.id, name: 'Basic Salary', code: 'BASIC', category: 'BASIC', sequence: 1, amount: basic },
+              { salaryRuleId: structureRules[1]?.id, name: 'House Rent Allowance', code: 'HRA', category: 'ALLOWANCE', sequence: 2, amount: hra },
+              { salaryRuleId: structureRules[2]?.id, name: 'Provident Fund', code: 'PF', category: 'DEDUCTION', sequence: 3, amount: pf },
+              { salaryRuleId: structureRules[3]?.id, name: 'Gross Salary', code: 'GROSS', category: 'GROSS', sequence: 4, amount: gross },
+              { salaryRuleId: structureRules[4]?.id, name: 'Net Salary', code: 'NET', category: 'NET', sequence: 5, amount: net },
             ],
           },
         },
@@ -768,34 +308,7 @@ async function seed() {
     }
   }
 
-  // 10. Seed Active Draft Payrun (September 2026)
-  console.log('  -> Seeding Current Payrun (September 2026)...');
-  const existingSepPayrun = await prisma.payrun.findFirst({
-    where: { name: 'Payrun - September 2026' },
-  });
-
-  if (!existingSepPayrun) {
-    const sepPayrun = await prisma.payrun.create({
-      data: {
-        name: 'Payrun - September 2026',
-        periodStart: new Date('2026-09-01T00:00:00Z'),
-        periodEnd: new Date('2026-09-30T23:59:59Z'),
-        salaryStructureId: regularSalaryStructure.id,
-        status: 'DRAFT',
-      },
-    });
-
-    for (const emp of seededEmployees.slice(0, 5)) {
-      await prisma.payrunEmployee.create({
-        data: {
-          payrunId: sepPayrun.id,
-          employeeId: emp.id,
-        },
-      });
-    }
-  }
-
-  console.log('✅ PeoplePay360 database seed completed successfully!');
+  console.log('✅ PayFlux 60-record database seed completed successfully!');
 }
 
 seed()

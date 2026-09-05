@@ -1,48 +1,8 @@
 import axiosClient from './axiosClient';
 import { AttendanceStatus } from '../utils/constants';
+import { SIXTY_ATTENDANCE } from './mockData60';
 
-const DEMO_ATTENDANCE = [
-  {
-    id: 'att_1',
-    employeeId: 'emp_001',
-    employee: { name: 'Sarah Connor', jobPosition: 'HR Manager' },
-    checkIn: '2026-09-05T09:00:00.000Z',
-    checkOut: '2026-09-05T18:00:00.000Z',
-    workedHours: 8,
-    status: AttendanceStatus.PRESENT,
-    isManualEdit: false,
-  },
-  {
-    id: 'att_2',
-    employeeId: 'emp_002',
-    employee: { name: 'Michael Scott', jobPosition: 'Payroll Specialist' },
-    checkIn: '2026-09-05T09:30:00.000Z',
-    checkOut: '2026-09-05T18:00:00.000Z',
-    workedHours: 7.5,
-    status: AttendanceStatus.LATE,
-    isManualEdit: false,
-  },
-  {
-    id: 'att_3',
-    employeeId: 'emp_003',
-    employee: { name: 'Dwight Schrute', jobPosition: 'Payroll Manager' },
-    checkIn: '2026-09-05T08:45:00.000Z',
-    checkOut: '2026-09-05T18:30:00.000Z',
-    workedHours: 8.75,
-    status: AttendanceStatus.OVERTIME,
-    isManualEdit: false,
-  },
-  {
-    id: 'att_4',
-    employeeId: 'emp_004',
-    employee: { name: 'Jim Halpert', jobPosition: 'Sales Representative' },
-    checkIn: '2026-09-05T09:00:00.000Z',
-    checkOut: null,
-    workedHours: null,
-    status: AttendanceStatus.PRESENT,
-    isManualEdit: false,
-  },
-];
+const DEMO_ATTENDANCE = [...SIXTY_ATTENDANCE];
 
 export const attendanceApi = {
   getAttendance: async (params = {}) => {

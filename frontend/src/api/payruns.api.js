@@ -1,5 +1,6 @@
 import axiosClient from './axiosClient';
 import { PayrunStatus, PayslipStatus } from '../utils/constants';
+import { SIXTY_EMPLOYEES } from './mockData60';
 
 const DEMO_PAYRUNS = [
   {
@@ -75,12 +76,7 @@ export const payrunsApi = {
     } catch (error) {
       if (error.response) throw error;
       return {
-        eligibleEmployees: [
-          { id: 'emp_001', name: 'Sarah Connor', email: 'hr.manager@peoplepay360.com', jobPosition: 'HR Manager', department: { name: 'Human Resources' }, contracts: [{ status: 'ACTIVE', wage: 85000 }] },
-          { id: 'emp_002', name: 'Michael Scott', email: 'payroll.user@peoplepay360.com', jobPosition: 'Payroll Specialist', department: { name: 'Payroll & Finance' }, contracts: [{ status: 'ACTIVE', wage: 75000 }] },
-          { id: 'emp_003', name: 'Dwight Schrute', email: 'payroll.manager@peoplepay360.com', jobPosition: 'Payroll Manager', department: { name: 'Payroll & Finance' }, contracts: [{ status: 'ACTIVE', wage: 95000 }] },
-          { id: 'emp_004', name: 'Jim Halpert', email: 'employee@peoplepay360.com', jobPosition: 'Sales Representative', department: { name: 'Sales & Marketing' }, contracts: [{ status: 'ACTIVE', wage: 65000 }] },
-        ],
+        eligibleEmployees: SIXTY_EMPLOYEES,
       };
     }
   },
