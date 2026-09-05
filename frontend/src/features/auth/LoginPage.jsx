@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useAuth } from '../../hooks/useAuth';
 import AuthLayout from '../../components/layout/AuthLayout';
 import FormField from '../../components/common/FormField';
-import { LogIn, AlertCircle } from 'lucide-react';
+import { LogIn, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Role } from '../../utils/constants';
 
 const loginSchema = z.object({
@@ -20,6 +20,7 @@ export default function LoginPage() {
   const location = useLocation();
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const from = location.state?.from?.pathname;
 
@@ -72,21 +73,41 @@ export default function LoginPage() {
           label="Email Address"
           name="email"
           type="email"
-          placeholder="admin@peoplepay360.com"
+          placeholder="admin@payflux.com"
           register={register}
           error={errors.email}
           required
         />
 
-        <FormField
-          label="Password"
-          name="password"
-          type="password"
-          placeholder="••••••••"
-          register={register}
-          error={errors.password}
-          required
-        />
+        <div className="mb-4">
+          <label htmlFor="password" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+            Password <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              {...register('password')}
+              className={`w-full px-3.5 py-2 pr-10 text-sm rounded-lg border transition-colors shadow-sm focus:outline-none focus:ring-2 ${
+                errors.password
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-100'
+              } bg-white text-gray-900`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {errors.password && (
+            <p className="text-xs text-red-600 mt-1 font-medium">{errors.password.message}</p>
+          )}
+        </div>
 
         <button
           type="submit"
