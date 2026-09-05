@@ -65,6 +65,7 @@ async function listEmployees(query, scopedEmployeeId = null) {
       take,
       orderBy: { createdAt: 'desc' },
       include: {
+        user: { select: { id: true, name: true, email: true, role: true } },
         department: { select: { id: true, name: true, code: true } },
         manager: { select: { id: true, firstName: true, lastName: true, email: true } },
         schedule: { select: { id: true, name: true, totalWeeklyHours: true } },
@@ -90,9 +91,11 @@ async function listEmployees(query, scopedEmployeeId = null) {
   const formatted = employees.map((emp) => ({
     id: emp.id,
     userId: emp.userId,
+    user: emp.user,
+    role: emp.user?.role || 'EMPLOYEE',
     firstName: emp.firstName,
     lastName: emp.lastName,
-    name: `${emp.firstName} ${emp.lastName}`,
+    name: `${emp.firstName} ${emp.lastName}`.trim(),
     email: emp.email,
     phone: emp.phone,
     jobPosition: emp.jobPosition,

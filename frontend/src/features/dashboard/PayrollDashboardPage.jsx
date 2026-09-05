@@ -63,6 +63,7 @@ export default function PayrollDashboardPage() {
   const [empStatusFilter, setEmpStatusFilter] = useState('');
   const [empTypeFilter, setEmpTypeFilter] = useState('');
   const [empDeptFilter, setEmpDeptFilter] = useState('');
+  const [empRoleFilter, setEmpRoleFilter] = useState('');
   const [empPage, setEmpPage] = useState(1);
   const [empPageSize, setEmpPageSize] = useState(10);
   const [isExporting, setIsExporting] = useState(false);
@@ -102,7 +103,7 @@ export default function PayrollDashboardPage() {
 
   // Query employees for the dashboard directory table
   const { data: empResponse, isLoading: empLoading } = useQuery({
-    queryKey: ['dashboard-employees', { search: empSearch, status: empStatusFilter, type: effectiveType, department: effectiveDept, page: empPage, pageSize: empPageSize }],
+    queryKey: ['dashboard-employees', { search: empSearch, status: empStatusFilter, type: effectiveType, department: effectiveDept, role: empRoleFilter, page: empPage, pageSize: empPageSize }],
     queryFn: () =>
       employeesApi.getEmployees({
         search: empSearch || undefined,
@@ -116,8 +117,12 @@ export default function PayrollDashboardPage() {
     placeholderData: (previousData) => previousData,
   });
 
-  const employeesList = empResponse?.data || (Array.isArray(empResponse) ? empResponse : []);
-  const totalEmployees = empResponse?.total || employeesList.length;
+  let rawEmployeesList = empResponse?.data || (Array.isArray(empResponse) ? empResponse : []);
+  if (empRoleFilter) {
+    rawEmployeesList = rawEmployeesList.filter((e) => (e.role || e.user?.role) === empRoleFilter);
+  }
+  const employeesList = rawEmployeesList;
+  const totalEmployees = empRoleFilter ? employeesList.length : (empResponse?.total || employeesList.length);
 
   const kpis = summaryData?.kpis;
   const salaryCost = summaryData?.salaryCost;
@@ -174,6 +179,7 @@ export default function PayrollDashboardPage() {
     setEmpStatusFilter('');
     setEmpTypeFilter('');
     setEmpDeptFilter('');
+    setEmpRoleFilter('');
     setEmpPage(1);
   };
 
@@ -192,8 +198,7 @@ export default function PayrollDashboardPage() {
       const headers = [
         'Employee ID',
         'Full Name',
-        'First Name',
-        'Last Name',
+        'User Role',
         'Email Address',
         'Phone',
         'Job Position',
@@ -219,8 +224,7 @@ export default function PayrollDashboardPage() {
         return [
           escapeCsv(e.id),
           escapeCsv(e.name || `${e.firstName || ''} ${e.lastName || ''}`.trim()),
-          escapeCsv(e.firstName || ''),
-          escapeCsv(e.lastName || ''),
+          escapeCsv(e.role || e.user?.role || 'EMPLOYEE'),
           escapeCsv(e.email || ''),
           escapeCsv(e.phone || ''),
           escapeCsv(e.jobPosition || ''),
@@ -254,6 +258,37 @@ export default function PayrollDashboardPage() {
     }
   };
 
+  const getRoleBadgeStyle = (role) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'HR_MANAGER':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'HR_PAYROLL_MANAGER':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'HR_PAYROLL_USER':
+        return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+      case 'EMPLOYEE':
+      default:
+        return 'bg-slate-50 text-slate-700 border-slate-200';
+    }
+  };
+
+  const getAvatarBg = (name = '') => {
+    const colors = [
+      'bg-blue-100 text-blue-700',
+      'bg-indigo-100 text-indigo-700',
+      'bg-purple-100 text-purple-700',
+      'bg-rose-100 text-rose-700',
+      'bg-emerald-100 text-emerald-700',
+      'bg-amber-100 text-amber-700',
+      'bg-cyan-100 text-cyan-700',
+    ];
+    let sum = 0;
+    for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i);
+    return colors[sum % colors.length];
+  };
+
   const filterConfigs = [
     {
       label: 'Department Filter',
@@ -273,23 +308,38 @@ export default function PayrollDashboardPage() {
 
   const employeeColumns = [
     {
-      header: 'Employee',
+      header: 'Employee & Username',
       accessorKey: 'name',
-      render: (emp) => (
-        <div className="flex items-center gap-3 font-medium text-gray-900">
-          {emp.avatarUrl ? (
-            <img src={emp.avatarUrl} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
-              {emp.name?.charAt(0) || emp.firstName?.charAt(0) || 'E'}
+      render: (emp) => {
+        const displayName = emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
+        const displayRole = emp.role || emp.user?.role || 'EMPLOYEE';
+        return (
+          <div className="flex items-center gap-3 font-medium text-gray-900">
+            {emp.avatarUrl ? (
+              <img src={emp.avatarUrl} alt={displayName} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+            ) : (
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${getAvatarBg(displayName)}`}>
+                {displayName.charAt(0) || 'E'}
+              </div>
+            )}
+            <div>
+              <div className="font-semibold text-sm text-gray-900">{displayName}</div>
+              <div className="text-xs text-gray-500 font-normal">{emp.email}</div>
             </div>
-          )}
-          <div>
-            <div className="font-semibold text-sm">{emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`}</div>
-            <div className="text-xs text-gray-500 font-normal">{emp.email}</div>
           </div>
-        </div>
-      ),
+        );
+      },
+    },
+    {
+      header: 'System Role',
+      render: (emp) => {
+        const r = emp.role || emp.user?.role || 'EMPLOYEE';
+        return (
+          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${getRoleBadgeStyle(r)}`}>
+            {formatEnumLabel(r)}
+          </span>
+        );
+      },
     },
     {
       header: 'Job Position & Department',
@@ -694,7 +744,7 @@ export default function PayrollDashboardPage() {
         </div>
 
         {/* Search and Filters for Dashboard Employee Table */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5">
           <div className="relative">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
             <input
@@ -704,10 +754,26 @@ export default function PayrollDashboardPage() {
                 setEmpSearch(e.target.value);
                 setEmpPage(1);
               }}
-              placeholder="Search name, position, email..."
+              placeholder="Search name, username, email..."
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-50 focus:bg-white border border-gray-300 rounded-lg transition-colors"
             />
           </div>
+
+          <select
+            value={empRoleFilter}
+            onChange={(e) => {
+              setEmpRoleFilter(e.target.value);
+              setEmpPage(1);
+            }}
+            className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg text-gray-700"
+          >
+            <option value="">All Roles</option>
+            <option value="ADMIN">Admin</option>
+            <option value="HR_MANAGER">HR Manager</option>
+            <option value="HR_PAYROLL_MANAGER">Payroll Manager</option>
+            <option value="HR_PAYROLL_USER">Payroll Specialist</option>
+            <option value="EMPLOYEE">Standard Employee</option>
+          </select>
 
           <select
             value={empDeptFilter}
