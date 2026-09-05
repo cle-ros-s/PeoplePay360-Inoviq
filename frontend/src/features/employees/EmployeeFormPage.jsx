@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,7 +15,7 @@ import SmartButton from '../../components/common/SmartButton';
 import LoadingState from '../../components/common/LoadingState';
 import { EmployeeStatus, EmployeeType } from '../../utils/constants';
 import { formatEnumLabel } from '../../utils/formatters';
-import { FileText, Clock, Palmtree, ArrowLeft, Save, CheckCircle2, UserCheck } from 'lucide-react';
+import { FileText, Clock, Palmtree, ArrowLeft, Save, AlertCircle, UserCheck } from 'lucide-react';
 
 const employeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -23,11 +23,11 @@ const employeeSchema = z.object({
   phone: z.string().optional().nullable(),
   avatarUrl: z.string().optional().nullable(),
   jobPosition: z.string().min(1, 'Job position is required'),
-  status: z.nativeEnum(EmployeeStatus),
-  employeeType: z.nativeEnum(EmployeeType),
+  status: z.nativeEnum(EmployeeStatus).default(EmployeeStatus.ACTIVE),
+  employeeType: z.nativeEnum(EmployeeType).default(EmployeeType.FULL_TIME),
   bankAccountNumber: z.string().optional().nullable(),
   bankIfsc: z.string().optional().nullable(),
-  joiningDate: z.string().min(1, 'Joining date is required'),
+  joiningDate: z.string().optional().nullable(),
   departmentId: z.string().optional().nullable(),
   managerId: z.string().optional().nullable(),
   scheduleId: z.string().optional().nullable(),
@@ -38,6 +38,7 @@ export default function EmployeeFormPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const [errorMessage, setErrorMessage] = useState('');
 
   const isEditMode = location.pathname.endsWith('/edit');
   const isNewMode = !id || id === 'new';
@@ -128,7 +129,7 @@ export default function EmployeeFormPage() {
   useEffect(() => {
     if (employeeData) {
       reset({
-        name: employeeData.name || '',
+        name: employeeData.name || `${employeeData.firstName || ''} ${employeeData.lastName || ''}`.trim(),
         email: employeeData.email || '',
         phone: employeeData.phone || '',
         avatarUrl: employeeData.avatarUrl || '',
@@ -136,7 +137,7 @@ export default function EmployeeFormPage() {
         status: employeeData.status || EmployeeStatus.ACTIVE,
         employeeType: employeeData.employeeType || EmployeeType.FULL_TIME,
         bankAccountNumber: employeeData.bankAccountNumber || '',
-        bankIfsc: employeeData.bankIfsc || '',
+        bankIfsc: employeeData.bankIfscOrRouting || employeeData.bankIfsc || '',
         joiningDate: employeeData.joiningDate ? employeeData.joiningDate.split('T')[0] : '',
         departmentId: employeeData.departmentId || '',
         managerId: employeeData.managerId || '',
@@ -150,7 +151,12 @@ export default function EmployeeFormPage() {
     mutationFn: employeesApi.createEmployee,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
-      navigate(`/employees/${data.id}`);
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      navigate(data?.id ? `/employees/${data.id}` : '/employees');
+    },
+    onError: (err) => {
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to create employee';
+      setErrorMessage(msg);
     },
   });
 
@@ -159,11 +165,17 @@ export default function EmployeeFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['employee', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       navigate(`/employees/${id}`);
+    },
+    onError: (err) => {
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to update employee';
+      setErrorMessage(msg);
     },
   });
 
   const onSubmit = (formData) => {
+    setErrorMessage('');
     const payload = {
       ...formData,
       departmentId: formData.departmentId || null,
@@ -184,7 +196,7 @@ export default function EmployeeFormPage() {
   const departmentOptions = departments.map((d) => ({ value: d.id, label: d.name }));
   const managerOptions = allEmployees
     .filter((e) => e.id !== id)
-    .map((e) => ({ value: e.id, label: `${e.name} (${e.jobPosition})` }));
+    .map((e) => ({ value: e.id, label: `${e.name || `${e.firstName} ${e.lastName}`} (${e.jobPosition})` }));
   const scheduleOptions = schedules.map((s) => ({ value: s.id, label: `${s.name} (${s.totalWeeklyHours} hrs/wk)` }));
 
   const statusOptions = Object.values(EmployeeStatus).map((s) => ({ value: s, label: formatEnumLabel(s) }));
@@ -218,6 +230,16 @@ export default function EmployeeFormPage() {
         }
       />
 
+      {errorMessage && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-sm text-red-700">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Unable to save employee record</p>
+            <p className="text-xs mt-0.5">{errorMessage}</p>
+          </div>
+        </div>
+      )}
+
       {/* Connected Smart Buttons Hub */}
       {!isNewMode && (
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-wrap items-center gap-3">
@@ -236,7 +258,7 @@ export default function EmployeeFormPage() {
           />
           <SmartButton
             icon={Palmtree}
-            label="Time Off Requests"
+            label="Time Off"
             count={timeOffCount}
             to={`/time-off/requests?employeeId=${id}`}
           />
@@ -264,7 +286,7 @@ export default function EmployeeFormPage() {
             <FormField label="Job Position" name="jobPosition" register={register} error={errors.jobPosition} required />
             <SelectField label="Employee Status" name="status" options={statusOptions} register={register} error={errors.status} required />
             <SelectField label="Employment Type" name="employeeType" options={typeOptions} register={register} error={errors.employeeType} required />
-            <DateField label="Joining Date" name="joiningDate" register={register} error={errors.joiningDate} required />
+            <DateField label="Joining Date" name="joiningDate" register={register} error={errors.joiningDate} />
             <FormField label="Profile Picture URL" name="avatarUrl" register={register} error={errors.avatarUrl} placeholder="https://..." />
           </div>
 
