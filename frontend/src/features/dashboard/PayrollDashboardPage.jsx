@@ -95,10 +95,10 @@ export default function PayrollDashboardPage() {
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
     queryKey: ['dashboard-summary', params],
     queryFn: () => dashboardApi.getSummary(params),
-    staleTime: 5 * 1000,
-    gcTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    gcTime: 10 * 60 * 1000,
     placeholderData: (previousData) => previousData,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   // Query employees for the dashboard directory table
@@ -113,7 +113,7 @@ export default function PayrollDashboardPage() {
         page: empPage,
         pageSize: empPageSize,
       }),
-    staleTime: 5 * 1000,
+    staleTime: 30 * 1000,
     placeholderData: (previousData) => previousData,
   });
 
