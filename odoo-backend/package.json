@@ -1,0 +1,35 @@
+{
+  "name": "peoplepay360-backend",
+  "version": "1.0.0",
+  "description": "Production-Ready HR & Payroll Backend for PeoplePay360",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:push": "prisma db push",
+    "prisma:seed": "node prisma/seed.js",
+    "test": "node scripts/test-payroll.js && node scripts/test-e2e.js"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.4.1",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mathjs": "^14.3.0",
+    "nodemailer": "^6.10.0",
+    "pdfkit": "^0.16.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9",
+    "prisma": "^6.4.1"
+  }
+}

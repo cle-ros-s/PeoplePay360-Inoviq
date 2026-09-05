@@ -1,0 +1,8 @@
+node_modules/
+.env
+odoo-backend/.env
+odoo-backend/node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
