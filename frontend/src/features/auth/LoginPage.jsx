@@ -232,24 +232,6 @@ function DashboardMonitorIllustration() {
         <div className="w-16 h-8 bg-gradient-to-b from-[#1C1448] to-[#120B33] shadow-md border-x border-white/10" />
         <div className="w-36 h-3 bg-gradient-to-r from-[#170E3B] via-[#2D1B69] to-[#170E3B] rounded-full shadow-[0_10px_20px_rgba(0,0,0,0.5)] border border-white/15" />
       </div>
-
-      {/* Potted Plant Accessory (Left) */}
-      <div className="absolute -bottom-2 -left-6 z-20 flex flex-col items-center">
-        <div className="flex gap-1 -mb-1">
-          <div className="w-3 h-6 bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-full rotate-[-25deg] transform origin-bottom" />
-          <div className="w-3.5 h-8 bg-gradient-to-t from-emerald-500 to-emerald-300 rounded-full transform origin-bottom -translate-y-1" />
-          <div className="w-3 h-6 bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-full rotate-[25deg] transform origin-bottom" />
-        </div>
-        <div className="w-8 h-8 bg-gradient-to-b from-white to-gray-200 rounded-b-xl rounded-t-sm shadow-md border border-white/40" />
-      </div>
-
-      {/* Pink Coffee Mug (Right) */}
-      <div className="absolute -bottom-1 -right-4 z-20 flex items-center">
-        <div className="w-7 h-8 bg-gradient-to-b from-[#FF4F81] to-[#E03A6C] rounded-b-lg rounded-t-sm shadow-md relative">
-          {/* Mug Handle */}
-          <div className="absolute top-1.5 -right-2.5 w-3 h-4 border-2 border-[#FF4F81] rounded-r-md" />
-        </div>
-      </div>
     </div>
   );
 }
@@ -394,16 +376,16 @@ export default function LoginPage() {
       {/* ========================================================================= */}
       {/* RIGHT SECTION - Modern SaaS Soft Lavender/White Textured Canvas          */}
       {/* ========================================================================= */}
-      <div className="w-full md:w-1/2 min-h-screen md:min-h-0 bg-[#F4F5FD] p-6 sm:p-8 md:p-10 lg:p-12 xl:p-16 flex items-center justify-center relative overflow-hidden">
+      <div className="w-full md:w-1/2 min-h-screen md:min-h-0 bg-[#F4F5FD] p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 flex items-center justify-center relative overflow-hidden">
         {/* Soft Fluid SaaS Artwork Background */}
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-70 mix-blend-multiply pointer-events-none"
+          className="absolute inset-0 bg-cover bg-center opacity-75 mix-blend-multiply pointer-events-none"
           style={{ backgroundImage: "url('/payflux_light_bg.jpg')" }}
         />
 
         {/* Ambient Gradient Glows */}
-        <div className="absolute -top-20 -right-20 w-80 h-80 bg-purple-300/35 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-pink-300/25 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-20 -right-20 w-96 h-96 bg-purple-300/35 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-96 h-96 bg-pink-300/25 rounded-full blur-3xl pointer-events-none" />
 
         {/* Decorative Dot Matrix in Bottom Right */}
         <div className="absolute bottom-6 right-8 grid grid-cols-6 gap-3 opacity-40 pointer-events-none hidden sm:grid z-0">
@@ -412,39 +394,39 @@ export default function LoginPage() {
           ))}
         </div>
 
-        {/* Centered White Login Card with Glassmorphic Shadow */}
-        <div className="relative z-10 w-full max-w-[500px] bg-white/95 backdrop-blur-xl rounded-[24px] sm:rounded-[28px] p-7 sm:p-10 lg:p-11 shadow-[0_25px_60px_rgba(20,10,70,0.12)] border border-white/80 ring-1 ring-purple-100">
+        {/* Centered White Login Card with Glassmorphic Shadow - Generously Sized */}
+        <div className="relative z-10 w-full max-w-[560px] bg-white/95 backdrop-blur-xl rounded-[26px] sm:rounded-[32px] p-8 sm:p-12 lg:p-14 shadow-[0_25px_70px_rgba(20,10,70,0.14)] border border-white/80 ring-1 ring-purple-100">
           {/* Card Top Branding Header */}
-          <div className="flex flex-col items-center text-center mb-7">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-50 to-pink-50 border border-purple-200/80 flex items-center justify-center shadow-xs mb-3.5">
-              <PayFluxLogo className="w-9 h-9" showText={false} />
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-purple-50 to-pink-50 border border-purple-200/80 flex items-center justify-center shadow-xs mb-4">
+              <PayFluxLogo className="w-10 h-10 sm:w-11 sm:h-11" showText={false} />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl lg:text-[32px] font-black text-slate-900 tracking-tight">
               Welcome back!
             </h2>
-            <p className="text-xs sm:text-sm font-semibold text-slate-600 mt-1">
+            <p className="text-xs sm:text-sm font-semibold text-slate-600 mt-1.5">
               Sign in to access your PayFlux account
             </p>
           </div>
 
           {/* Authentication Error Feedback Banner */}
           {errorMessage && (
-            <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-800 font-medium animate-shake">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div className="mb-5 p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-xs sm:text-sm text-rose-800 font-medium animate-shake">
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 shrink-0 mt-0.5" />
               <span className="leading-relaxed">{errorMessage}</span>
             </div>
           )}
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-4.5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
             {/* Email Address Field */}
             <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+              <label htmlFor="email" className="block text-[11px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">
                 Email Address
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Mail className="w-4 h-4" />
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
+                  <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <input
                   id="email"
@@ -452,7 +434,7 @@ export default function LoginPage() {
                   autoComplete="email"
                   placeholder="Enter your email"
                   {...register('email')}
-                  className={`w-full pl-10 pr-3.5 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 bg-slate-50/90 focus:bg-white border rounded-xl transition-all outline-none shadow-2xs ${
+                  className={`w-full pl-11 pr-4 py-3.5 text-sm sm:text-base font-medium text-slate-900 placeholder:text-slate-400 bg-slate-50/90 focus:bg-white border rounded-xl sm:rounded-2xl transition-all outline-none shadow-2xs ${
                     errors.email
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
                       : 'border-slate-300 focus:border-[#7B2FF7] focus:ring-4 focus:ring-purple-500/15'
@@ -466,12 +448,12 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <div className="space-y-1.5">
-              <label htmlFor="password" className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+              <label htmlFor="password" className="block text-[11px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">
                 Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Lock className="w-4 h-4" />
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
+                  <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <input
                   id="password"
@@ -479,7 +461,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   placeholder="Enter your password"
                   {...register('password')}
-                  className={`w-full pl-10 pr-10 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 bg-slate-50/90 focus:bg-white border rounded-xl transition-all outline-none shadow-2xs ${
+                  className={`w-full pl-11 pr-11 py-3.5 text-sm sm:text-base font-medium text-slate-900 placeholder:text-slate-400 bg-slate-50/90 focus:bg-white border rounded-xl sm:rounded-2xl transition-all outline-none shadow-2xs ${
                     errors.password
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
                       : 'border-slate-300 focus:border-[#7B2FF7] focus:ring-4 focus:ring-purple-500/15'
@@ -488,10 +470,10 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-800 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-slate-800 transition-colors"
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-slate-600" />}
+                  {showPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />}
                 </button>
               </div>
               {errors.password && (
@@ -504,7 +486,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setForgotModalOpen(true)}
-                className="text-xs font-bold text-[#7B2FF7] hover:text-[#5B10D9] transition-colors"
+                className="text-xs sm:text-sm font-bold text-[#7B2FF7] hover:text-[#5B10D9] transition-colors"
               >
                 Forgot password?
               </button>
@@ -515,14 +497,14 @@ export default function LoginPage() {
               type="submit"
               id="login-submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 px-6 rounded-xl text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-purple-500/30 transition-all duration-200 disabled:opacity-60 cursor-pointer select-none mt-2"
+              className="w-full py-4 px-6 rounded-xl sm:rounded-2xl text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-purple-500/30 transition-all duration-200 disabled:opacity-60 cursor-pointer select-none mt-3"
               style={{
                 background: 'linear-gradient(90deg, #FF4F81 0%, #A232CA 50%, #7B2FF7 100%)',
               }}
               onMouseEnter={(e) => {
                 if (!isSubmitting) {
                   e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(123, 47, 247, 0.35)';
+                  e.currentTarget.style.boxShadow = '0 12px 28px rgba(123, 47, 247, 0.35)';
                 }
               }}
               onMouseLeave={(e) => {
@@ -538,7 +520,7 @@ export default function LoginPage() {
               ) : (
                 <>
                   <span>Sign In</span>
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:translate-x-0.5" />
                 </>
               )}
             </button>
