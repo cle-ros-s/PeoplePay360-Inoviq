@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '../../api/dashboard.api';
 import { departmentsApi } from '../../api/departments.api';
 import { employeesApi } from '../../api/employees.api';
+import { allocationsApi } from '../../api/allocations.api';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import KpiCard from '../../components/charts/KpiCard';
@@ -121,6 +122,14 @@ export default function PayrollDashboardPage() {
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
+
+  // Fetch recent allocations for live dashboard preview
+  const { data: recentAllocData } = useQuery({
+    queryKey: ['allocations', { page: 1, pageSize: 6 }],
+    queryFn: () => allocationsApi.getAllocations({ page: 1, pageSize: 6 }),
+    staleTime: 10 * 1000,
+  });
+  const recentAllocations = recentAllocData?.data || (Array.isArray(recentAllocData) ? recentAllocData : []);
 
   let rawEmployeesList = empResponse?.data || (Array.isArray(empResponse) ? empResponse : []);
   if (empRoleFilter) {
@@ -723,6 +732,52 @@ export default function PayrollDashboardPage() {
               <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
                 <span className="text-xs text-indigo-700 font-medium block">Active Allocations</span>
                 <span className="text-lg font-bold text-indigo-900">{timeOffOverview?.activeAllocations || 0}</span>
+              </div>
+            </div>
+
+            {/* Live Preview of Granted Leave Allocations */}
+            <div className="mt-3.5 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                  <span>Recent Granted Allocations</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-100 text-indigo-800 font-bold">
+                    {recentAllocations.length}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigate('/time-off/allocations')}
+                  className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                >
+                  View All &rarr;
+                </button>
+              </div>
+              <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                {recentAllocations.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic text-center py-2">No leave allocations granted yet.</p>
+                ) : (
+                  recentAllocations.slice(0, 4).map((alloc) => {
+                    const empName = alloc.employee?.name || (alloc.employee ? `${alloc.employee.firstName || ''} ${alloc.employee.lastName || ''}`.trim() : null) || 'Employee';
+                    const remaining = Math.max(0, (alloc.allocatedAmount || 0) - (alloc.takenAmount || 0));
+                    return (
+                      <div key={alloc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-xs hover:bg-gray-100/80 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] ${getAvatarBg(empName)}`}>
+                            {empName.charAt(0)}
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-900 block leading-tight">{empName}</span>
+                            <span className="text-[10px] text-gray-500">{alloc.timeOffType?.name || 'Leave'}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-emerald-700 block text-xs">{alloc.allocatedAmount} {alloc.timeOffType?.unit?.toLowerCase() || 'days'}</span>
+                          <span className="text-[10px] text-gray-400 font-medium">{remaining} rem</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>
