@@ -2,6 +2,10 @@ const { verifyToken } = require('../utils/jwt');
 const { formatErrorResponse } = require('../utils/responseFormatter');
 const prisma = require('../config/prisma');
 
+// In-memory cache for user auth tokens to bypass DB queries on every HTTP request
+const userAuthCache = new Map();
+const USER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 async function authenticate(req, res, next) {
   try {
     let token = null;
@@ -23,9 +27,22 @@ async function authenticate(req, res, next) {
       return res.status(401).json(formatErrorResponse('UNAUTHORIZED', 'Invalid or expired token'));
     }
 
+    const userId = decoded.sub;
+    const now = Date.now();
+    const cachedUser = userAuthCache.get(userId);
+
+    if (cachedUser && now - cachedUser.timestamp < USER_CACHE_TTL) {
+      req.user = cachedUser.user;
+      return next();
+    }
+
     const user = await prisma.user.findUnique({
-      where: { id: decoded.sub },
-      include: {
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
         employee: {
           select: { id: true, firstName: true, lastName: true, email: true },
         },
@@ -36,7 +53,7 @@ async function authenticate(req, res, next) {
       return res.status(401).json(formatErrorResponse('UNAUTHORIZED', 'User not found'));
     }
 
-    req.user = {
+    const reqUser = {
       id: user.id,
       email: user.email,
       name: user.name,
@@ -44,6 +61,9 @@ async function authenticate(req, res, next) {
       employeeId: user.employee ? user.employee.id : null,
       employee: user.employee,
     };
+
+    userAuthCache.set(userId, { timestamp: now, user: reqUser });
+    req.user = reqUser;
 
     next();
   } catch (error) {

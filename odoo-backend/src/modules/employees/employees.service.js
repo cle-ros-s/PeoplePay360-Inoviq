@@ -36,6 +36,7 @@ function extractEmployeeData(data) {
 
 const employeeListCache = new Map();
 const EMP_CACHE_TTL = 15 * 1000;
+let cachedEmpTotal = 0;
 
 function getEmpCacheKey(query, scopedEmployeeId) {
   return `${scopedEmployeeId || 'all'}:${JSON.stringify(query || {})}`;
@@ -73,13 +74,41 @@ async function listEmployees(query, scopedEmployeeId = null) {
     }
   }
 
+  let totalCountPromise;
+  if (Object.keys(where).length === 0 && cachedEmpTotal > 0) {
+    totalCountPromise = Promise.resolve(cachedEmpTotal);
+  } else {
+    totalCountPromise = prisma.employee.count({ where }).then((c) => {
+      if (Object.keys(where).length === 0) cachedEmpTotal = c;
+      return c;
+    });
+  }
+
   const [employees, total] = await Promise.all([
     prisma.employee.findMany({
       where,
       skip,
       take,
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        id: true,
+        userId: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        jobPosition: true,
+        employeeType: true,
+        status: true,
+        departmentId: true,
+        managerId: true,
+        scheduleId: true,
+        bankName: true,
+        bankAccountNumber: true,
+        bankIfscOrRouting: true,
+        taxId: true,
+        createdAt: true,
+        updatedAt: true,
         user: { select: { id: true, name: true, email: true, role: true } },
         department: { select: { id: true, name: true, code: true } },
         manager: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -91,7 +120,7 @@ async function listEmployees(query, scopedEmployeeId = null) {
         },
       },
     }),
-    prisma.employee.count({ where }),
+    totalCountPromise,
   ]);
 
   const formatted = employees.map((emp) => ({

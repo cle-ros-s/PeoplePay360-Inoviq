@@ -29,12 +29,20 @@ async function startServer() {
     await prisma.$connect();
     console.log('✓ Successfully connected to PostgreSQL database');
 
-    // Async pre-warm database queries to eliminate initial cold-start delays
-    Promise.all([
-      prisma.employee.count().catch(() => {}),
-      prisma.department.count().catch(() => {}),
-      prisma.payslip.count().catch(() => {}),
-    ]);
+    // Async pre-warm database queries and cache stores to eliminate cold-start delays
+    setTimeout(async () => {
+      try {
+        const { getDashboardSummary } = require('./modules/dashboard/dashboard.service');
+        const { listEmployees } = require('./modules/employees/employees.service');
+        const { listDepartments } = require('./modules/departments/departments.service');
+        await Promise.all([
+          getDashboardSummary({}),
+          listEmployees({ page: 1, pageSize: 10 }),
+          listDepartments({}),
+        ]);
+        console.log('⚡ All Dashboard & Operational Caches Pre-Warmed');
+      } catch (e) {}
+    }, 10);
 
     const server = http.createServer(app);
 

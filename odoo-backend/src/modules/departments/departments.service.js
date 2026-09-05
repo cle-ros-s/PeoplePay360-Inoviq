@@ -2,7 +2,18 @@ const prisma = require('../../config/prisma');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
 
-async function listDepartments(query) {
+const deptListCache = new Map();
+const DEPT_CACHE_TTL = 30 * 1000;
+
+async function listDepartments(query = {}) {
+  const cacheKey = JSON.stringify(query || {});
+  const cached = deptListCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && now - cached.timestamp < DEPT_CACHE_TTL) {
+    return cached.data;
+  }
+
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { search } = query;
 
@@ -43,7 +54,9 @@ async function listDepartments(query) {
     updatedAt: d.updatedAt,
   }));
 
-  return formatListResponse(formatted, total, page, pageSize);
+  const response = formatListResponse(formatted, total, page, pageSize);
+  deptListCache.set(cacheKey, { timestamp: Date.now(), data: response });
+  return response;
 }
 
 async function getDepartmentById(id) {
