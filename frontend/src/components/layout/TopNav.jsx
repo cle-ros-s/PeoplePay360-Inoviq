@@ -1,44 +1,37 @@
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { LogOut, Menu, User as UserIcon, Clock } from 'lucide-react';
+import BrandLogo from '../common/BrandLogo';
+import { LogOut, Menu } from 'lucide-react';
 import { formatEnumLabel } from '../../utils/formatters';
 
 export default function TopNav({ onMobileMenuToggle }) {
   const { user, logout } = useAuth();
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-xs">
-      <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+      <div className="px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between">
         {/* Left Side: Mobile Menu Button & Brand Logo */}
         <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={onMobileMenuToggle}
-            className="lg:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="lg:hidden p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
             aria-label="Toggle Navigation Menu"
           >
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
-              360
-            </div>
-            <span className="font-bold text-lg text-gray-900 tracking-tight hidden sm:inline-block">
-              PeoplePay360
-            </span>
-          </div>
+          <BrandLogo size="sm" showText textClassName="text-lg text-slate-900 font-bold" />
         </div>
 
-        {/* Right Side: Quick Check-in & User Profile */}
+        {/* Right Side: User Profile & Actions */}
         <div className="flex items-center gap-4">
-          {/* User Profile Card */}
-          <div className="flex items-center gap-3 border-l border-gray-200 pl-4">
+          <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
             <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
               {user?.name?.charAt(0) || 'U'}
             </div>
             <div className="hidden md:block text-left">
-              <p className="text-xs font-semibold text-gray-900 leading-none">{user?.name}</p>
+              <p className="text-xs font-semibold text-slate-900 leading-none">{user?.name}</p>
               <span className="inline-block mt-0.5 text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
                 {formatEnumLabel(user?.role)}
               </span>
@@ -46,7 +39,7 @@ export default function TopNav({ onMobileMenuToggle }) {
             <button
               onClick={logout}
               title="Logout"
-              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
             >
               <LogOut className="w-4 h-4" />
             </button>

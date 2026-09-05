@@ -3,7 +3,7 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 export default function ErrorState({
   title = 'An error occurred',
-  message = 'Unable to connect to the PeoplePay360 server. Please check your connection and try again.',
+  message = 'Unable to connect to the PayFlux server. Please check your connection and try again.',
   onRetry,
 }) {
   return (
