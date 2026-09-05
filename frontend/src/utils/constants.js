@@ -21,7 +21,8 @@ export const EmployeeType = {
 
 export const ContractStatus = {
   DRAFT: 'DRAFT',
-  ACTIVE: 'ACTIVE',
+  RUNNING: 'RUNNING',
+  ACTIVE: 'RUNNING',
   EXPIRED: 'EXPIRED',
   CANCELLED: 'CANCELLED',
 };

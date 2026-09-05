@@ -7,12 +7,14 @@ const {
   flexiblePositiveNumber,
 } = require('../../utils/schemaTypes');
 
-const contractStatusEnum = z.enum(['DRAFT', 'RUNNING', 'EXPIRED', 'CANCELLED']);
+const contractStatusEnum = z
+  .enum(['DRAFT', 'RUNNING', 'ACTIVE', 'EXPIRED', 'CANCELLED'])
+  .transform((v) => (v === 'ACTIVE' ? 'RUNNING' : v));
 
 const createContractSchema = {
   body: z.object({
     employeeId: requiredUuid('Invalid employee ID'),
-    name: z.string().min(1, 'Contract name is required'),
+    name: z.string().optional(),
     wage: flexiblePositiveNumber('Wage must be a positive number'),
     startDate: flexibleDate,
     endDate: optionalFlexibleDate,

@@ -8,9 +8,8 @@ import DataTable from '../../components/common/DataTable';
 import FilterBar from '../../components/common/FilterBar';
 import StatusBadge from '../../components/common/StatusBadge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import { Plus, Edit2, Trash2, FileText, CheckCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Ban, CheckCircle, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { formatDate, formatCurrency, formatEnumLabel } from '../../utils/formatters';
-import { ContractStatus } from '../../utils/constants';
 
 export default function ContractListPage() {
   const navigate = useNavigate();
@@ -22,6 +21,11 @@ export default function ContractListPage() {
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [contractToDelete, setContractToDelete] = useState(null);
+
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [contractToCancel, setContractToCancel] = useState(null);
+
+  const [feedbackMessage, setFeedbackMessage] = useState({ type: '', message: '' });
 
   // Fetch employees for filter dropdown
   const { data: empData } = useQuery({
@@ -48,6 +52,28 @@ export default function ContractListPage() {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       setDeleteConfirmOpen(false);
       setContractToDelete(null);
+      setFeedbackMessage({ type: 'success', message: 'Contract deleted successfully.' });
+    },
+    onError: (err) => {
+      setDeleteConfirmOpen(false);
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to delete contract';
+      setFeedbackMessage({ type: 'error', message: msg });
+    },
+  });
+
+  // Cancel mutation
+  const cancelMutation = useMutation({
+    mutationFn: (id) => contractsApi.updateContract(id, { status: 'CANCELLED' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      setCancelConfirmOpen(false);
+      setContractToCancel(null);
+      setFeedbackMessage({ type: 'success', message: 'Contract marked as CANCELLED successfully.' });
+    },
+    onError: (err) => {
+      setCancelConfirmOpen(false);
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to cancel contract';
+      setFeedbackMessage({ type: 'error', message: msg });
     },
   });
 
@@ -63,12 +89,14 @@ export default function ContractListPage() {
 
   const columns = [
     {
-      header: 'Employee',
+      header: 'Employee / Contract',
       accessorKey: 'employee',
       render: (c) => (
         <div>
-          <div className="font-semibold text-gray-900">{c.employee?.name || 'Unassigned'}</div>
-          <div className="text-xs text-gray-500">{c.jobPosition}</div>
+          <div className="font-semibold text-gray-900">
+            {c.employee?.name || `${c.employee?.firstName || ''} ${c.employee?.lastName || ''}`.trim() || 'Unassigned'}
+          </div>
+          <div className="text-xs text-gray-500 font-mono">{c.name || c.jobPosition}</div>
         </div>
       ),
     },
@@ -101,10 +129,10 @@ export default function ContractListPage() {
       render: (c) => (
         <div className="flex items-center gap-2">
           <StatusBadge status={c.status} />
-          {c.status === ContractStatus.ACTIVE && (
+          {(c.status === 'RUNNING' || c.status === 'ACTIVE') && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
               <CheckCircle className="w-3 h-3" />
-              Active Payroll Contract
+              Active
             </span>
           )}
         </div>
@@ -121,6 +149,19 @@ export default function ContractListPage() {
           >
             <Edit2 className="w-4 h-4" />
           </button>
+          {c.status !== 'CANCELLED' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setContractToCancel(c);
+                setCancelConfirmOpen(true);
+              }}
+              className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+              title="Cancel Contract"
+            >
+              <Ban className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -142,18 +183,26 @@ export default function ContractListPage() {
       label: 'Filter Employee',
       value: employeeIdFilter,
       onChange: (val) => handleFilterChange('employeeId', val),
-      options: employeesList.map((e) => ({ value: e.id, label: e.name })),
+      options: employeesList.map((e) => ({
+        value: e.id,
+        label: e.name || `${e.firstName} ${e.lastName}`,
+      })),
     },
     {
       label: 'Filter Status',
       value: statusFilter,
       onChange: (val) => handleFilterChange('status', val),
-      options: Object.values(ContractStatus).map((s) => ({ value: s, label: formatEnumLabel(s) })),
+      options: [
+        { value: 'RUNNING', label: 'Active / Running' },
+        { value: 'DRAFT', label: 'Draft' },
+        { value: 'EXPIRED', label: 'Expired' },
+        { value: 'CANCELLED', label: 'Cancelled' },
+      ],
     },
   ];
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Employment Contracts"
         description="Maintain employee contract history, wage terms, and structure assignments used during payroll execution."
@@ -168,6 +217,34 @@ export default function ContractListPage() {
         }
       />
 
+      {feedbackMessage.message && (
+        <div
+          className={`p-4 rounded-xl border flex items-start gap-3 text-sm shadow-sm ${
+            feedbackMessage.type === 'error'
+              ? 'bg-red-50 border-red-200 text-red-700'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          }`}
+        >
+          {feedbackMessage.type === 'error' ? (
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          ) : (
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1">
+            <p className="font-semibold">
+              {feedbackMessage.type === 'error' ? 'Action Failed' : 'Action Succeeded'}
+            </p>
+            <p className="text-xs mt-0.5">{feedbackMessage.message}</p>
+          </div>
+          <button
+            onClick={() => setFeedbackMessage({ type: '', message: '' })}
+            className="text-xs font-semibold underline ml-2 opacity-80 hover:opacity-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <FilterBar
         filters={filterConfigs}
         onReset={() => setSearchParams({})}
@@ -180,13 +257,36 @@ export default function ContractListPage() {
         emptyMessage="No contracts found for the selected filters."
       />
 
+      {/* Cancel Dialog */}
+      <ConfirmDialog
+        isOpen={cancelConfirmOpen}
+        onClose={() => setCancelConfirmOpen(false)}
+        onConfirm={() => cancelMutation.mutate(contractToCancel?.id)}
+        title="Cancel Contract"
+        message={`Are you sure you want to cancel the contract for "${
+          contractToCancel?.employee?.name ||
+          `${contractToCancel?.employee?.firstName || ''} ${contractToCancel?.employee?.lastName || ''}`.trim()
+        }"? It will be deactivated from active payroll cycles.`}
+        confirmText="Confirm Cancellation"
+        cancelText="Keep Active"
+        isLoading={cancelMutation.isPending}
+        variant="danger"
+      />
+
+      {/* Delete Dialog */}
       <ConfirmDialog
         isOpen={deleteConfirmOpen}
         onClose={() => setDeleteConfirmOpen(false)}
-        onConfirm={() => deleteMutation.mutate(contractToDelete.id)}
+        onConfirm={() => deleteMutation.mutate(contractToDelete?.id)}
         title="Delete Contract"
-        message={`Are you sure you want to delete this contract for "${contractToDelete?.employee?.name}"?`}
+        message={`Are you sure you want to delete this contract for "${
+          contractToDelete?.employee?.name ||
+          `${contractToDelete?.employee?.firstName || ''} ${contractToDelete?.employee?.lastName || ''}`.trim()
+        }"?`}
+        confirmText="Delete Contract"
+        cancelText="Cancel"
         isLoading={deleteMutation.isPending}
+        variant="danger"
       />
     </div>
   );

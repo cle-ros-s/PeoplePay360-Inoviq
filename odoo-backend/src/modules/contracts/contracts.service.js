@@ -97,10 +97,12 @@ async function createContract(data) {
     });
   }
 
+  const contractName = data.name || `${employee.firstName} ${employee.lastName} Contract`;
+
   return prisma.contract.create({
     data: {
       employeeId: data.employeeId,
-      name: data.name,
+      name: contractName,
       wage: data.wage,
       startDate: new Date(data.startDate),
       endDate: data.endDate ? new Date(data.endDate) : null,
