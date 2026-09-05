@@ -316,14 +316,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row lg:h-screen lg:overflow-hidden bg-[#0A0524] font-sans antialiased text-slate-900">
+    <div className="min-h-screen w-full flex flex-col md:flex-row md:h-screen md:overflow-hidden bg-[#0A0524] font-sans antialiased text-slate-900">
       {/* ========================================================================= */}
       {/* LEFT SECTION - Dark Navy/Purple Marketing & Dashboard Preview Panel      */}
       {/* ========================================================================= */}
-      <div className="w-full lg:w-1/2 min-h-screen lg:min-h-0 bg-gradient-to-br from-[#09041E] via-[#120738] to-[#250C5E] text-white p-6 sm:p-10 lg:p-12 xl:p-16 flex flex-col justify-between relative overflow-hidden shrink-0">
-        {/* Subtle Decorative Background Glows */}
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#7B2FF7]/25 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[#FF4F81]/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="w-full md:w-1/2 min-h-screen md:min-h-0 bg-gradient-to-br from-[#09041E]/95 via-[#120738]/90 to-[#250C5E]/95 text-white p-6 sm:p-8 md:p-10 lg:p-12 xl:p-14 flex flex-col justify-between relative overflow-hidden shrink-0">
+        {/* Rich Background Image Texture Layer */}
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-45 mix-blend-screen pointer-events-none"
+          style={{ backgroundImage: "url('/payflux_hero_bg.jpg')" }}
+        />
+
+        {/* Ambient Gradient Lighting */}
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#7B2FF7]/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[#FF4F81]/25 rounded-full blur-3xl pointer-events-none" />
 
         {/* Top Header Logo */}
         <div className="relative z-10">
@@ -331,30 +337,30 @@ export default function LoginPage() {
         </div>
 
         {/* Center Content: Headline, Subtitle & Monitor Illustration */}
-        <div className="relative z-10 my-auto py-6 space-y-6 max-w-xl">
-          <div className="space-y-3">
-            <h1 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-5xl font-black tracking-tight leading-[1.15] text-white drop-shadow-sm">
+        <div className="relative z-10 my-auto py-4 sm:py-6 space-y-5 sm:space-y-6 max-w-xl">
+          <div className="space-y-2.5">
+            <h1 className="text-2xl sm:text-3xl md:text-3xl lg:text-[40px] xl:text-[46px] font-black tracking-tight leading-[1.15] text-white drop-shadow-md">
               Smarter HR.<br />
               Seamless Payroll.<br />
-              <span className="bg-gradient-to-r from-[#FF4F81] via-[#E24EA2] to-[#9D54FF] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#FF4F81] via-[#F43F5E] to-[#9D54FF] bg-clip-text text-transparent">
                 Stronger Teams.
               </span>
             </h1>
-            <p className="text-sm sm:text-base text-slate-200 leading-relaxed font-normal max-w-lg">
+            <p className="text-xs sm:text-sm md:text-base text-slate-200 leading-relaxed font-normal max-w-lg">
               Manage your workforce, attendance, leaves, payroll and insights — all in one powerful platform.
             </p>
           </div>
 
           {/* Desktop Monitor Dashboard Illustration */}
-          <div className="pt-2">
+          <div className="pt-1">
             <DashboardMonitorIllustration />
           </div>
         </div>
 
-        {/* Bottom 3 Compact Feature Highlights with High-Contrast Text */}
-        <div className="relative z-10 pt-4 border-t border-white/15 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-purple-200 shrink-0 shadow-inner">
+        {/* Bottom 3 Compact Feature Highlights */}
+        <div className="relative z-10 pt-3.5 border-t border-white/15 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-purple-200 shrink-0 shadow-inner backdrop-blur-xs">
               <Shield className="w-4 h-4 text-purple-300" />
             </div>
             <div>
@@ -363,8 +369,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-[#FF4F81] shrink-0 shadow-inner">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-[#FF4F81] shrink-0 shadow-inner backdrop-blur-xs">
               <Zap className="w-4 h-4 text-[#FF4F81]" />
             </div>
             <div>
@@ -373,8 +379,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-indigo-300 shrink-0 shadow-inner">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-indigo-300 shrink-0 shadow-inner backdrop-blur-xs">
               <PieChart className="w-4 h-4 text-indigo-300" />
             </div>
             <div>
@@ -386,30 +392,37 @@ export default function LoginPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* RIGHT SECTION - Soft Lavender Canvas with Centered Premium White Login Card */}
+      {/* RIGHT SECTION - Modern SaaS Soft Lavender/White Textured Canvas          */}
       {/* ========================================================================= */}
-      <div className="w-full lg:w-1/2 min-h-screen lg:min-h-0 bg-[#F6F7FE] p-6 sm:p-10 lg:p-12 xl:p-16 flex items-center justify-center relative overflow-hidden">
-        {/* Subtle Decorative Dot Matrix in Bottom Right */}
-        <div className="absolute bottom-6 right-8 grid grid-cols-6 gap-3 opacity-30 pointer-events-none hidden sm:grid">
+      <div className="w-full md:w-1/2 min-h-screen md:min-h-0 bg-[#F4F5FD] p-6 sm:p-8 md:p-10 lg:p-12 xl:p-16 flex items-center justify-center relative overflow-hidden">
+        {/* Soft Fluid SaaS Artwork Background */}
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-70 mix-blend-multiply pointer-events-none"
+          style={{ backgroundImage: "url('/payflux_light_bg.jpg')" }}
+        />
+
+        {/* Ambient Gradient Glows */}
+        <div className="absolute -top-20 -right-20 w-80 h-80 bg-purple-300/35 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-pink-300/25 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Decorative Dot Matrix in Bottom Right */}
+        <div className="absolute bottom-6 right-8 grid grid-cols-6 gap-3 opacity-40 pointer-events-none hidden sm:grid z-0">
           {[...Array(24)].map((_, i) => (
-            <div key={i} className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+            <div key={i} className="w-1.5 h-1.5 rounded-full bg-purple-600" />
           ))}
         </div>
 
-        {/* Decorative Light Glow Behind Card */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[580px] h-[580px] bg-purple-300/20 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Centered White Login Card with High Legibility & Crisp Elements */}
-        <div className="relative z-10 w-full max-w-[520px] bg-white rounded-[24px] sm:rounded-[28px] p-8 sm:p-11 lg:p-12 shadow-[0_20px_50px_rgba(20,10,60,0.08)] border border-slate-200/90 backdrop-blur-sm">
+        {/* Centered White Login Card with Glassmorphic Shadow */}
+        <div className="relative z-10 w-full max-w-[500px] bg-white/95 backdrop-blur-xl rounded-[24px] sm:rounded-[28px] p-7 sm:p-10 lg:p-11 shadow-[0_25px_60px_rgba(20,10,70,0.12)] border border-white/80 ring-1 ring-purple-100">
           {/* Card Top Branding Header */}
-          <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-50 to-pink-50 border border-purple-200/80 flex items-center justify-center shadow-xs mb-4">
+          <div className="flex flex-col items-center text-center mb-7">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-50 to-pink-50 border border-purple-200/80 flex items-center justify-center shadow-xs mb-3.5">
               <PayFluxLogo className="w-9 h-9" showText={false} />
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               Welcome back!
             </h2>
-            <p className="text-sm font-semibold text-slate-600 mt-1.5">
+            <p className="text-xs sm:text-sm font-semibold text-slate-600 mt-1">
               Sign in to access your PayFlux account
             </p>
           </div>
@@ -423,10 +436,10 @@ export default function LoginPage() {
           )}
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-4.5">
             {/* Email Address Field */}
             <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-xs font-bold text-slate-800 uppercase tracking-wide">
+              <label htmlFor="email" className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">
                 Email Address
               </label>
               <div className="relative">
@@ -439,7 +452,7 @@ export default function LoginPage() {
                   autoComplete="email"
                   placeholder="Enter your email"
                   {...register('email')}
-                  className={`w-full pl-10 pr-3.5 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 bg-slate-50/80 focus:bg-white border rounded-xl transition-all outline-none ${
+                  className={`w-full pl-10 pr-3.5 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 bg-slate-50/90 focus:bg-white border rounded-xl transition-all outline-none shadow-2xs ${
                     errors.email
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
                       : 'border-slate-300 focus:border-[#7B2FF7] focus:ring-4 focus:ring-purple-500/15'
@@ -453,7 +466,7 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <div className="space-y-1.5">
-              <label htmlFor="password" className="block text-xs font-bold text-slate-800 uppercase tracking-wide">
+              <label htmlFor="password" className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">
                 Password
               </label>
               <div className="relative">
@@ -466,7 +479,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   placeholder="Enter your password"
                   {...register('password')}
-                  className={`w-full pl-10 pr-10 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 bg-slate-50/80 focus:bg-white border rounded-xl transition-all outline-none ${
+                  className={`w-full pl-10 pr-10 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 bg-slate-50/90 focus:bg-white border rounded-xl transition-all outline-none shadow-2xs ${
                     errors.password
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
                       : 'border-slate-300 focus:border-[#7B2FF7] focus:ring-4 focus:ring-purple-500/15'
@@ -502,7 +515,7 @@ export default function LoginPage() {
               type="submit"
               id="login-submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 px-6 rounded-xl text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-purple-500/25 transition-all duration-200 disabled:opacity-60 cursor-pointer select-none mt-2"
+              className="w-full py-3.5 px-6 rounded-xl text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-purple-500/30 transition-all duration-200 disabled:opacity-60 cursor-pointer select-none mt-2"
               style={{
                 background: 'linear-gradient(90deg, #FF4F81 0%, #A232CA 50%, #7B2FF7 100%)',
               }}
