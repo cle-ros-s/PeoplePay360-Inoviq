@@ -35,10 +35,16 @@ async function startServer() {
         const { getDashboardSummary } = require('./modules/dashboard/dashboard.service');
         const { listEmployees } = require('./modules/employees/employees.service');
         const { listDepartments } = require('./modules/departments/departments.service');
+        const { listPayslips } = require('./modules/payroll/payslips.service');
+        const { listAttendance } = require('./modules/attendance/attendance.service');
+        const { listTimeOffRequests } = require('./modules/timeOffRequests/timeOffRequests.service');
         await Promise.all([
           getDashboardSummary({}),
           listEmployees({ page: 1, pageSize: 10 }),
           listDepartments({}),
+          listPayslips({ page: 1, pageSize: 10 }),
+          listAttendance({ page: 1, pageSize: 10 }),
+          listTimeOffRequests({ page: 1, pageSize: 10 }),
         ]);
         console.log('⚡ All Dashboard & Operational Caches Pre-Warmed');
       } catch (e) {}

@@ -12,6 +12,9 @@ async function login(req, res, next) {
 
 async function getMe(req, res, next) {
   try {
+    if (req.user && req.user.id && req.user.email) {
+      return res.status(200).json(req.user);
+    }
     const user = await authService.getMe(req.user.id);
     return res.status(200).json(user);
   } catch (error) {

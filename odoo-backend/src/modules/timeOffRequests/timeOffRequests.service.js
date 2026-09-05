@@ -2,7 +2,22 @@ const prisma = require('../../config/prisma');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
 
+const timeOffRequestCache = new Map();
+const TIMEOFF_CACHE_TTL = 30 * 1000;
+
+function invalidateTimeOffRequestCache() {
+  timeOffRequestCache.clear();
+}
+
 async function listTimeOffRequests(query, scopedEmployeeId = null) {
+  const cacheKey = `${scopedEmployeeId || 'all'}:${JSON.stringify(query || {})}`;
+  const cached = timeOffRequestCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && now - cached.timestamp < TIMEOFF_CACHE_TTL) {
+    return cached.data;
+  }
+
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { employeeId, status, timeOffTypeId } = query;
 
@@ -61,7 +76,9 @@ async function listTimeOffRequests(query, scopedEmployeeId = null) {
       : null,
   }));
 
-  return formatListResponse(formattedRequests, total, page, pageSize);
+  const response = formatListResponse(formattedRequests, total, page, pageSize);
+  timeOffRequestCache.set(cacheKey, { timestamp: now, data: response });
+  return response;
 }
 
 async function getTimeOffRequestById(id, scopedEmployeeId = null) {

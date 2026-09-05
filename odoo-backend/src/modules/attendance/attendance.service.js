@@ -3,7 +3,22 @@ const { deriveAttendanceStatus } = require('./attendance.status');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
 
+const attendanceCache = new Map();
+const ATTENDANCE_CACHE_TTL = 30 * 1000;
+
+function invalidateAttendanceCache() {
+  attendanceCache.clear();
+}
+
 async function listAttendance(query, scopedEmployeeId = null) {
+  const cacheKey = `${scopedEmployeeId || 'all'}:${JSON.stringify(query || {})}`;
+  const cached = attendanceCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && now - cached.timestamp < ATTENDANCE_CACHE_TTL) {
+    return cached.data;
+  }
+
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { employeeId, status, from, to } = query;
 
@@ -56,7 +71,9 @@ async function listAttendance(query, scopedEmployeeId = null) {
       : null,
   }));
 
-  return formatListResponse(formattedRecords, total, page, pageSize);
+  const response = formatListResponse(formattedRecords, total, page, pageSize);
+  attendanceCache.set(cacheKey, { timestamp: now, data: response });
+  return response;
 }
 
 async function getAttendanceById(id, scopedEmployeeId = null) {

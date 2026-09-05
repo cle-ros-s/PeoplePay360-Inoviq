@@ -5,7 +5,22 @@ const { sendPayslipEmail } = require('./emailSender.service');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
 
+const payslipCache = new Map();
+const PAYSLIP_CACHE_TTL = 30 * 1000;
+
+function invalidatePayslipCache() {
+  payslipCache.clear();
+}
+
 async function listPayslips(query, scopedEmployeeId = null) {
+  const cacheKey = `${scopedEmployeeId || 'all'}:${JSON.stringify(query || {})}`;
+  const cached = payslipCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && now - cached.timestamp < PAYSLIP_CACHE_TTL) {
+    return cached.data;
+  }
+
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { payrunId, employeeId, status, period } = query;
 
@@ -75,7 +90,9 @@ async function listPayslips(query, scopedEmployeeId = null) {
     updatedAt: p.updatedAt,
   }));
 
-  return formatListResponse(formatted, total, page, pageSize);
+  const response = formatListResponse(formatted, total, page, pageSize);
+  payslipCache.set(cacheKey, { timestamp: now, data: response });
+  return response;
 }
 
 async function getPayslipById(id, scopedEmployeeId = null) {
@@ -171,7 +188,7 @@ async function updatePayslip(id, data, scopedEmployeeId = null) {
       });
     }
 
-    return tx.payslip.update({
+    const updated = await tx.payslip.update({
       where: { id },
       data: {
         workedDays,
@@ -186,6 +203,8 @@ async function updatePayslip(id, data, scopedEmployeeId = null) {
         employee: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
     });
+    invalidatePayslipCache();
+    return updated;
   });
 }
 
@@ -205,4 +224,5 @@ module.exports = {
   updatePayslip,
   getPayslipPdf,
   sendSinglePayslipEmail,
+  invalidatePayslipCache,
 };

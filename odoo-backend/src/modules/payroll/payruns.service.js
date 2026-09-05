@@ -5,6 +5,8 @@ const { generatePayrunWarnings } = require('./payrollWarnings.service');
 const { sendBulkPayrunPayslips } = require('./emailSender.service');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
+const { invalidatePayslipCache } = require('./payslips.service');
+const { invalidateDashboardCache } = require('../dashboard/dashboard.service');
 
 /**
  * Lists eligible employees for a payrun without modifying the database.
@@ -321,6 +323,8 @@ async function computePayrun(id) {
 
   // Regenerate warnings after compute transaction commits
   await generatePayrunWarnings(id);
+  invalidatePayslipCache();
+  invalidateDashboardCache();
 
   return getPayrunById(id);
 }
