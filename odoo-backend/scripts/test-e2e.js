@@ -42,7 +42,7 @@ function request(method, path, body = null, token = null) {
 }
 
 async function runE2ETests() {
-  console.log('🚀 Starting Comprehensive End-to-End API Test Suite...');
+  console.log(' Starting Comprehensive End-to-End API Test Suite...');
 
   // Start temporary server
   await new Promise((resolve) => {

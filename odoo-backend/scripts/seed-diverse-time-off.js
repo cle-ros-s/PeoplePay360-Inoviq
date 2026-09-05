@@ -156,7 +156,7 @@ async function seedDiverseTimeOff() {
   }
 
   await prisma.timeOffRequest.createMany({ data: requestsToCreate });
-  console.log(`✅ Created ${requestsToCreate.length} diverse Time Off Requests in bulk!`);
+  console.log(` Created ${requestsToCreate.length} diverse Time Off Requests in bulk!`);
 
   // Verify
   const created = await prisma.timeOffRequest.findMany({

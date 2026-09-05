@@ -43,11 +43,14 @@ export default function TimeOffRequestFormPage({ isOpen, onClose }) {
   });
   const employees = empData?.data || (Array.isArray(empData) ? empData : []);
 
+  const today = new Date().toISOString().split('T')[0];
+
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    getValues,
     reset,
     formState: { errors },
   } = useForm({
@@ -55,8 +58,8 @@ export default function TimeOffRequestFormPage({ isOpen, onClose }) {
     defaultValues: {
       employeeId: isEmployee ? (currentEmpId || '') : '',
       timeOffTypeId: '',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
+      startDate: today,
+      endDate: today,
       duration: 1,
       reason: '',
     },
@@ -65,31 +68,54 @@ export default function TimeOffRequestFormPage({ isOpen, onClose }) {
   const startDateVal = watch('startDate');
   const endDateVal = watch('endDate');
 
-  // Sync employeeId and default type when modal opens or permissions load
+  // Initialize or reset form state when modal opens
   useEffect(() => {
     if (isOpen) {
       setErrorMessage('');
       setSuccessMessage('');
-      if (isEmployee && currentEmpId) {
-        setValue('employeeId', currentEmpId);
-      } else if (!isEmployee && employees.length > 0) {
-        setValue('employeeId', (prev) => prev || employees[0].id);
-      }
-      if (timeOffTypes.length > 0) {
-        setValue('timeOffTypeId', (prev) => prev || timeOffTypes[0].id);
+      const defaultEmp = isEmployee ? (currentEmpId || '') : (employees[0]?.id || '');
+      const defaultType = timeOffTypes[0]?.id || '';
+
+      reset({
+        employeeId: defaultEmp,
+        timeOffTypeId: defaultType,
+        startDate: today,
+        endDate: today,
+        duration: 1,
+        reason: '',
+      });
+    }
+  }, [isOpen, isEmployee, currentEmpId]);
+
+  // Set default timeOffTypeId if it was empty when types loaded
+  useEffect(() => {
+    if (isOpen && timeOffTypes.length > 0) {
+      const currentVal = getValues('timeOffTypeId');
+      if (!currentVal) {
+        setValue('timeOffTypeId', timeOffTypes[0].id, { shouldValidate: true });
       }
     }
-  }, [isOpen, isEmployee, currentEmpId, employees, timeOffTypes, setValue]);
+  }, [isOpen, timeOffTypes, getValues, setValue]);
 
-  // Calculate default duration in days when dates change
+  // Set default employeeId if it was empty when employees loaded
+  useEffect(() => {
+    if (isOpen && !isEmployee && employees.length > 0) {
+      const currentEmp = getValues('employeeId');
+      if (!currentEmp) {
+        setValue('employeeId', employees[0].id, { shouldValidate: true });
+      }
+    }
+  }, [isOpen, isEmployee, employees, getValues, setValue]);
+
+  // Dynamically calculate duration when dates change, WITHOUT affecting timeOffTypeId
   useEffect(() => {
     if (startDateVal && endDateVal) {
       const s = new Date(startDateVal);
       const e = new Date(endDateVal);
       const diffTime = e - s;
-      if (diffTime >= 0) {
+      if (!isNaN(diffTime) && diffTime >= 0) {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        setValue('duration', diffDays);
+        setValue('duration', diffDays, { shouldValidate: true, shouldDirty: false });
       }
     }
   }, [startDateVal, endDateVal, setValue]);
