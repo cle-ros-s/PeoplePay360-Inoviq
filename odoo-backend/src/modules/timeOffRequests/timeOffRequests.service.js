@@ -36,6 +36,7 @@ async function listTimeOffRequests(query, scopedEmployeeId = null) {
             email: true,
             jobPosition: true,
             department: { select: { id: true, name: true } },
+            user: { select: { id: true, role: true, email: true } },
           },
         },
         timeOffType: {
@@ -55,6 +56,7 @@ async function listTimeOffRequests(query, scopedEmployeeId = null) {
       ? {
           ...req.employee,
           name: `${req.employee.firstName || ''} ${req.employee.lastName || ''}`.trim(),
+          role: req.employee.user?.role || 'EMPLOYEE',
         }
       : null,
   }));

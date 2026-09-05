@@ -9,9 +9,32 @@ import DataTable from '../../components/common/DataTable';
 import FilterBar from '../../components/common/FilterBar';
 import StatusBadge from '../../components/common/StatusBadge';
 import TimeOffRequestFormPage from './TimeOffRequestFormPage';
-import { Plus, CheckCircle, XCircle, Palmtree } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Palmtree, MessageSquareText, Shield, User, Briefcase } from 'lucide-react';
 import { formatDate, formatEnumLabel } from '../../utils/formatters';
 import { TimeOffReqStatus } from '../../utils/constants';
+
+const ROLE_BADGE_STYLES = {
+  ADMIN: 'bg-purple-50 text-purple-700 border-purple-200/80',
+  HR_MANAGER: 'bg-blue-50 text-blue-700 border-blue-200/80',
+  HR_PAYROLL_MANAGER: 'bg-amber-50 text-amber-700 border-amber-200/80',
+  HR_PAYROLL_USER: 'bg-cyan-50 text-cyan-700 border-cyan-200/80',
+  EMPLOYEE: 'bg-slate-50 text-slate-700 border-slate-200/80',
+};
+
+const getAvatarBg = (name = '') => {
+  const colors = [
+    'bg-blue-100 text-blue-700',
+    'bg-indigo-100 text-indigo-700',
+    'bg-purple-100 text-purple-700',
+    'bg-rose-100 text-rose-700',
+    'bg-emerald-100 text-emerald-700',
+    'bg-amber-100 text-amber-700',
+    'bg-cyan-100 text-cyan-700',
+  ];
+  let sum = 0;
+  for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i);
+  return colors[sum % colors.length];
+};
 
 export default function TimeOffRequestsPage() {
   const queryClient = useQueryClient();
@@ -20,6 +43,7 @@ export default function TimeOffRequestsPage() {
 
   const employeeIdFilter = searchParams.get('employeeId') || (isEmployee ? currentEmpId : '');
   const statusFilter = searchParams.get('status') || '';
+  const roleFilter = searchParams.get('role') || '';
   const [page, setPage] = useState(1);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
 
@@ -43,8 +67,11 @@ export default function TimeOffRequestsPage() {
       }),
   });
 
-  const requestsList = requestsData?.data || (Array.isArray(requestsData) ? requestsData : []);
-  const totalRecords = requestsData?.total || requestsList.length;
+  let requestsList = requestsData?.data || (Array.isArray(requestsData) ? requestsData : []);
+  if (roleFilter) {
+    requestsList = requestsList.filter((r) => (r.employee?.role || r.employee?.user?.role) === roleFilter);
+  }
+  const totalRecords = roleFilter ? requestsList.length : (requestsData?.total || requestsList.length);
 
   // Approve mutation
   const approveMutation = useMutation({
@@ -80,23 +107,46 @@ export default function TimeOffRequestsPage() {
 
   const columns = [
     {
-      header: 'Employee',
+      header: 'Employee & Role',
       accessorKey: 'employee',
-      render: (r) => (
-        <div>
-          <div className="font-semibold text-gray-900">
-            {r.employee?.name || (r.employee ? `${r.employee.firstName || ''} ${r.employee.lastName || ''}`.trim() : null) || 'Unassigned'}
+      render: (r) => {
+        const empName = r.employee?.name || (r.employee ? `${r.employee.firstName || ''} ${r.employee.lastName || ''}`.trim() : null) || 'Unassigned';
+        const empRole = r.employee?.role || r.employee?.user?.role || 'EMPLOYEE';
+        const badgeStyle = ROLE_BADGE_STYLES[empRole] || ROLE_BADGE_STYLES.EMPLOYEE;
+        const initial = empName.charAt(0).toUpperCase();
+
+        return (
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-xs ${getAvatarBg(empName)}`}>
+              {initial}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-900 text-sm">{empName}</span>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badgeStyle}`}>
+                  {formatEnumLabel(empRole)}
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                <span>{r.employee?.jobPosition || 'Staff'}</span>
+                {r.employee?.department?.name && (
+                  <>
+                    <span>•</span>
+                    <span className="text-gray-400">{r.employee.department.name}</span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="text-xs text-gray-500">{r.employee?.jobPosition}</div>
-        </div>
-      ),
+        );
+      },
     },
     {
       header: 'Leave Type',
       accessorKey: 'timeOffType',
       render: (r) => (
-        <span className="font-medium text-gray-900 flex items-center gap-1.5">
-          <Palmtree className="w-3.5 h-3.5 text-blue-600" />
+        <span className="font-medium text-gray-900 flex items-center gap-1.5 text-xs">
+          <Palmtree className="w-3.5 h-3.5 text-blue-600 shrink-0" />
           {r.timeOffType?.name || 'Leave'}
         </span>
       ),
@@ -105,10 +155,10 @@ export default function TimeOffRequestsPage() {
       header: 'Duration & Period',
       render: (r) => (
         <div>
-          <div className="font-bold text-gray-900">
+          <div className="font-bold text-gray-900 text-xs">
             {r.duration} {r.timeOffType?.unit?.toLowerCase() || 'days'}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-[11px] text-gray-500 mt-0.5">
             {formatDate(r.startDate)} — {formatDate(r.endDate)}
           </div>
         </div>
@@ -117,7 +167,14 @@ export default function TimeOffRequestsPage() {
     {
       header: 'Reason',
       accessorKey: 'reason',
-      render: (r) => <span className="text-xs text-gray-600 max-w-xs block truncate">{r.reason || '—'}</span>,
+      render: (r) => (
+        <div className="flex items-start gap-1.5 max-w-sm">
+          <MessageSquareText className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
+          <span className="text-xs text-gray-700 font-medium leading-tight line-clamp-2">
+            {r.reason || '—'}
+          </span>
+        </div>
+      ),
     },
     {
       header: 'Status',
@@ -139,7 +196,7 @@ export default function TimeOffRequestsPage() {
                 <button
                   onClick={() => approveMutation.mutate(r.id)}
                   disabled={approveMutation.isPending}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
                   title="Approve Leave Request"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
@@ -148,7 +205,7 @@ export default function TimeOffRequestsPage() {
                 <button
                   onClick={() => refuseMutation.mutate(r.id)}
                   disabled={refuseMutation.isPending}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
                   title="Refuse Leave Request"
                 >
                   <XCircle className="w-3.5 h-3.5" />
@@ -161,7 +218,7 @@ export default function TimeOffRequestsPage() {
               <button
                 onClick={() => refuseMutation.mutate(r.id)}
                 disabled={refuseMutation.isPending}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
                 title="Revoke / Refuse Leave Request"
               >
                 <XCircle className="w-3.5 h-3.5" />
@@ -173,7 +230,7 @@ export default function TimeOffRequestsPage() {
               <button
                 onClick={() => approveMutation.mutate(r.id)}
                 disabled={approveMutation.isPending}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
                 title="Re-Approve Leave Request"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
@@ -196,6 +253,18 @@ export default function TimeOffRequestsPage() {
         value: e.id,
         label: e.name || `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.email || 'Unknown',
       })),
+    });
+    filterConfigs.push({
+      label: 'Filter Role',
+      value: roleFilter,
+      onChange: (val) => handleFilterChange('role', val),
+      options: [
+        { value: 'ADMIN', label: 'Admin' },
+        { value: 'HR_MANAGER', label: 'HR Manager' },
+        { value: 'HR_PAYROLL_MANAGER', label: 'Payroll Manager' },
+        { value: 'HR_PAYROLL_USER', label: 'Payroll Specialist' },
+        { value: 'EMPLOYEE', label: 'Standard Employee' },
+      ],
     });
   }
   filterConfigs.push({

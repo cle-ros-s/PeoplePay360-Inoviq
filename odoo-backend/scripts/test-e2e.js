@@ -65,11 +65,11 @@ async function runE2ETests() {
     // 2. Authentication for all 5 roles
     console.log('\n[2] Testing Authentication for all 5 roles...');
     const roles = [
-      { email: 'admin@peoplepay360.dev', role: 'ADMIN' },
-      { email: 'hr.manager@peoplepay360.dev', role: 'HR_MANAGER' },
-      { email: 'payroll.user@peoplepay360.dev', role: 'HR_PAYROLL_USER' },
-      { email: 'payroll.manager@peoplepay360.dev', role: 'HR_PAYROLL_MANAGER' },
-      { email: 'employee@peoplepay360.dev', role: 'EMPLOYEE' },
+      { email: 'admin@payflux.com', role: 'ADMIN' },
+      { email: 'hr.manager@payflux.com', role: 'HR_MANAGER' },
+      { email: 'payroll.user@payflux.com', role: 'HR_PAYROLL_USER' },
+      { email: 'payroll.manager@payflux.com', role: 'HR_PAYROLL_MANAGER' },
+      { email: 'employee@payflux.com', role: 'EMPLOYEE' },
     ];
 
     const tokens = {};
@@ -87,7 +87,7 @@ async function runE2ETests() {
 
     // Invalid login test
     const badLogin = await request('POST', '/api/auth/login', {
-      email: 'admin@peoplepay360.dev',
+      email: 'admin@payflux.com',
       password: 'WrongPassword!',
     });
     assert.strictEqual(badLogin.status, 401);
@@ -97,7 +97,7 @@ async function runE2ETests() {
     // GET /api/auth/me test
     const meRes = await request('GET', '/api/auth/me', null, tokens.EMPLOYEE);
     assert.strictEqual(meRes.status, 200);
-    assert.strictEqual(meRes.body.email, 'employee@peoplepay360.dev');
+    assert.strictEqual(meRes.body.email, 'employee@payflux.com');
     console.log('  ✓ /api/auth/me returned current user profile');
 
     // 3. RBAC & Security tests
@@ -117,7 +117,7 @@ async function runE2ETests() {
     const empListScoped = await request('GET', '/api/employees', null, tokens.EMPLOYEE);
     assert.strictEqual(empListScoped.status, 200);
     assert.strictEqual(empListScoped.body.data.length, 1);
-    assert.strictEqual(empListScoped.body.data[0].email, 'employee@peoplepay360.dev');
+    assert.strictEqual(empListScoped.body.data[0].email, 'employee@payflux.com');
     console.log('  ✓ Employee view scoped strictly to own record');
 
     // 5. Schedules & Hours Calculation
@@ -185,7 +185,7 @@ async function runE2ETests() {
     const ptoTypeId = ptoTypes.body.data.find((t) => t.code === 'PTO').id;
 
     // Ensure employee has active allocation with balance for testing
-    const testEmp = await prisma.employee.findFirst({ where: { email: 'employee@peoplepay360.dev' } });
+    const testEmp = await prisma.employee.findFirst({ where: { email: 'employee@payflux.com' } });
     const empId = testEmp ? testEmp.id : null;
     if (empId) {
       const existingAlloc = await prisma.leaveAllocation.findFirst({
