@@ -106,7 +106,7 @@ export default function PayrollDashboardPage() {
   });
 
   // Query employees for the dashboard directory table
-  const { data: empResponse } = useQuery({
+  const { data: empResponse, isLoading: empLoading } = useQuery({
     queryKey: ['dashboard-employees', { search: empSearch, status: empStatusFilter, type: effectiveType, department: effectiveDept, role: empRoleFilter, page: empPage, pageSize: empPageSize }],
     queryFn: () =>
       employeesApi.getEmployees({
