@@ -91,14 +91,15 @@ export default function PayrollDashboardPage() {
   const effectiveDept = empDeptFilter || departmentId || undefined;
   const effectiveType = empTypeFilter || employeeType || undefined;
 
-  // Live API Dashboard Queries - Reactive Unified Summary
+  // Live API Dashboard Queries - Instant Reactive Unified Summary
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
     queryKey: ['dashboard-summary', params],
     queryFn: () => dashboardApi.getSummary(params),
-    staleTime: 30 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     placeholderData: (previousData) => previousData,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   // Query employees for the dashboard directory table
@@ -113,8 +114,10 @@ export default function PayrollDashboardPage() {
         page: empPage,
         pageSize: empPageSize,
       }),
-    staleTime: 30 * 1000,
+    staleTime: 5 * 60 * 1000,
     placeholderData: (previousData) => previousData,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   let rawEmployeesList = empResponse?.data || (Array.isArray(empResponse) ? empResponse : []);
