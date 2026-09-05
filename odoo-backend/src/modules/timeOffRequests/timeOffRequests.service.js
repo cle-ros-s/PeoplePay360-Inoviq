@@ -118,8 +118,19 @@ async function createTimeOffRequest(data, user) {
   });
 }
 
+async function executeTx(fn) {
+  try {
+    return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+  } catch (err) {
+    if (err.code === 'P2028' || err.message?.includes('Transaction')) {
+      return await prisma.$transaction(fn, { maxWait: 10000, timeout: 20000 });
+    }
+    throw err;
+  }
+}
+
 async function approveTimeOffRequest(id, user) {
-  return prisma.$transaction(async (tx) => {
+  return executeTx(async (tx) => {
     const request = await tx.timeOffRequest.findUnique({
       where: { id },
       include: { timeOffType: true },
@@ -203,7 +214,7 @@ async function approveTimeOffRequest(id, user) {
 }
 
 async function refuseTimeOffRequest(id, refusalReason, user) {
-  return prisma.$transaction(async (tx) => {
+  return executeTx(async (tx) => {
     const request = await tx.timeOffRequest.findUnique({
       where: { id },
       include: { allocation: true },
