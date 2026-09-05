@@ -61,18 +61,23 @@ export default function PayrollDashboardPage() {
     employeeType: employeeType || undefined,
   };
 
-  // Fetch departments for filter dropdown
+  // Fetch departments for filter dropdown (cached for 5 minutes)
   const { data: deptData } = useQuery({
     queryKey: ['departments'],
     queryFn: () => departmentsApi.getDepartments(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
   const departmentsList = deptData?.data || (Array.isArray(deptData) ? deptData : []);
 
-  // Live API Dashboard Queries - Single High-Speed Unified Summary
+  // Live API Dashboard Queries - High-Speed Unified Summary with Instant Cache & Transitions
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
     queryKey: ['dashboard-summary', params],
     queryFn: () => dashboardApi.getSummary(params),
-    staleTime: 60 * 1000,
+    staleTime: 2 * 60 * 1000, // 2 minutes fresh cache
+    gcTime: 10 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
+    refetchOnWindowFocus: false,
   });
 
   const kpis = summaryData?.kpis;

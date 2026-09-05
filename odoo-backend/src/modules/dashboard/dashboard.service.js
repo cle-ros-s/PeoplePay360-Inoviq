@@ -1,5 +1,26 @@
 const prisma = require('../../config/prisma');
 
+// In-Memory Cache Store for Blazing Fast Dashboard Delivery (<5ms)
+const dashboardCache = new Map();
+const inFlightRequests = new Map();
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
+
+function getCacheKey(prefix, query = {}) {
+  const sorted = Object.keys(query)
+    .sort()
+    .reduce((acc, k) => {
+      if (query[k] !== undefined && query[k] !== null && query[k] !== '') {
+        acc[k] = query[k];
+      }
+      return acc;
+    }, {});
+  return `${prefix}:${JSON.stringify(sorted)}`;
+}
+
+function invalidateDashboardCache() {
+  dashboardCache.clear();
+}
+
 /**
  * Builds standard date and relation filters from query params
  */
@@ -405,36 +426,61 @@ async function getDashboardWarnings() {
 }
 
 /**
- * Single High-Speed Unified Summary endpoint
+ * Single High-Speed Unified Summary endpoint with In-Memory Caching & Deduplication
  */
 async function getDashboardSummary(query = {}) {
-  const [
-    kpis,
-    salaryCost,
-    netTrend,
-    payslipBreakdown,
-    attendanceOverview,
-    timeOffOverview,
-    warnings,
-  ] = await Promise.all([
-    getKpis(query),
-    getSalaryCostByDepartment(query),
-    getNetSalaryTrend(),
-    getPayslipStatusBreakdown(query),
-    getAttendanceOverview(query),
-    getTimeOffOverview(query),
-    getDashboardWarnings(),
-  ]);
+  const cacheKey = getCacheKey('summary', query);
+  const cached = dashboardCache.get(cacheKey);
+  const now = Date.now();
 
-  return {
-    kpis,
-    salaryCost,
-    netTrend,
-    payslipBreakdown,
-    attendanceOverview,
-    timeOffOverview,
-    warnings,
-  };
+  if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  // If identical request is already running, return the existing in-flight promise
+  if (inFlightRequests.has(cacheKey)) {
+    return inFlightRequests.get(cacheKey);
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      const [
+        kpis,
+        salaryCost,
+        netTrend,
+        payslipBreakdown,
+        attendanceOverview,
+        timeOffOverview,
+        warnings,
+      ] = await Promise.all([
+        getKpis(query),
+        getSalaryCostByDepartment(query),
+        getNetSalaryTrend(),
+        getPayslipStatusBreakdown(query),
+        getAttendanceOverview(query),
+        getTimeOffOverview(query),
+        getDashboardWarnings(),
+      ]);
+
+      const data = {
+        kpis,
+        salaryCost,
+        netTrend,
+        payslipBreakdown,
+        attendanceOverview,
+        timeOffOverview,
+        warnings,
+      };
+
+      dashboardCache.set(cacheKey, { timestamp: Date.now(), data });
+      return data;
+    } finally {
+      inFlightRequests.delete(cacheKey);
+    }
+  })();
+
+  inFlightRequests.set(cacheKey, fetchPromise);
+  return fetchPromise;
 }
 
 module.exports = {
@@ -446,4 +492,5 @@ module.exports = {
   getTimeOffOverview,
   getDashboardWarnings,
   getDashboardSummary,
+  invalidateDashboardCache,
 };
