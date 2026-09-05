@@ -87,29 +87,32 @@ export default function PayrollDashboardPage() {
   });
   const departmentsList = deptData?.data || (Array.isArray(deptData) ? deptData : []);
 
-  // Live API Dashboard Queries - High-Speed Unified Summary with Instant Cache & Transitions
+  const effectiveDept = empDeptFilter || departmentId || undefined;
+  const effectiveType = empTypeFilter || employeeType || undefined;
+
+  // Live API Dashboard Queries - Reactive Unified Summary
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
     queryKey: ['dashboard-summary', params],
     queryFn: () => dashboardApi.getSummary(params),
-    staleTime: 2 * 60 * 1000, // 2 minutes fresh cache
-    gcTime: 10 * 60 * 1000,
+    staleTime: 5 * 1000,
+    gcTime: 5 * 60 * 1000,
     placeholderData: (previousData) => previousData,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 
   // Query employees for the dashboard directory table
   const { data: empResponse, isLoading: empLoading } = useQuery({
-    queryKey: ['dashboard-employees', { search: empSearch, status: empStatusFilter, type: empTypeFilter, department: empDeptFilter, page: empPage, pageSize: empPageSize }],
+    queryKey: ['dashboard-employees', { search: empSearch, status: empStatusFilter, type: effectiveType, department: effectiveDept, page: empPage, pageSize: empPageSize }],
     queryFn: () =>
       employeesApi.getEmployees({
         search: empSearch || undefined,
         status: empStatusFilter || undefined,
-        type: empTypeFilter || undefined,
-        department: empDeptFilter || undefined,
+        type: effectiveType,
+        department: effectiveDept,
         page: empPage,
         pageSize: empPageSize,
       }),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 1000,
     placeholderData: (previousData) => previousData,
   });
 
@@ -167,6 +170,11 @@ export default function PayrollDashboardPage() {
     setPeriod('');
     setDepartmentId('');
     setEmployeeType('');
+    setEmpSearch('');
+    setEmpStatusFilter('');
+    setEmpTypeFilter('');
+    setEmpDeptFilter('');
+    setEmpPage(1);
   };
 
   // CSV Extraction of all 60 employee details

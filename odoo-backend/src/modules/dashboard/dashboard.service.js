@@ -3,7 +3,7 @@ const prisma = require('../../config/prisma');
 // In-Memory Cache Store for Blazing Fast Dashboard Delivery (<5ms)
 const dashboardCache = new Map();
 const inFlightRequests = new Map();
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
+const CACHE_TTL_MS = 5 * 1000; // 5 seconds TTL for instant reactivity
 
 function getCacheKey(prefix, query = {}) {
   const sorted = Object.keys(query)
@@ -26,7 +26,7 @@ function invalidateDashboardCache() {
  */
 function buildDashboardFilters(query = {}) {
   const { period, department, employeeType, from, to } = query;
-  const employeeWhere = { status: 'ACTIVE' };
+  const employeeWhere = {};
 
   if (department) {
     employeeWhere.OR = [
@@ -38,18 +38,78 @@ function buildDashboardFilters(query = {}) {
     employeeWhere.employeeType = employeeType;
   }
 
-  const dateFilter = {};
-  if (from) dateFilter.gte = new Date(from);
-  if (to) dateFilter.lte = new Date(to);
+  let startDate = null;
+  let endDate = null;
 
-  return { employeeWhere, dateFilter, period };
+  if (period) {
+    const parts = period.split('-').map(Number);
+    if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      const year = parts[0];
+      const month = parts[1];
+      startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+      endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+    }
+  } else if (from || to) {
+    if (from) startDate = new Date(from);
+    if (to) endDate = new Date(to);
+  }
+
+  const payslipDateWhere = {};
+  if (startDate && endDate) {
+    payslipDateWhere.periodStart = { gte: startDate, lte: endDate };
+  } else if (startDate) {
+    payslipDateWhere.periodStart = { gte: startDate };
+  } else if (endDate) {
+    payslipDateWhere.periodStart = { lte: endDate };
+  }
+
+  const attendanceDateWhere = {};
+  if (startDate && endDate) {
+    attendanceDateWhere.checkIn = { gte: startDate, lte: endDate };
+  } else if (startDate) {
+    attendanceDateWhere.checkIn = { gte: startDate };
+  } else if (endDate) {
+    attendanceDateWhere.checkIn = { lte: endDate };
+  }
+
+  const timeOffDateWhere = {};
+  if (startDate && endDate) {
+    timeOffDateWhere.OR = [
+      { startDate: { lte: endDate }, endDate: { gte: startDate } },
+    ];
+  }
+
+  return {
+    employeeWhere,
+    payslipDateWhere,
+    attendanceDateWhere,
+    timeOffDateWhere,
+    startDate,
+    endDate,
+    period,
+  };
 }
 
 /**
  * KPI aggregation endpoint (Optimized with Promise.all parallel database queries)
  */
 async function getKpis(query) {
-  const { employeeWhere } = buildDashboardFilters(query);
+  const { employeeWhere, payslipDateWhere, attendanceDateWhere, timeOffDateWhere } = buildDashboardFilters(query);
+
+  const payslipWhere = {
+    ...payslipDateWhere,
+    ...(Object.keys(employeeWhere).length ? { employee: employeeWhere } : {}),
+  };
+
+  const attendanceWhere = {
+    ...attendanceDateWhere,
+    ...(Object.keys(employeeWhere).length ? { employee: employeeWhere } : {}),
+  };
+
+  const timeOffWhere = {
+    ...timeOffDateWhere,
+    ...(Object.keys(employeeWhere).length ? { employee: employeeWhere } : {}),
+  };
 
   const [
     paidPayslipsAgg,
@@ -63,19 +123,19 @@ async function getKpis(query) {
     prisma.payslip.aggregate({
       where: {
         status: 'PAID',
-        employee: employeeWhere,
+        ...payslipWhere,
       },
       _sum: { net: true, gross: true, basic: true },
       _avg: { net: true },
       _count: { id: true },
     }),
     prisma.payslip.count({
-      where: { employee: employeeWhere },
+      where: payslipWhere,
     }),
     prisma.timeOffRequest.aggregate({
       where: {
         status: 'APPROVED',
-        employee: employeeWhere,
+        ...timeOffWhere,
       },
       _count: { id: true },
       _sum: { duration: true },
@@ -83,18 +143,19 @@ async function getKpis(query) {
     prisma.timeOffRequest.count({
       where: {
         status: 'PENDING',
-        employee: employeeWhere,
+        ...timeOffWhere,
       },
     }),
     prisma.attendance.groupBy({
       by: ['status'],
-      where: {
-        employee: employeeWhere,
-      },
+      where: attendanceWhere,
       _count: { id: true },
     }),
     prisma.employee.count({
-      where: employeeWhere,
+      where: {
+        status: 'ACTIVE',
+        ...employeeWhere,
+      },
     }),
     prisma.payrollWarning.count({
       where: { isResolved: false },
@@ -151,24 +212,39 @@ async function getKpis(query) {
  * Salary cost breakdown grouped by Department (Pure DB Aggregation)
  */
 async function getSalaryCostByDepartment(query) {
+  const { employeeWhere } = buildDashboardFilters(query);
+  const deptWhere = {};
+  if (query?.department) {
+    deptWhere.OR = [
+      { id: query.department },
+      { name: { contains: query.department, mode: 'insensitive' } },
+    ];
+  }
+
+  const contractWhere = {
+    status: 'RUNNING',
+    departmentId: { not: null },
+  };
+  if (query?.employeeType) {
+    contractWhere.employee = { employeeType: query.employeeType };
+  }
+
   const [departments, contractAggs] = await Promise.all([
     prisma.department.findMany({
+      where: deptWhere,
       select: {
         id: true,
         name: true,
         code: true,
         _count: {
-          select: { employees: { where: { status: 'ACTIVE' } } },
+          select: { employees: { where: { status: 'ACTIVE', ...employeeWhere } } },
         },
       },
       orderBy: { name: 'asc' },
     }),
     prisma.contract.groupBy({
       by: ['departmentId'],
-      where: {
-        status: 'RUNNING',
-        departmentId: { not: null },
-      },
+      where: contractWhere,
       _sum: { wage: true },
     }),
   ]);
@@ -256,11 +332,15 @@ async function getNetSalaryTrend() {
  * Payslip status breakdown
  */
 async function getPayslipStatusBreakdown(query) {
-  const { employeeWhere } = buildDashboardFilters(query);
+  const { employeeWhere, payslipDateWhere } = buildDashboardFilters(query);
+  const payslipWhere = {
+    ...payslipDateWhere,
+    ...(Object.keys(employeeWhere).length ? { employee: employeeWhere } : {}),
+  };
 
   const statusGroups = await prisma.payslip.groupBy({
     by: ['status'],
-    where: { employee: employeeWhere },
+    where: payslipWhere,
     _count: { id: true },
     _sum: { net: true, gross: true },
   });
@@ -281,23 +361,27 @@ async function getPayslipStatusBreakdown(query) {
  * Attendance Overview with breakdown by status and hours
  */
 async function getAttendanceOverview(query) {
-  const { employeeWhere } = buildDashboardFilters(query);
+  const { employeeWhere, attendanceDateWhere } = buildDashboardFilters(query);
+  const attendanceWhere = {
+    ...attendanceDateWhere,
+    ...(Object.keys(employeeWhere).length ? { employee: employeeWhere } : {}),
+  };
 
   const [statusGroups, totalStats, manualEditsCount] = await Promise.all([
     prisma.attendance.groupBy({
       by: ['status'],
-      where: { employee: employeeWhere },
+      where: attendanceWhere,
       _count: { id: true },
       _sum: { workedHours: true },
     }),
     prisma.attendance.aggregate({
-      where: { employee: employeeWhere },
+      where: attendanceWhere,
       _count: { id: true },
       _sum: { workedHours: true },
       _avg: { workedHours: true },
     }),
     prisma.attendance.count({
-      where: { employee: employeeWhere, isManualEdit: true },
+      where: { ...attendanceWhere, isManualEdit: true },
     }),
   ]);
 
@@ -339,23 +423,30 @@ async function getAttendanceOverview(query) {
  * Time Off Overview (Parallelized)
  */
 async function getTimeOffOverview(query) {
-  const { employeeWhere } = buildDashboardFilters(query);
+  const { employeeWhere, timeOffDateWhere } = buildDashboardFilters(query);
+  const timeOffWhere = {
+    ...timeOffDateWhere,
+    ...(Object.keys(employeeWhere).length ? { employee: employeeWhere } : {}),
+  };
 
   const [statusGroups, typeGroups, activeAllocations, types] = await Promise.all([
     prisma.timeOffRequest.groupBy({
       by: ['status'],
-      where: { employee: employeeWhere },
+      where: timeOffWhere,
       _count: { id: true },
       _sum: { duration: true },
     }),
     prisma.timeOffRequest.groupBy({
       by: ['timeOffTypeId'],
-      where: { employee: employeeWhere, status: 'APPROVED' },
+      where: { ...timeOffWhere, status: 'APPROVED' },
       _count: { id: true },
       _sum: { duration: true },
     }),
     prisma.leaveAllocation.count({
-      where: { status: 'APPROVED' },
+      where: {
+        status: 'APPROVED',
+        ...(Object.keys(employeeWhere).length ? { employee: employeeWhere } : {}),
+      },
     }),
     prisma.timeOffType.findMany({
       select: { id: true, name: true },
