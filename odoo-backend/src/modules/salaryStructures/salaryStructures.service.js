@@ -69,11 +69,13 @@ async function getSalaryStructureById(id) {
 }
 
 async function createSalaryStructure(data) {
+  const code = (data.code || data.name.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 30)).toUpperCase();
+
   const existing = await prisma.salaryStructure.findFirst({
     where: {
       OR: [
         { name: { equals: data.name, mode: 'insensitive' } },
-        { code: { equals: data.code, mode: 'insensitive' } },
+        { code: { equals: code, mode: 'insensitive' } },
       ],
     },
   });
@@ -85,7 +87,7 @@ async function createSalaryStructure(data) {
   return prisma.salaryStructure.create({
     data: {
       name: data.name,
-      code: data.code.toUpperCase(),
+      code,
       isActive: data.isActive !== undefined ? data.isActive : true,
     },
     include: {
@@ -125,7 +127,7 @@ async function executeTx(fn) {
   }
 }
 
-async function reorderRules(id, ruleOrders) {
+async function reorderRules(id, payload) {
   const structure = await prisma.salaryStructure.findUnique({
     where: { id },
     include: { rules: true },
@@ -135,12 +137,23 @@ async function reorderRules(id, ruleOrders) {
     throw new AppError('SALARY_STRUCTURE_NOT_FOUND', 'Salary structure not found', 404);
   }
 
+  let items = [];
+  if (Array.isArray(payload)) {
+    items = typeof payload[0] === 'string' ? payload.map((ruleId, idx) => ({ ruleId, sequence: idx + 1 })) : payload;
+  } else if (payload && Array.isArray(payload.ruleOrders)) {
+    items = payload.ruleOrders;
+  } else if (payload && Array.isArray(payload.ruleIds)) {
+    items = payload.ruleIds.map((ruleId, idx) => ({ ruleId, sequence: idx + 1 }));
+  }
+
   return executeTx(async (tx) => {
-    for (const item of ruleOrders) {
-      await tx.salaryRule.update({
-        where: { id: item.ruleId },
-        data: { sequence: item.sequence },
-      });
+    for (const item of items) {
+      if (item.ruleId) {
+        await tx.salaryRule.update({
+          where: { id: item.ruleId },
+          data: { sequence: item.sequence },
+        });
+      }
     }
 
     return tx.salaryStructure.findUnique({

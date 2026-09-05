@@ -70,10 +70,14 @@ export default function SalaryStructureFormPage() {
   });
 
   const onSubmit = (values) => {
+    const payload = {
+      ...values,
+      code: values.code || values.name.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 30),
+    };
     if (isNewMode) {
-      createMutation.mutate(values);
+      createMutation.mutate(payload);
     } else {
-      updateMutation.mutate(values);
+      updateMutation.mutate(payload);
     }
   };
 

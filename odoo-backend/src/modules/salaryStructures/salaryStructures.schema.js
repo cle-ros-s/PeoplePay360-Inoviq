@@ -3,8 +3,9 @@ const { z } = require('zod');
 const createSalaryStructureSchema = {
   body: z.object({
     name: z.string().min(1, 'Structure name is required'),
-    code: z.string().min(1, 'Structure code is required'),
-    isActive: z.boolean().default(true),
+    code: z.string().min(1).optional(),
+    description: z.string().nullable().optional(),
+    isActive: z.boolean().optional(),
   }),
 };
 
@@ -15,6 +16,7 @@ const updateSalaryStructureSchema = {
   body: z.object({
     name: z.string().min(1).optional(),
     code: z.string().min(1).optional(),
+    description: z.string().nullable().optional(),
     isActive: z.boolean().optional(),
   }),
 };
@@ -24,12 +26,15 @@ const reorderRulesSchema = {
     id: z.string().uuid('Invalid salary structure ID'),
   }),
   body: z.object({
-    ruleOrders: z.array(
-      z.object({
-        ruleId: z.string().uuid('Invalid rule ID'),
-        sequence: z.number().int().positive('Sequence must be a positive integer'),
-      })
-    ).min(1, 'ruleOrders array is required'),
+    ruleOrders: z
+      .array(
+        z.object({
+          ruleId: z.string(),
+          sequence: z.number().int().positive('Sequence must be a positive integer'),
+        })
+      )
+      .optional(),
+    ruleIds: z.array(z.string()).optional(),
   }),
 };
 

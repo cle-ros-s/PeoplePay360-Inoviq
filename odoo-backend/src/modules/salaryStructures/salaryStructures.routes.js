@@ -50,6 +50,18 @@ router.patch(
   salaryStructuresController.reorderRules
 );
 
+router.get(
+  '/:id/rules',
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER'),
+  salaryStructuresController.getRulesForStructure
+);
+
+router.post(
+  '/:id/rules',
+  requireRole('ADMIN', 'HR_PAYROLL_MANAGER'),
+  salaryStructuresController.createRuleForStructure
+);
+
 router.delete(
   '/:id',
   requireRole('ADMIN', 'HR_PAYROLL_MANAGER'),

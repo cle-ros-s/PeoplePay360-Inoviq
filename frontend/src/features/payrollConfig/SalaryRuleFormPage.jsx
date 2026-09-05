@@ -101,7 +101,10 @@ export default function SalaryRuleFormPage({ isOpen, onClose, structureId, rule,
 
   const onSubmit = (values) => {
     // Clear irrelevant payload fields based on method
-    const payload = { ...values };
+    const payload = {
+      ...values,
+      computationType: values.computationMethod || values.computationType || 'FIXED',
+    };
     if (payload.computationMethod === ComputationMethod.FIXED) {
       payload.percentage = null;
       payload.percentageBasisCode = null;

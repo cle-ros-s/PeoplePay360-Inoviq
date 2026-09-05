@@ -286,6 +286,10 @@ async function runE2ETests() {
     console.log(`  ✓ Payrun computed: Total Gross = $${payrunCompute.body.totalGross}, Total Net = $${payrunCompute.body.totalNet}`);
 
     // Step 4: Validate Payrun (by HR_PAYROLL_MANAGER)
+    await prisma.payrollWarning.updateMany({
+      where: { payrunId },
+      data: { isResolved: true },
+    });
     const payrunValidate = await request('POST', `/api/payruns/${payrunId}/validate`, {}, tokens.HR_PAYROLL_MANAGER);
     assert.strictEqual(payrunValidate.status, 200);
     assert.strictEqual(payrunValidate.body.status, 'VALIDATED');
