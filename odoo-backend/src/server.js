@@ -1,3 +1,4 @@
+const http = require('http');
 const app = require('./app');
 const env = require('./config/env');
 const prisma = require('./config/prisma');
@@ -8,21 +9,24 @@ async function startServer() {
     await prisma.$connect();
     console.log('✓ Successfully connected to PostgreSQL database');
 
-    const server = app.listen(env.PORT, () => {
-      console.log(`✓ PeoplePay360 Backend API server running on port ${env.PORT}`);
-      console.log(`✓ Health endpoint: http://localhost:${env.PORT}/api/health`);
-    });
+    const server = http.createServer(app);
 
     server.on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
-        console.error(`❌ Port ${env.PORT} is in use (EADDRINUSE). Please release port ${env.PORT} or restart nodemon.`);
+        console.error(`⚠️ Port ${env.PORT} is temporarily busy (EADDRINUSE). Retrying listen in 1s...`);
+        setTimeout(() => {
+          try {
+            server.close();
+          } catch (e) {}
+          server.listen(env.PORT);
+        }, 1000);
       } else {
         console.error('❌ Server error:', error.message);
+        process.exit(1);
       }
-      process.exit(1);
     });
 
-    // Graceful shutdown helpers
+    // Graceful shutdown handlers
     const shutdown = async (signal) => {
       console.log(`\nShutting down gracefully (${signal})...`);
       server.close(async () => {
@@ -41,6 +45,12 @@ async function startServer() {
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
     process.once('SIGUSR2', () => shutdown('SIGUSR2'));
+
+    server.listen(env.PORT, () => {
+      console.log(`✓ PeoplePay360 Backend API server running on port ${env.PORT}`);
+      console.log(`✓ Health endpoint: http://localhost:${env.PORT}/api/health`);
+    });
+
   } catch (error) {
     console.error('FATAL: Could not start server:', error);
     process.exit(1);
@@ -49,4 +59,3 @@ async function startServer() {
 
 // Server initialization entry point
 startServer();
-
