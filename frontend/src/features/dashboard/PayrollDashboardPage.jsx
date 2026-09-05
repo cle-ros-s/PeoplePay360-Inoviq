@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../../api/dashboard.api';
 import { departmentsApi } from '../../api/departments.api';
@@ -9,11 +10,14 @@ import BarChartCard from '../../components/charts/BarChartCard';
 import LineChartCard from '../../components/charts/LineChartCard';
 import DonutStatusCard from '../../components/charts/DonutStatusCard';
 import StatusBadge from '../../components/common/StatusBadge';
-import { DollarSign, Users, FileCheck, Palmtree, Clock, AlertTriangle, Filter } from 'lucide-react';
+import { DollarSign, Users, FileCheck, Palmtree, Clock, AlertTriangle, Filter, UserPlus, Plus } from 'lucide-react';
 import { formatCurrency, formatEnumLabel } from '../../utils/formatters';
 import { EmployeeType } from '../../utils/constants';
+import { usePermissions } from '../../hooks/usePermissions';
 
 export default function PayrollDashboardPage() {
+  const navigate = useNavigate();
+  const { can } = usePermissions();
   const [period, setPeriod] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [employeeType, setEmployeeType] = useState('');
@@ -95,6 +99,30 @@ export default function PayrollDashboardPage() {
       <PageHeader
         title="Payroll & Operational Dashboard"
         description="Aggregated real-time metrics across employees, working schedules, attendance, leave allocations, and payroll batches."
+        actions={
+          <div className="flex items-center gap-2">
+            {can('MANAGE_EMPLOYEES') && (
+              <button
+                type="button"
+                onClick={() => navigate('/employees/new')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
+              >
+                <UserPlus className="w-4 h-4" />
+                New Employee
+              </button>
+            )}
+            {can('CREATE_PAYRUN') && (
+              <button
+                type="button"
+                onClick={() => navigate('/payroll/payruns/new')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg shadow-sm transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                New Payrun
+              </button>
+            )}
+          </div>
+        }
       />
 
       {/* Top Filter Bar */}

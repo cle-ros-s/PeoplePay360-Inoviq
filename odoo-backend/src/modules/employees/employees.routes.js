@@ -20,21 +20,21 @@ router.get('/:id', scopeEmployee, validate(getEmployeeByIdSchema), employeesCont
 
 router.post(
   '/',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(createEmployeeSchema),
   employeesController.createEmployee
 );
 
 router.patch(
   '/:id',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(updateEmployeeSchema),
   employeesController.updateEmployee
 );
 
 router.delete(
   '/:id',
-  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
   validate(getEmployeeByIdSchema),
   employeesController.deleteEmployee
 );
