@@ -4,6 +4,8 @@ const app = require('./app');
 const env = require('./config/env');
 const prisma = require('./config/prisma');
 
+let retryCount = 0;
+
 function killPortProcess(port) {
   try {
     if (process.platform === 'win32') {
@@ -13,7 +15,7 @@ function killPortProcess(port) {
         if (line.includes('LISTENING')) {
           const parts = line.trim().split(/\s+/);
           const pid = parts[parts.length - 1];
-          if (pid && pid !== '0' && pid != process.pid) {
+          if (pid && pid !== '0' && pid != process.pid && pid != process.ppid) {
             console.log(`🧹 Auto-clearing conflicting process PID ${pid} on port ${port}...`);
             execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
           }
@@ -50,48 +52,51 @@ async function startServer() {
       } catch (e) {}
     }, 10);
 
-    const server = http.createServer(app);
+    let currentServer = null;
 
-    server.on('error', (error) => {
-      if (error.code === 'EADDRINUSE') {
-        console.log(`⚠️ Port ${env.PORT} busy. Auto-clearing conflicting process on port ${env.PORT}...`);
-        killPortProcess(env.PORT);
-        setTimeout(() => {
-          try {
-            server.close();
-          } catch (e) {}
-          server.listen(env.PORT);
-        }, 500);
-      } else {
-        console.error('❌ Server error:', error.message);
-        process.exit(1);
-      }
-    });
+    const listenOnPort = (port) => {
+      currentServer = http.createServer(app);
+
+      currentServer.on('error', (error) => {
+        if (error.code === 'EADDRINUSE') {
+          console.log(`⚠️ Port ${port} is temporarily busy (EADDRINUSE). Retrying in 1s...`);
+          setTimeout(() => {
+            listenOnPort(port);
+          }, 1000);
+        } else {
+          console.error('❌ Server error:', error.message);
+        }
+      });
+
+      currentServer.listen(port, () => {
+        console.log(`✓ PeoplePay360 Backend API server running on port ${port}`);
+        console.log(`✓ Health endpoint: http://localhost:${port}/api/health`);
+      });
+    };
+
+    listenOnPort(env.PORT);
 
     // Graceful shutdown handlers
     const shutdown = async (signal) => {
       console.log(`\nShutting down gracefully (${signal})...`);
-      server.close(async () => {
-        try {
-          await prisma.$disconnect();
-        } catch (e) {}
-        console.log('✓ PostgreSQL disconnected. Server closed.');
-        if (signal === 'SIGUSR2') {
-          process.kill(process.pid, 'SIGUSR2');
-        } else {
-          process.exit(0);
-        }
-      });
+      if (currentServer) {
+        currentServer.close(async () => {
+          try {
+            await prisma.$disconnect();
+          } catch (e) {}
+          console.log('✓ PostgreSQL disconnected. Server closed.');
+          if (signal === 'SIGUSR2') {
+            process.kill(process.pid, 'SIGUSR2');
+          } else {
+            process.exit(0);
+          }
+        });
+      }
     };
 
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
     process.once('SIGUSR2', () => shutdown('SIGUSR2'));
-
-    server.listen(env.PORT, () => {
-      console.log(`✓ PeoplePay360 Backend API server running on port ${env.PORT}`);
-      console.log(`✓ Health endpoint: http://localhost:${env.PORT}/api/health`);
-    });
 
   } catch (error) {
     console.error('FATAL: Could not start server:', error);
