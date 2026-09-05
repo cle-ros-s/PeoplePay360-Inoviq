@@ -5,32 +5,50 @@ export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('peoplepay360_user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+      const savedUser = localStorage.getItem('peoplepay360_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
   });
   const [token, setToken] = useState(() => localStorage.getItem('peoplepay360_token') || null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    const storedToken = localStorage.getItem('peoplepay360_token');
+    const storedUser = localStorage.getItem('peoplepay360_user');
+    return !(storedToken && storedUser);
+  });
 
-  // Restore session on app startup
+  // Restore & revalidate session asynchronously in background without blocking initial paint
   useEffect(() => {
+    let isMounted = true;
     async function restoreSession() {
       const storedToken = localStorage.getItem('peoplepay360_token');
       if (storedToken) {
         try {
           const userData = await authApi.me();
-          setUser(userData);
-          localStorage.setItem('peoplepay360_user', JSON.stringify(userData));
+          if (isMounted) {
+            setUser(userData);
+            localStorage.setItem('peoplepay360_user', JSON.stringify(userData));
+          }
         } catch (error) {
-          console.error('Session restoration failed:', error);
-          localStorage.removeItem('peoplepay360_token');
-          localStorage.removeItem('peoplepay360_user');
-          setUser(null);
-          setToken(null);
+          if (isMounted) {
+            console.error('Session restoration failed:', error);
+            localStorage.removeItem('peoplepay360_token');
+            localStorage.removeItem('peoplepay360_user');
+            setUser(null);
+            setToken(null);
+          }
         }
       }
-      setIsLoading(false);
+      if (isMounted) {
+        setIsLoading(false);
+      }
     }
     restoreSession();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const login = async (email, password) => {
