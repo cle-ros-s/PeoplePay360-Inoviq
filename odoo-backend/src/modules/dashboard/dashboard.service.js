@@ -147,70 +147,61 @@ async function getKpis(query) {
 /**
  * Salary cost breakdown grouped by Department (Lean queries & memory projection)
  */
+/**
+ * Salary cost breakdown grouped by Department (Pure DB Aggregation)
+ */
 async function getSalaryCostByDepartment(query) {
-  const departments = await prisma.department.findMany({
-    select: {
-      id: true,
-      name: true,
-      code: true,
-      employees: {
-        where: { status: 'ACTIVE' },
-        select: {
-          id: true,
-          contracts: {
-            where: { status: 'RUNNING' },
-            select: { wage: true },
-            take: 1,
-          },
-          payslips: {
-            where: { status: { in: ['COMPUTED', 'VALIDATED', 'PAID'] } },
-            select: { gross: true, net: true },
-            orderBy: { periodStart: 'desc' },
-            take: 1,
-          },
+  const [departments, contractAggs] = await Promise.all([
+    prisma.department.findMany({
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        _count: {
+          select: { employees: { where: { status: 'ACTIVE' } } },
         },
       },
-    },
-  });
+      orderBy: { name: 'asc' },
+    }),
+    prisma.contract.groupBy({
+      by: ['departmentId'],
+      where: {
+        status: 'RUNNING',
+        departmentId: { not: null },
+      },
+      _sum: { wage: true },
+    }),
+  ]);
+
+  const contractMap = new Map();
+  for (const c of contractAggs) {
+    if (c.departmentId) contractMap.set(c.departmentId, c._sum.wage || 0);
+  }
 
   return departments.map((dept) => {
-    const headcount = dept.employees.length;
-    let totalContractWage = 0;
-    let totalNet = 0;
-    let totalGross = 0;
-
-    for (const emp of dept.employees) {
-      if (emp.contracts[0]) {
-        totalContractWage += emp.contracts[0].wage;
-      }
-      if (emp.payslips[0]) {
-        totalGross += emp.payslips[0].gross;
-        totalNet += emp.payslips[0].net;
-      }
-    }
-
-    const calculatedCost = totalGross > 0 ? totalGross : totalContractWage;
+    const headcount = dept._count.employees;
+    const totalContractWage = contractMap.get(dept.id) || 0;
 
     return {
       departmentId: dept.id,
       departmentName: dept.name,
       department: dept.name,
-      cost: Math.round(calculatedCost * 100) / 100,
+      cost: Math.round(totalContractWage * 100) / 100,
       departmentCode: dept.code,
       headcount,
       totalContractWage: Math.round(totalContractWage * 100) / 100,
-      totalGross: Math.round(totalGross * 100) / 100,
-      totalNet: Math.round(totalNet * 100) / 100,
+      totalGross: Math.round(totalContractWage * 100) / 100,
+      totalNet: Math.round(totalContractWage * 100) / 100,
     };
   });
 }
 
 /**
- * Monthly Net Salary Trend over payruns
+ * Monthly Net Salary Trend over payruns (Pure DB Aggregation)
  */
 async function getNetSalaryTrend() {
   const payruns = await prisma.payrun.findMany({
-    orderBy: { periodStart: 'asc' },
+    orderBy: { periodStart: 'desc' },
     take: 12,
     select: {
       id: true,
@@ -218,24 +209,30 @@ async function getNetSalaryTrend() {
       periodStart: true,
       periodEnd: true,
       status: true,
-      payslips: {
-        select: { basic: true, gross: true, net: true },
-      },
     },
   });
 
+  const payrunIds = payruns.map((p) => p.id);
+  const payslipAggregates = await prisma.payslip.groupBy({
+    by: ['payrunId'],
+    where: { payrunId: { in: payrunIds } },
+    _sum: { basic: true, gross: true, net: true },
+    _count: { id: true },
+  });
+
+  const aggMap = new Map();
+  for (const agg of payslipAggregates) {
+    aggMap.set(agg.payrunId, agg);
+  }
+
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  return payruns.map((p) => {
-    let totalBasic = 0;
-    let totalGross = 0;
-    let totalNet = 0;
-
-    for (const ps of p.payslips) {
-      totalBasic += ps.basic || 0;
-      totalGross += ps.gross || 0;
-      totalNet += ps.net || 0;
-    }
+  return payruns.reverse().map((p) => {
+    const agg = aggMap.get(p.id);
+    const totalBasic = agg?._sum?.basic || 0;
+    const totalGross = agg?._sum?.gross || 0;
+    const totalNet = agg?._sum?.net || 0;
+    const payslipCount = agg?._count?.id || 0;
 
     const d = new Date(p.periodStart);
     const month = `${monthNames[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
@@ -247,7 +244,7 @@ async function getNetSalaryTrend() {
       periodStart: p.periodStart,
       periodEnd: p.periodEnd,
       status: p.status,
-      payslipCount: p.payslips.length,
+      payslipCount,
       totalBasic: Math.round(totalBasic * 100) / 100,
       totalGross: Math.round(totalGross * 100) / 100,
       totalNet: Math.round(totalNet * 100) / 100,

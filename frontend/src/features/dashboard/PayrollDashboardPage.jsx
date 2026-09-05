@@ -474,16 +474,20 @@ export default function PayrollDashboardPage() {
       </Modal>
 
       {/* Request Time Off Modal Directly Accessible from Dashboard */}
-      <TimeOffRequestFormPage
-        isOpen={timeOffModalOpen}
-        onClose={() => setTimeOffModalOpen(false)}
-      />
+      {timeOffModalOpen && (
+        <TimeOffRequestFormPage
+          isOpen={timeOffModalOpen}
+          onClose={() => setTimeOffModalOpen(false)}
+        />
+      )}
 
       {/* Add Time Off Type Modal Directly Accessible from Dashboard */}
-      <TimeOffTypeFormPage
-        isOpen={timeOffTypeModalOpen}
-        onClose={() => setTimeOffTypeModalOpen(false)}
-      />
+      {timeOffTypeModalOpen && (
+        <TimeOffTypeFormPage
+          isOpen={timeOffTypeModalOpen}
+          onClose={() => setTimeOffTypeModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

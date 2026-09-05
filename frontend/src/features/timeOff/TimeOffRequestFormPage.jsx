@@ -32,13 +32,14 @@ export default function TimeOffRequestFormPage({ isOpen, onClose }) {
   const { data: typesData } = useQuery({
     queryKey: ['time-off-types'],
     queryFn: () => timeOffTypesApi.getTimeOffTypes(),
+    enabled: !!isOpen,
   });
   const timeOffTypes = typesData?.data || (Array.isArray(typesData) ? typesData : []);
 
   const { data: empData } = useQuery({
     queryKey: ['employees-all'],
     queryFn: () => employeesApi.getEmployees({ pageSize: 100 }),
-    enabled: !isEmployee,
+    enabled: !!isOpen && !isEmployee,
   });
   const employees = empData?.data || (Array.isArray(empData) ? empData : []);
 
