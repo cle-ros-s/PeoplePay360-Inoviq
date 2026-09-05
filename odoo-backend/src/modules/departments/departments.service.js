@@ -3,19 +3,18 @@ const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
 
 const deptListCache = new Map();
-const DEPT_CACHE_TTL = 30 * 1000;
+const DEPT_CACHE_TTL = 5 * 60 * 1000;
 
 async function listDepartments(query = {}) {
-  const cacheKey = JSON.stringify(query || {});
+  const { page, pageSize, skip, take } = getPaginationParams(query);
+  const { search } = query;
+  const cacheKey = `${search || ''}:${page}:${pageSize}`;
   const cached = deptListCache.get(cacheKey);
   const now = Date.now();
 
   if (cached && now - cached.timestamp < DEPT_CACHE_TTL) {
     return cached.data;
   }
-
-  const { page, pageSize, skip, take } = getPaginationParams(query);
-  const { search } = query;
 
   const where = {};
   if (search) {
