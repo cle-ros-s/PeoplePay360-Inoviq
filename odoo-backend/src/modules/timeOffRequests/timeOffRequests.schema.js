@@ -1,38 +1,34 @@
 const { z } = require('zod');
+const {
+  flexibleDate,
+  optionalUuid,
+  requiredUuid,
+  flexiblePositiveNumber,
+} = require('../../utils/schemaTypes');
 
-const timeOffRequestStatusEnum = z.enum(['DRAFT', 'PENDING', 'APPROVED', 'REFUSED']);
+const timeOffStatusEnum = z.enum(['DRAFT', 'PENDING', 'APPROVED', 'REFUSED']);
 
 const createTimeOffRequestSchema = {
   body: z.object({
-    employeeId: z.string().uuid().optional(), // optional if employee role
-    timeOffTypeId: z.string().uuid('Invalid time off type ID'),
-    startDate: z.string().datetime('Valid ISO date required for startDate'),
-    endDate: z.string().datetime('Valid ISO date required for endDate'),
-    duration: z.number().positive('Duration must be positive (days or hours)'),
-    reason: z.string().optional(),
+    employeeId: optionalUuid,
+    timeOffTypeId: requiredUuid('Invalid time off type ID'),
+    startDate: flexibleDate,
+    endDate: flexibleDate,
+    duration: flexiblePositiveNumber('Duration must be a positive number'),
+    reason: z.string().nullable().optional(),
   }),
 };
 
 const updateTimeOffRequestSchema = {
   params: z.object({
-    id: z.string().uuid('Invalid time off request ID'),
+    id: requiredUuid('Invalid request ID'),
   }),
   body: z.object({
-    timeOffTypeId: z.string().uuid().optional(),
-    startDate: z.string().datetime().optional(),
-    endDate: z.string().datetime().optional(),
-    duration: z.number().positive().optional(),
-    reason: z.string().optional(),
-    status: timeOffRequestStatusEnum.optional(),
-  }),
-};
-
-const refuseRequestSchema = {
-  params: z.object({
-    id: z.string().uuid('Invalid time off request ID'),
-  }),
-  body: z.object({
-    reason: z.string().optional(),
+    startDate: flexibleDate.optional(),
+    endDate: flexibleDate.optional(),
+    duration: flexiblePositiveNumber('Duration must be a positive number').optional(),
+    reason: z.string().nullable().optional(),
+    timeOffTypeId: optionalUuid,
   }),
 };
 
@@ -40,22 +36,34 @@ const listTimeOffRequestsSchema = {
   query: z.object({
     page: z.string().optional(),
     pageSize: z.string().optional(),
-    employeeId: z.string().uuid().optional(),
-    status: timeOffRequestStatusEnum.optional(),
-    timeOffTypeId: z.string().uuid().optional(),
+    employeeId: z.string().optional(),
+    status: timeOffStatusEnum.optional(),
+    timeOffTypeId: z.string().optional(),
   }),
 };
 
 const getTimeOffRequestByIdSchema = {
   params: z.object({
-    id: z.string().uuid('Invalid time off request ID'),
+    id: requiredUuid('Invalid request ID'),
   }),
+};
+
+const refuseRequestSchema = {
+  params: z.object({
+    id: requiredUuid('Invalid request ID'),
+  }),
+  body: z.object({
+    refusalReason: z.string().optional(),
+    reason: z.string().optional(),
+  }).transform((d) => ({
+    refusalReason: d.refusalReason || d.reason || 'Request refused by manager',
+  })),
 };
 
 module.exports = {
   createTimeOffRequestSchema,
   updateTimeOffRequestSchema,
-  refuseRequestSchema,
   listTimeOffRequestsSchema,
   getTimeOffRequestByIdSchema,
+  refuseRequestSchema,
 };

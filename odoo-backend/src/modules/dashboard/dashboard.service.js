@@ -108,14 +108,20 @@ async function getKpis(query) {
 
   return {
     totalNetPaid: Math.round(totalNetPaid * 100) / 100,
+    totalNetSalaryPaid: Math.round(totalNetPaid * 100) / 100,
     totalGrossPaid: Math.round(totalGrossPaid * 100) / 100,
     averageNetSalary,
+    averageSalary: averageNetSalary,
     paidPayslipCount,
     totalPayslipsCount,
+    payslipCount: totalPayslipsCount,
+    payslipsGenerated: totalPayslipsCount,
+    approvedTimeOff: approvedTimeOffDays || approvedTimeOffCount,
     approvedTimeOffCount,
     approvedTimeOffDays,
     pendingTimeOffCount,
     attendanceHealth,
+    attendanceRate: attendanceHealth,
     activeEmployeesCount,
     unresolvedWarningsCount,
   };
@@ -160,9 +166,13 @@ async function getSalaryCostByDepartment(query) {
       }
     }
 
+    const calculatedCost = totalGross > 0 ? totalGross : totalContractWage;
+
     return {
       departmentId: dept.id,
       departmentName: dept.name,
+      department: dept.name,
+      cost: Math.round(calculatedCost * 100) / 100,
       departmentCode: dept.code,
       headcount,
       totalContractWage: Math.round(totalContractWage * 100) / 100,
@@ -190,9 +200,14 @@ async function getNetSalaryTrend() {
     const totalGross = p.payslips.reduce((sum, ps) => sum + (ps.gross || 0), 0);
     const totalNet = p.payslips.reduce((sum, ps) => sum + (ps.net || 0), 0);
 
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const d = new Date(p.periodStart);
+    const month = `${monthNames[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+
     return {
       payrunId: p.id,
       name: p.name,
+      month,
       periodStart: p.periodStart,
       periodEnd: p.periodEnd,
       status: p.status,
@@ -261,7 +276,18 @@ async function getAttendanceOverview(query) {
     };
   }
 
+  const present = statusMap['PRESENT']?.count || 0;
+  const late = statusMap['LATE']?.count || 0;
+  const overtime = statusMap['OVERTIME']?.count || 0;
+  const missingCheckout = statusMap['MISSING_CHECKOUT']?.count || 0;
+  const absent = statusMap['ABSENT']?.count || 0;
+
   return {
+    present,
+    late,
+    overtime,
+    missingCheckout,
+    absent,
     totalRecords: totalStats._count.id,
     totalWorkedHours: totalStats._sum.workedHours ? Math.round(totalStats._sum.workedHours * 100) / 100 : 0,
     averageWorkedHours: totalStats._avg.workedHours ? Math.round(totalStats._avg.workedHours * 100) / 100 : 0,
@@ -282,7 +308,7 @@ async function getAttendanceOverview(query) {
 async function getTimeOffOverview(query) {
   const { employeeWhere } = buildDashboardFilters(query);
 
-  const [statusGroups, typeGroups] = await Promise.all([
+  const [statusGroups, typeGroups, activeAllocations] = await Promise.all([
     prisma.timeOffRequest.groupBy({
       by: ['status'],
       where: { employee: employeeWhere },
@@ -294,6 +320,9 @@ async function getTimeOffOverview(query) {
       where: { employee: employeeWhere, status: 'APPROVED' },
       _count: { id: true },
       _sum: { duration: true },
+    }),
+    prisma.leaveAllocation.count({
+      where: { status: 'APPROVED' },
     }),
   ]);
 
@@ -319,7 +348,13 @@ async function getTimeOffOverview(query) {
     };
   });
 
+  const pendingRequests = byStatus['PENDING']?.count || 0;
+  const approvedDays = byStatus['APPROVED']?.totalDuration || 0;
+
   return {
+    pendingRequests,
+    approvedDays,
+    activeAllocations,
     byStatus,
     byType,
   };

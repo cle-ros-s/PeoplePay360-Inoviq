@@ -1,27 +1,34 @@
 const { z } = require('zod');
+const {
+  flexibleDate,
+  optionalUuid,
+  requiredUuid,
+  flexiblePositiveNumber,
+  flexibleNonNegativeNumber,
+} = require('../../utils/schemaTypes');
 
 const allocationStatusEnum = z.enum(['DRAFT', 'PENDING', 'APPROVED', 'REFUSED']);
 
 const createAllocationSchema = {
   body: z.object({
-    employeeId: z.string().uuid('Invalid employee ID'),
-    timeOffTypeId: z.string().uuid('Invalid time off type ID'),
-    allocatedAmount: z.number().positive('Allocated amount must be positive'),
-    validFrom: z.string().datetime('Valid ISO date required for validFrom'),
-    validTo: z.string().datetime('Valid ISO date required for validTo'),
+    employeeId: requiredUuid('Invalid employee ID'),
+    timeOffTypeId: requiredUuid('Invalid time off type ID'),
+    allocatedAmount: flexiblePositiveNumber('Allocated amount must be positive'),
+    validFrom: flexibleDate,
+    validTo: flexibleDate,
     status: allocationStatusEnum.default('APPROVED'),
   }),
 };
 
 const updateAllocationSchema = {
   params: z.object({
-    id: z.string().uuid('Invalid allocation ID'),
+    id: requiredUuid('Invalid allocation ID'),
   }),
   body: z.object({
-    allocatedAmount: z.number().positive().optional(),
-    takenAmount: z.number().nonnegative().optional(),
-    validFrom: z.string().datetime().optional(),
-    validTo: z.string().datetime().optional(),
+    allocatedAmount: flexiblePositiveNumber('Allocated amount must be positive').optional(),
+    takenAmount: flexibleNonNegativeNumber('Taken amount must be non-negative').optional(),
+    validFrom: flexibleDate.optional(),
+    validTo: flexibleDate.optional(),
     status: allocationStatusEnum.optional(),
   }),
 };
@@ -30,15 +37,15 @@ const listAllocationsSchema = {
   query: z.object({
     page: z.string().optional(),
     pageSize: z.string().optional(),
-    employeeId: z.string().uuid().optional(),
-    timeOffTypeId: z.string().uuid().optional(),
+    employeeId: z.string().optional(),
+    timeOffTypeId: z.string().optional(),
     status: allocationStatusEnum.optional(),
   }),
 };
 
 const getAllocationByIdSchema = {
   params: z.object({
-    id: z.string().uuid('Invalid allocation ID'),
+    id: requiredUuid('Invalid allocation ID'),
   }),
 };
 

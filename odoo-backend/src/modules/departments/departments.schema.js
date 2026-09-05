@@ -1,21 +1,22 @@
 const { z } = require('zod');
+const { optionalUuid, requiredUuid } = require('../../utils/schemaTypes');
 
 const createDepartmentSchema = {
   body: z.object({
     name: z.string().min(1, 'Department name is required'),
     code: z.string().min(1, 'Department code is required'),
-    managerId: z.string().uuid().nullable().optional(),
+    managerId: optionalUuid,
   }),
 };
 
 const updateDepartmentSchema = {
   params: z.object({
-    id: z.string().uuid('Invalid department ID'),
+    id: requiredUuid('Invalid department ID'),
   }),
   body: z.object({
     name: z.string().min(1).optional(),
     code: z.string().min(1).optional(),
-    managerId: z.string().uuid().nullable().optional(),
+    managerId: optionalUuid,
   }),
 };
 
@@ -29,7 +30,7 @@ const listDepartmentsSchema = {
 
 const getDepartmentByIdSchema = {
   params: z.object({
-    id: z.string().uuid('Invalid department ID'),
+    id: requiredUuid('Invalid department ID'),
   }),
 };
 

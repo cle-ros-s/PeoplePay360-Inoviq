@@ -1,10 +1,11 @@
 const { z } = require('zod');
+const { requiredUuid, flexibleNonNegativeNumber } = require('../../utils/schemaTypes');
 
 const scheduleLineSchema = z.object({
-  dayOfWeek: z.number().int().min(0).max(6),
+  dayOfWeek: z.coerce.number().int().min(0).max(6),
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:mm)'),
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:mm)'),
-  breakMinutes: z.number().int().min(0).default(60),
+  breakMinutes: z.coerce.number().int().min(0).default(60),
 });
 
 const createScheduleSchema = {
@@ -17,7 +18,7 @@ const createScheduleSchema = {
 
 const updateScheduleSchema = {
   params: z.object({
-    id: z.string().uuid('Invalid schedule ID'),
+    id: requiredUuid('Invalid schedule ID'),
   }),
   body: z.object({
     name: z.string().min(1).optional(),
@@ -36,7 +37,7 @@ const listSchedulesSchema = {
 
 const getScheduleByIdSchema = {
   params: z.object({
-    id: z.string().uuid('Invalid schedule ID'),
+    id: requiredUuid('Invalid schedule ID'),
   }),
 };
 

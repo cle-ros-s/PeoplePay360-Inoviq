@@ -1,14 +1,15 @@
 const { z } = require('zod');
+const { flexibleDate, optionalUuid, requiredUuid } = require('../../utils/schemaTypes');
 
 const payrunStatusEnum = z.enum(['DRAFT', 'COMPUTED', 'VALIDATED', 'PAID']);
 const employeeTypeEnum = z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN']);
 
 const getEligibleEmployeesSchema = {
   query: z.object({
-    periodStart: z.string().datetime('Valid ISO date required for periodStart'),
-    periodEnd: z.string().datetime('Valid ISO date required for periodEnd'),
-    salaryStructureId: z.string().uuid('Invalid salary structure ID').optional(),
-    departmentId: z.string().uuid().optional(),
+    periodStart: flexibleDate,
+    periodEnd: flexibleDate,
+    salaryStructureId: optionalUuid,
+    departmentId: optionalUuid,
     employeeType: employeeTypeEnum.optional(),
   }),
 };
@@ -16,10 +17,10 @@ const getEligibleEmployeesSchema = {
 const createPayrunSchema = {
   body: z.object({
     name: z.string().min(1, 'Payrun name is required'),
-    periodStart: z.string().datetime('Valid ISO date required for periodStart'),
-    periodEnd: z.string().datetime('Valid ISO date required for periodEnd'),
-    salaryStructureId: z.string().uuid('Invalid salary structure ID'),
-    employeeIds: z.array(z.string().uuid()).min(1, 'At least one employee must be selected'),
+    periodStart: flexibleDate,
+    periodEnd: flexibleDate,
+    salaryStructureId: requiredUuid('Invalid salary structure ID'),
+    employeeIds: z.array(requiredUuid('Invalid employee ID')).min(1, 'At least one employee must be selected'),
   }),
 };
 
@@ -34,7 +35,7 @@ const listPayrunsSchema = {
 
 const getPayrunByIdSchema = {
   params: z.object({
-    id: z.string().uuid('Invalid payrun ID'),
+    id: requiredUuid('Invalid payrun ID'),
   }),
 };
 
