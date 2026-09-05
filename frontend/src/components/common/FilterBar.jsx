@@ -1,6 +1,6 @@
 import React from 'react';
 import SearchInput from './SearchInput';
-import { Filter, RotateCcw } from 'lucide-react';
+import { RotateCcw, SlidersHorizontal } from 'lucide-react';
 
 export default function FilterBar({
   searchValue,
@@ -13,7 +13,16 @@ export default function FilterBar({
   const hasActiveFilters = searchValue || filters.some((f) => f.value !== '' && f.value !== undefined);
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div
+      className="p-4 rounded-2xl mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4"
+      style={{
+        background: 'rgba(255,255,255,0.82)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        border: '1px solid rgba(113,75,103,0.12)',
+        boxShadow: '0 2px 12px rgba(113,75,103,0.06)',
+      }}
+    >
       <div className="flex flex-wrap items-center gap-3 flex-1">
         {onSearchChange !== undefined && (
           <div className="w-full sm:w-64">
@@ -26,7 +35,8 @@ export default function FilterBar({
             <select
               value={f.value || ''}
               onChange={(e) => f.onChange(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+              className="input-field"
+              style={{ paddingTop: '0.5rem', paddingBottom: '0.5rem' }}
             >
               <option value="">{f.label}</option>
               {f.options.map((opt) => {
@@ -48,10 +58,17 @@ export default function FilterBar({
           <button
             type="button"
             onClick={onReset}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all"
+            style={{
+              color: '#714B67',
+              background: 'rgba(113,75,103,0.08)',
+              border: '1px solid rgba(113,75,103,0.20)',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(113,75,103,0.14)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(113,75,103,0.08)'}
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Reset Filters
+            Reset
           </button>
         )}
       </div>

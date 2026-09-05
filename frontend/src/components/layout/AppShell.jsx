@@ -7,7 +7,7 @@ export default function AppShell() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+    <div className="min-h-screen flex flex-col font-sans" style={{ background: '#F8F8F8' }}>
       <TopNav onMobileMenuToggle={() => setMobileMenuOpen((prev) => !prev)} />
 
       <div className="flex-1 flex overflow-hidden">
@@ -20,17 +20,18 @@ export default function AppShell() {
         {mobileMenuOpen && (
           <div className="fixed inset-0 z-40 lg:hidden flex">
             <div
-              className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
               onClick={() => setMobileMenuOpen(false)}
             />
-            <div className="relative z-50 w-64 bg-white h-full shadow-xl flex flex-col">
+            <div className="relative z-50 w-64 h-full shadow-glass-lg flex flex-col animate-slideInLeft"
+                 style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)' }}>
               <SideMenu isMobile onCloseMobile={() => setMobileMenuOpen(false)} />
             </div>
           </div>
         )}
 
         {/* Main Content Viewport */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-7xl mx-auto w-full animate-fadeInUp">
           <Outlet />
         </main>
       </div>

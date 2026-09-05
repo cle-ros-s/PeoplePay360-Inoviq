@@ -8,12 +8,33 @@ export default function Pagination({ page = 1, pageSize = 20, total = 0, onPageC
 
   if (total === 0) return null;
 
+  const btnBase = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '2rem',
+    height: '2rem',
+    borderRadius: '0.625rem',
+    border: '1px solid rgba(113,75,103,0.20)',
+    transition: 'all 0.15s',
+    color: '#714B67',
+    background: 'rgba(255,255,255,0.80)',
+    cursor: 'pointer',
+  };
+
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-6 bg-white border-t border-gray-200">
-      <div className="text-xs text-gray-500">
-        Showing <span className="font-semibold text-gray-700">{startItem}</span> to{' '}
-        <span className="font-semibold text-gray-700">{endItem}</span> of{' '}
-        <span className="font-semibold text-gray-700">{total}</span> records
+    <div
+      className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3.5 px-6"
+      style={{ borderTop: '1px solid rgba(113,75,103,0.10)', background: 'rgba(113,75,103,0.02)' }}
+    >
+      <div className="text-xs" style={{ color: '#9CA3AF' }}>
+        Showing{' '}
+        <span className="font-bold" style={{ color: '#212121' }}>{startItem}</span>
+        {' '}–{' '}
+        <span className="font-bold" style={{ color: '#212121' }}>{endItem}</span>
+        {' '}of{' '}
+        <span className="font-bold" style={{ color: '#212121' }}>{total}</span>
+        {' '}records
       </div>
 
       <div className="flex items-center gap-2">
@@ -21,21 +42,25 @@ export default function Pagination({ page = 1, pageSize = 20, total = 0, onPageC
           type="button"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="p-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          style={{ ...btnBase, opacity: page <= 1 ? 0.35 : 1, cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
+          onMouseEnter={e => { if (page > 1) e.currentTarget.style.background = 'rgba(113,75,103,0.10)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.80)'; }}
           aria-label="Previous page"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        <span className="text-xs text-gray-700 px-2 font-medium">
-          Page {page} of {totalPages}
+        <span className="text-xs font-semibold px-3" style={{ color: '#714B67' }}>
+          {page} / {totalPages}
         </span>
 
         <button
           type="button"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          className="p-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          style={{ ...btnBase, opacity: page >= totalPages ? 0.35 : 1, cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}
+          onMouseEnter={e => { if (page < totalPages) e.currentTarget.style.background = 'rgba(113,75,103,0.10)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.80)'; }}
           aria-label="Next page"
         >
           <ChevronRight className="w-4 h-4" />

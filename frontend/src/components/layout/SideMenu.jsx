@@ -29,81 +29,93 @@ export default function SideMenu({ isMobile = false, onCloseMobile }) {
   };
 
   const navLinkClass = ({ isActive }) =>
-    `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+    `flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
       isActive
-        ? 'bg-blue-50 text-blue-700 font-semibold'
-        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+        ? 'nav-active'
+        : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
     }`;
 
   const subNavLinkClass = ({ isActive }) =>
-    `flex items-center gap-2 pl-9 pr-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+    `flex items-center gap-2 pl-9 pr-3 py-2 text-xs font-medium rounded-xl transition-all duration-200 ${
       isActive
-        ? 'bg-blue-50 text-blue-700 font-semibold'
-        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+        ? 'nav-active'
+        : 'text-gray-500 hover:bg-primary-50 hover:text-primary-600'
     }`;
 
   return (
     <aside
-      className={`w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 min-h-[calc(100vh-57px)] ${
-        isMobile ? 'h-full' : ''
-      }`}
+      className={`w-64 flex flex-col flex-shrink-0 ${isMobile ? 'h-full' : 'min-h-[calc(100vh-57px)]'}`}
+      style={{
+        background: 'rgba(255,255,255,0.78)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderRight: '1px solid rgba(113,75,103,0.12)',
+        boxShadow: '2px 0 20px rgba(113,75,103,0.06)',
+      }}
     >
-      <div className="p-4 space-y-6 flex-1 overflow-y-auto">
+      <div className="p-4 space-y-5 flex-1 overflow-y-auto">
+
         {/* Main Section */}
         <div>
-          <p className="px-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Main Menu</p>
-          <nav className="space-y-1">
+          <p className="section-label">Main Menu</p>
+          <nav className="space-y-0.5">
             {can('VIEW_DASHBOARD') && (
               <NavLink to="/dashboard" onClick={onCloseMobile} className={navLinkClass}>
-                <LayoutDashboard className="w-4 h-4" />
+                <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
                 Dashboard
               </NavLink>
             )}
 
             {can('VIEW_ALL_EMPLOYEES') && (
               <NavLink to="/employees" onClick={onCloseMobile} className={navLinkClass}>
-                <Users className="w-4 h-4" />
+                <Users className="w-4 h-4 flex-shrink-0" />
                 Employees
               </NavLink>
             )}
 
             {can('VIEW_DEPARTMENTS') && (
               <NavLink to="/departments" onClick={onCloseMobile} className={navLinkClass}>
-                <Building className="w-4 h-4" />
+                <Building className="w-4 h-4 flex-shrink-0" />
                 Departments
               </NavLink>
             )}
 
             {can('VIEW_CONTRACTS') && (
               <NavLink to="/contracts" onClick={onCloseMobile} className={navLinkClass}>
-                <FileText className="w-4 h-4" />
+                <FileText className="w-4 h-4 flex-shrink-0" />
                 Contracts
               </NavLink>
             )}
 
             {can('VIEW_SCHEDULES') && (
               <NavLink to="/schedules" onClick={onCloseMobile} className={navLinkClass}>
-                <Calendar className="w-4 h-4" />
+                <Calendar className="w-4 h-4 flex-shrink-0" />
                 Working Schedules
               </NavLink>
             )}
 
             <NavLink to="/attendance" onClick={onCloseMobile} className={navLinkClass}>
-              <Clock className="w-4 h-4" />
+              <Clock className="w-4 h-4 flex-shrink-0" />
               Attendance
             </NavLink>
           </nav>
         </div>
+
+        {/* Divider */}
+        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent 0%, rgba(113,75,103,0.15) 50%, transparent 100%)' }} />
 
         {/* Time Off Section */}
         <div>
           <button
             type="button"
             onClick={() => toggleSubmenu('timeOff')}
-            className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600"
+            className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-all group"
+            style={{ color: 'rgba(113,75,103,0.55)' }}
           >
-            <span>Time Off</span>
-            {openSubmenu.timeOff ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            <span className="text-[10px] font-bold uppercase tracking-widest">Time Off</span>
+            {openSubmenu.timeOff
+              ? <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+              : <ChevronRight className="w-3.5 h-3.5 opacity-60" />}
           </button>
           {openSubmenu.timeOff && (
             <nav className="mt-1 space-y-0.5">
@@ -128,10 +140,13 @@ export default function SideMenu({ isMobile = false, onCloseMobile }) {
             <button
               type="button"
               onClick={() => toggleSubmenu('payroll')}
-              className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600"
+              className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-all"
+              style={{ color: 'rgba(113,75,103,0.55)' }}
             >
-              <span>Payroll</span>
-              {openSubmenu.payroll ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              <span className="text-[10px] font-bold uppercase tracking-widest">Payroll</span>
+              {openSubmenu.payroll
+                ? <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                : <ChevronRight className="w-3.5 h-3.5 opacity-60" />}
             </button>
             {openSubmenu.payroll && (
               <nav className="mt-1 space-y-0.5">
@@ -152,10 +167,13 @@ export default function SideMenu({ isMobile = false, onCloseMobile }) {
             <button
               type="button"
               onClick={() => toggleSubmenu('payrollConfig')}
-              className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600"
+              className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-all"
+              style={{ color: 'rgba(113,75,103,0.55)' }}
             >
-              <span>Payroll Config</span>
-              {openSubmenu.payrollConfig ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              <span className="text-[10px] font-bold uppercase tracking-widest">Payroll Config</span>
+              {openSubmenu.payrollConfig
+                ? <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                : <ChevronRight className="w-3.5 h-3.5 opacity-60" />}
             </button>
             {openSubmenu.payrollConfig && (
               <nav className="mt-1 space-y-0.5">
@@ -167,18 +185,35 @@ export default function SideMenu({ isMobile = false, onCloseMobile }) {
           </div>
         )}
 
+        {/* Divider */}
+        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent 0%, rgba(113,75,103,0.15) 50%, transparent 100%)' }} />
+
         {/* Administration Section */}
         {can('VIEW_USERS') && (
           <div>
-            <p className="px-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Administration</p>
-            <nav className="space-y-1">
+            <p className="section-label">Administration</p>
+            <nav className="space-y-0.5">
               <NavLink to="/users" onClick={onCloseMobile} className={navLinkClass}>
-                <UserCog className="w-4 h-4" />
+                <UserCog className="w-4 h-4 flex-shrink-0" />
                 User Management
               </NavLink>
             </nav>
           </div>
         )}
+      </div>
+
+      {/* Bottom brand strip */}
+      <div
+        className="p-4 border-t flex items-center gap-2"
+        style={{ borderColor: 'rgba(113,75,103,0.12)' }}
+      >
+        <div
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-extrabold"
+          style={{ background: 'linear-gradient(135deg, #714B67 0%, #017E84 100%)' }}
+        >
+          P
+        </div>
+        <span className="text-xs font-semibold gradient-brand-text">PeoplePay360</span>
       </div>
     </aside>
   );

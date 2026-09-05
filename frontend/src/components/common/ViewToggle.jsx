@@ -1,33 +1,40 @@
 import React from 'react';
-import { LayoutGrid, List } from 'lucide-react';
+import { Grid3X3, List } from 'lucide-react';
 
-export default function ViewToggle({ view = 'list', onViewChange }) {
+export default function ViewToggle({ view, onViewChange }) {
   return (
-    <div className="inline-flex items-center p-1 bg-gray-100 rounded-lg border border-gray-200">
-      <button
-        type="button"
-        onClick={() => onViewChange('list')}
-        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-          view === 'list'
-            ? 'bg-white text-gray-900 shadow-sm'
-            : 'text-gray-600 hover:text-gray-900'
-        }`}
-      >
-        <List className="w-3.5 h-3.5" />
-        List
-      </button>
-      <button
-        type="button"
-        onClick={() => onViewChange('kanban')}
-        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-          view === 'kanban'
-            ? 'bg-white text-gray-900 shadow-sm'
-            : 'text-gray-600 hover:text-gray-900'
-        }`}
-      >
-        <LayoutGrid className="w-3.5 h-3.5" />
-        Kanban
-      </button>
+    <div
+      className="inline-flex items-center p-1 rounded-xl gap-0.5"
+      style={{
+        background: 'rgba(113,75,103,0.07)',
+        border: '1px solid rgba(113,75,103,0.12)',
+      }}
+    >
+      {[
+        { key: 'list',   Icon: List,        label: 'List view' },
+        { key: 'kanban', Icon: Grid3X3,     label: 'Kanban view' },
+      ].map(({ key, Icon, label }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => onViewChange(key)}
+          title={label}
+          className="p-1.5 rounded-lg transition-all duration-200"
+          style={
+            view === key
+              ? {
+                  background: 'linear-gradient(135deg, #714B67 0%, #017E84 100%)',
+                  color: '#ffffff',
+                  boxShadow: '0 2px 8px rgba(113,75,103,0.25)',
+                }
+              : { color: '#9CA3AF', background: 'transparent' }
+          }
+          onMouseEnter={e => { if (view !== key) e.currentTarget.style.color = '#714B67'; }}
+          onMouseLeave={e => { if (view !== key) e.currentTarget.style.color = '#9CA3AF'; }}
+        >
+          <Icon className="w-4 h-4" />
+        </button>
+      ))}
     </div>
   );
 }

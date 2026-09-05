@@ -126,11 +126,11 @@ export default function DepartmentsPage() {
       accessorKey: 'name',
       render: (dept) => (
         <div>
-          <span className="font-semibold text-gray-900 flex items-center gap-2">
-            <Building className="w-4 h-4 text-blue-600" />
+          <span className="font-semibold flex items-center gap-2" style={{ color: '#212121' }}>
+            <Building className="w-4 h-4" style={{ color: '#714B67' }} />
             {dept.name}
           </span>
-          {dept.code && <span className="text-[11px] font-mono text-gray-500">{dept.code}</span>}
+          {dept.code && <span className="text-[11px] font-mono" style={{ color: '#9CA3AF' }}>{dept.code}</span>}
         </div>
       ),
     },
@@ -138,8 +138,8 @@ export default function DepartmentsPage() {
       header: 'Assigned Employees',
       accessorKey: 'employees',
       render: (dept) => (
-        <span className="text-gray-600 font-medium inline-flex items-center gap-1.5">
-          <Users className="w-4 h-4 text-gray-400" />
+        <span className="font-medium inline-flex items-center gap-1.5 text-sm" style={{ color: '#6B7280' }}>
+          <Users className="w-4 h-4" style={{ color: '#017E84' }} />
           {dept._count?.employees ?? (dept.employees ? dept.employees.length : 0)} employees
         </span>
       ),
@@ -150,14 +150,20 @@ export default function DepartmentsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={(e) => handleOpenEdit(dept, e)}
-            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="p-1.5 rounded-xl transition-all"
+            style={{ color: '#017E84', background: 'rgba(1,126,132,0.08)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(1,126,132,0.16)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(1,126,132,0.08)'}
             title="Edit Department"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
             onClick={(e) => handleOpenDelete(dept, e)}
-            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+            className="p-1.5 rounded-xl transition-all"
+            style={{ color: '#DC2626', background: 'rgba(220,38,38,0.08)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.16)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.08)'}
             title="Delete Department"
           >
             <Trash2 className="w-4 h-4" />
@@ -175,7 +181,7 @@ export default function DepartmentsPage() {
         actions={
           <button
             onClick={handleOpenCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors"
+            className="btn-primary"
           >
             <Plus className="w-4 h-4" />
             Add Department
@@ -246,14 +252,14 @@ export default function DepartmentsPage() {
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="btn-ghost"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
-              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition-colors"
+              className="btn-primary disabled:opacity-50"
             >
               {createMutation.isPending || updateMutation.isPending
                 ? 'Saving...'

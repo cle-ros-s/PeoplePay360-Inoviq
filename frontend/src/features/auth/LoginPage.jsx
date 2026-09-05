@@ -60,14 +60,22 @@ export default function LoginPage() {
   return (
     <AuthLayout>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <h2 className="text-xl font-bold text-slate-900 text-center mb-6">
-          Sign In to Your Account
-        </h2>
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-extrabold" style={{ color: '#212121' }}>Welcome back</h2>
+          <p className="text-sm mt-1" style={{ color: '#9CA3AF' }}>Sign in to your account to continue</p>
+        </div>
 
         {errorMessage && (
-          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs font-medium text-rose-700">
-            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-            <span>{errorMessage}</span>
+          <div
+            className="p-3.5 rounded-xl flex items-start gap-2.5 text-xs"
+            style={{
+              background: 'rgba(239,68,68,0.07)',
+              border: '1px solid rgba(239,68,68,0.20)',
+              color: '#DC2626',
+            }}
+          >
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span className="leading-relaxed">{errorMessage}</span>
           </div>
         )}
 
@@ -75,7 +83,7 @@ export default function LoginPage() {
           label="EMAIL ADDRESS"
           name="email"
           type="email"
-          placeholder="admin@payflux.com"
+          placeholder="admin@peoplepay360.dev"
           register={register}
           error={errors.email}
           required
@@ -103,13 +111,20 @@ export default function LoginPage() {
 
         <button
           type="submit"
+          id="login-submit"
           disabled={isSubmitting}
-          className="w-full mt-6 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full mt-2 py-3 px-4 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-60"
+          style={{
+            background: 'linear-gradient(135deg, #714B67 0%, #017E84 100%)',
+            boxShadow: '0 6px 20px rgba(113,75,103,0.35)',
+          }}
+          onMouseEnter={e => { if (!isSubmitting) e.currentTarget.style.boxShadow = '0 8px 28px rgba(113,75,103,0.45)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(113,75,103,0.35)'; e.currentTarget.style.transform = 'translateY(0)'; }}
         >
           {isSubmitting ? (
             <span className="flex items-center gap-2">
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Signing In...
+              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              Signing in...
             </span>
           ) : (
             <>

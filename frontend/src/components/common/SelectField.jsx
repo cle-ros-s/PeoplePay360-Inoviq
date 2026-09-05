@@ -14,19 +14,16 @@ export default function SelectField({
   return (
     <div className={`mb-4 ${className}`}>
       {label && (
-        <label htmlFor={name} className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-          {label} {required && <span className="text-red-500">*</span>}
+        <label htmlFor={name} className="form-label">
+          {label} {required && <span style={{ color: '#EF4444' }}>*</span>}
         </label>
       )}
       <select
         id={name}
         disabled={disabled}
         {...(register ? register(name) : {})}
-        className={`w-full px-3.5 py-2 text-sm rounded-lg border transition-colors shadow-sm focus:outline-none focus:ring-2 ${
-          error
-            ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-            : 'border-gray-300 focus:border-blue-500 focus:ring-blue-100'
-        } ${disabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900'}`}
+        className={`input-field ${error ? 'error' : ''}`}
+        style={disabled ? { background: '#F3F4F6', color: '#9CA3AF', cursor: 'not-allowed' } : {}}
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((opt) => {
@@ -39,7 +36,11 @@ export default function SelectField({
           );
         })}
       </select>
-      {error && <p className="text-xs text-red-600 mt-1 font-medium">{error.message || error}</p>}
+      {error && (
+        <p className="text-xs mt-1.5 font-medium" style={{ color: '#EF4444' }}>
+          {error.message || error}
+        </p>
+      )}
     </div>
   );
 }
