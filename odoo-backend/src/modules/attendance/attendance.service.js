@@ -204,15 +204,19 @@ async function updateAttendance(id, data, user) {
     if (checkOut <= checkIn) {
       throw new AppError('INVALID_TIME_RANGE', 'Check-out time must be after check-in time', 422);
     }
-    if (workedHours === undefined || status === undefined) {
+    const diffMs = checkOut.getTime() - checkIn.getTime();
+    workedHours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
+
+    if (status === undefined) {
       const derived = deriveAttendanceStatus(checkIn, checkOut, record.employee.schedule);
-      if (workedHours === undefined) workedHours = derived.workedHours;
-      if (status === undefined) status = derived.status;
+      status = derived.status;
     }
   } else if (!checkOut) {
     workedHours = null;
     status = 'MISSING_CHECKOUT';
   }
+
+  const noteContent = data.notes !== undefined ? data.notes : (data.note !== undefined ? data.note : record.note);
 
   return prisma.attendance.update({
     where: { id },
@@ -220,10 +224,10 @@ async function updateAttendance(id, data, user) {
       checkIn,
       checkOut,
       workedHours,
-      status,
+      status: status || record.status,
       isManualEdit: true,
       correctedByUserId: user.id,
-      note: data.note !== undefined ? data.note : record.note,
+      note: noteContent,
     },
     include: {
       employee: {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,12 +9,33 @@ import { AttendanceStatus } from '../../utils/constants';
 import { formatEnumLabel, formatHours } from '../../utils/formatters';
 import { AlertCircle, Save, X } from 'lucide-react';
 
-const attendanceSchema = z.object({
-  checkIn: z.string().min(1, 'Check in time is required'),
-  checkOut: z.string().optional().nullable(),
-  status: z.nativeEnum(AttendanceStatus),
-  notes: z.string().optional().nullable(),
-});
+const toLocalISOString = (dateInput) => {
+  if (!dateInput) return '';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+const attendanceSchema = z
+  .object({
+    checkIn: z.string().min(1, 'Check in time is required'),
+    checkOut: z.string().optional().nullable(),
+    status: z.nativeEnum(AttendanceStatus),
+    notes: z.string().optional().nullable(),
+  })
+  .refine(
+    (data) => {
+      if (data.checkIn && data.checkOut) {
+        return new Date(data.checkOut).getTime() > new Date(data.checkIn).getTime();
+      }
+      return true;
+    },
+    {
+      message: 'Check out time must be after check in time',
+      path: ['checkOut'],
+    }
+  );
 
 export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }) {
   const queryClient = useQueryClient();
@@ -38,6 +59,7 @@ export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(attendanceSchema),
@@ -49,14 +71,26 @@ export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }
     },
   });
 
+  const watchCheckIn = useWatch({ control, name: 'checkIn' });
+  const watchCheckOut = useWatch({ control, name: 'checkOut' });
+
+  let liveWorkedHours = attendanceRecord?.workedHours ?? 0;
+  if (watchCheckIn && watchCheckOut) {
+    const inTime = new Date(watchCheckIn).getTime();
+    const outTime = new Date(watchCheckOut).getTime();
+    if (!isNaN(inTime) && !isNaN(outTime) && outTime > inTime) {
+      liveWorkedHours = Math.round(((outTime - inTime) / (1000 * 60 * 60)) * 100) / 100;
+    }
+  }
+
   useEffect(() => {
     setErrorMessage('');
     if (attendanceRecord) {
       reset({
-        checkIn: attendanceRecord.checkIn ? new Date(attendanceRecord.checkIn).toISOString().slice(0, 16) : '',
-        checkOut: attendanceRecord.checkOut ? new Date(attendanceRecord.checkOut).toISOString().slice(0, 16) : '',
+        checkIn: toLocalISOString(attendanceRecord.checkIn),
+        checkOut: toLocalISOString(attendanceRecord.checkOut),
         status: attendanceRecord.status || AttendanceStatus.LATE,
-        notes: attendanceRecord.notes || '',
+        notes: attendanceRecord.notes || attendanceRecord.note || '',
       });
     }
   }, [attendanceRecord, reset]);
@@ -118,7 +152,7 @@ export default function AttendanceFormPage({ isOpen, onClose, attendanceRecord }
 
         <div className="text-right">
           <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">RECORDED HOURS</span>
-          <span className="text-sm font-bold text-gray-900 mt-0.5 block">{formatHours(attendanceRecord?.workedHours || 0.01)}</span>
+          <span className="text-sm font-bold text-gray-900 mt-0.5 block">{formatHours(liveWorkedHours)}</span>
         </div>
       </div>
 
