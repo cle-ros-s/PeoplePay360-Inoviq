@@ -12,44 +12,265 @@ import {
   ArrowRight,
   Shield,
   Zap,
-  PieChart as PieChartIcon,
+  PieChart,
   AlertCircle,
-  Sparkles,
-  CheckCircle2,
   Users,
   Calendar,
   DollarSign,
   TrendingUp,
+  Search,
+  Bell,
+  CheckCircle2,
+  X,
+  Sparkles,
 } from 'lucide-react';
 import { Role } from '../../utils/constants';
 
+// Zod Schema with clear validation rules
 const loginSchema = z.object({
-  email: z.string().min(1, 'Email is required').email('Invalid email address'),
+  email: z
+    .string()
+    .min(1, 'Email address is required')
+    .email('Please enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
 });
 
-const DEMO_ACCOUNTS = [
-  { role: 'Admin', email: 'admin@payflux.com', name: 'Tony Stark' },
-  { role: 'HR Manager', email: 'hr.manager@payflux.com', name: 'Sarah Connor' },
-  { role: 'Payroll Manager', email: 'payroll.manager@payflux.com', name: 'Dwight Schrute' },
-  { role: 'Payroll Specialist', email: 'payroll.user@payflux.com', name: 'Michael Scott' },
-  { role: 'Employee', email: 'employee@payflux.com', name: 'Jim Halpert' },
-];
+// Modern P-shaped PayFlux Brand Logo Vector
+function PayFluxLogo({ className = 'w-9 h-9', showText = true, isLight = true }) {
+  return (
+    <div className="flex items-center gap-3 select-none">
+      <div className={`relative flex items-center justify-center shrink-0 ${className}`}>
+        <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-md">
+          <defs>
+            <linearGradient id="pGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FF4F81" />
+              <stop offset="100%" stopColor="#7B2FF7" />
+            </linearGradient>
+            <linearGradient id="pGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#7B2FF7" />
+              <stop offset="100%" stopColor="#FF4F81" />
+            </linearGradient>
+          </defs>
+          {/* Stylized Modern P Ribbon Folds */}
+          <path
+            d="M8 8C8 5.79086 9.79086 4 12 4H26C33.732 4 40 10.268 40 18C40 25.732 33.732 32 26 32H16V38C16 40.2091 14.2091 42 12 42C9.79086 42 8 40.2091 8 38V8Z"
+            fill="url(#pGrad1)"
+          />
+          <path
+            d="M16 12H25C28.3137 12 31 14.6863 31 18C31 21.3137 28.3137 24 25 24H16V12Z"
+            fill="#FFFFFF"
+            fillOpacity="0.95"
+          />
+          <path
+            d="M8 20L20 32H12C9.79086 32 8 30.2091 8 28V20Z"
+            fill="url(#pGrad2)"
+            fillOpacity="0.8"
+          />
+        </svg>
+      </div>
+      {showText && (
+        <div className="flex flex-col">
+          <div className="flex items-center">
+            <span className={`text-2xl font-black tracking-tight ${isLight ? 'text-white' : 'text-[#110C35]'}`}>
+              Pay
+            </span>
+            <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-[#FF4F81] to-[#7B2FF7] bg-clip-text text-transparent">
+              Flux
+            </span>
+          </div>
+          <span className={`text-[10px] font-semibold tracking-wider uppercase -mt-1 ${isLight ? 'text-purple-200/80' : 'text-purple-900/60'}`}>
+            HR &amp; Payroll Simplified
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Realistic Dashboard Monitor Illustration with 3D aesthetic
+function DashboardMonitorIllustration() {
+  return (
+    <div className="relative w-full max-w-[560px] mx-auto select-none">
+      {/* Background ambient glowing gradient aura */}
+      <div className="absolute -top-12 -left-12 w-80 h-80 bg-[#7B2FF7]/35 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-20 -right-10 w-72 h-72 bg-[#FF4F81]/25 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Decorative concentric background arcs */}
+      <svg
+        className="absolute -top-16 -right-16 w-64 h-64 text-white/5 pointer-events-none"
+        viewBox="0 0 200 200"
+        fill="none"
+      >
+        <circle cx="100" cy="100" r="80" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" />
+        <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="1" />
+        <circle cx="100" cy="100" r="40" stroke="currentColor" strokeWidth="1" strokeDasharray="2 4" />
+      </svg>
+
+      {/* Decorative dot matrix grid */}
+      <div className="absolute -top-6 right-10 grid grid-cols-5 gap-2.5 opacity-20 pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <div key={i} className="w-1 h-1 rounded-full bg-white" />
+        ))}
+      </div>
+
+      {/* Desktop Monitor Screen Frame */}
+      <div className="relative z-10 bg-[#140E36] p-2.5 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.65)] border border-white/10 backdrop-blur-md">
+        {/* Inner Monitor Display */}
+        <div className="bg-[#F8F9FD] rounded-xl overflow-hidden shadow-inner text-gray-800 flex h-[270px]">
+          {/* Mini Left Sidebar */}
+          <div className="w-12 bg-[#1A1245] flex flex-col items-center py-3.5 gap-3 shrink-0 border-r border-white/5">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#FF4F81] to-[#7B2FF7] flex items-center justify-center text-white shadow-sm">
+              <Sparkles className="w-3.5 h-3.5" />
+            </div>
+            <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-purple-300">
+              <Users className="w-3 h-3" />
+            </div>
+            <div className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-purple-300/60">
+              <Calendar className="w-3 h-3" />
+            </div>
+            <div className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-purple-300/60">
+              <DollarSign className="w-3 h-3" />
+            </div>
+          </div>
+
+          {/* Main Dashboard Preview Content */}
+          <div className="flex-1 p-3.5 flex flex-col justify-between overflow-hidden">
+            {/* Top mini header bar */}
+            <div className="flex items-center justify-between pb-2 border-b border-gray-200/70">
+              <span className="text-xs font-bold text-gray-900 tracking-tight">Dashboard</span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-gray-200 text-[9px] text-gray-400">
+                  <Search className="w-2.5 h-2.5" />
+                  <span>Search...</span>
+                </div>
+                <div className="relative">
+                  <Bell className="w-3 h-3 text-gray-500" />
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-[#FF4F81] rounded-full" />
+                </div>
+                <div className="w-5 h-5 rounded-full bg-gradient-to-r from-purple-400 to-pink-500 border border-white flex items-center justify-center text-[9px] text-white font-bold">
+                  S
+                </div>
+              </div>
+            </div>
+
+            {/* 4 Realistic Stat Cards in 2x2 Grid */}
+            <div className="grid grid-cols-2 gap-2 my-auto">
+              {/* Card 1: Employees */}
+              <div className="bg-white p-2 rounded-lg border border-gray-100 shadow-xs flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                  <Users className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <div className="text-[9px] font-medium text-gray-400 leading-tight">Employees</div>
+                  <div className="text-xs font-extrabold text-gray-900 leading-tight">245</div>
+                  <div className="text-[8px] text-emerald-600 font-semibold leading-none mt-0.5">Active Employees</div>
+                </div>
+              </div>
+
+              {/* Card 2: On Leave */}
+              <div className="bg-white p-2 rounded-lg border border-gray-100 shadow-xs flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <Calendar className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <div className="text-[9px] font-medium text-gray-400 leading-tight">On Leave</div>
+                  <div className="text-xs font-extrabold text-gray-900 leading-tight">18</div>
+                  <div className="text-[8px] text-amber-600 font-semibold leading-none mt-0.5">This Month</div>
+                </div>
+              </div>
+
+              {/* Card 3: Total Payroll */}
+              <div className="bg-white p-2 rounded-lg border border-gray-100 shadow-xs flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center shrink-0">
+                  <span className="font-bold text-xs">₹</span>
+                </div>
+                <div>
+                  <div className="text-[9px] font-medium text-gray-400 leading-tight">Total Payroll</div>
+                  <div className="text-xs font-extrabold text-gray-900 leading-tight">₹ 24,80,000</div>
+                  <div className="text-[8px] text-pink-600 font-semibold leading-none mt-0.5">This Month</div>
+                </div>
+              </div>
+
+              {/* Card 4: Payroll Trend Chart */}
+              <div className="bg-white p-2 rounded-lg border border-gray-100 shadow-xs flex flex-col justify-between">
+                <div className="flex items-center justify-between text-[9px] text-gray-400 font-medium">
+                  <span>Payroll Trend</span>
+                  <TrendingUp className="w-2.5 h-2.5 text-purple-600" />
+                </div>
+                <div className="h-6 w-full mt-1">
+                  <svg viewBox="0 0 100 30" className="w-full h-full overflow-visible">
+                    <defs>
+                      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#FF4F81" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#7B2FF7" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d="M0 25 Q 15 18, 30 20 T 60 10 T 85 14 T 100 4 L 100 30 L 0 30 Z"
+                      fill="url(#chartGrad)"
+                    />
+                    <path
+                      d="M0 25 Q 15 18, 30 20 T 60 10 T 85 14 T 100 4"
+                      fill="none"
+                      stroke="#FF4F81"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <circle cx="30" cy="20" r="2" fill="#7B2FF7" />
+                    <circle cx="60" cy="10" r="2" fill="#FF4F81" />
+                    <circle cx="100" cy="4" r="2.5" fill="#FF4F81" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Monitor Stand & Base */}
+      <div className="relative z-0 flex flex-col items-center -mt-1">
+        <div className="w-16 h-8 bg-gradient-to-b from-[#1C1448] to-[#120B33] shadow-md border-x border-white/5" />
+        <div className="w-36 h-3 bg-gradient-to-r from-[#170E3B] via-[#2D1B69] to-[#170E3B] rounded-full shadow-[0_10px_20px_rgba(0,0,0,0.5)] border border-white/10" />
+      </div>
+
+      {/* Potted Plant Accessory (Left) */}
+      <div className="absolute -bottom-2 -left-6 z-20 flex flex-col items-center">
+        <div className="flex gap-1 -mb-1">
+          <div className="w-3 h-6 bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-full rotate-[-25deg] transform origin-bottom" />
+          <div className="w-3.5 h-8 bg-gradient-to-t from-emerald-500 to-emerald-300 rounded-full transform origin-bottom -translate-y-1" />
+          <div className="w-3 h-6 bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-full rotate-[25deg] transform origin-bottom" />
+        </div>
+        <div className="w-8 h-8 bg-gradient-to-b from-white to-gray-200 rounded-b-xl rounded-t-sm shadow-md border border-white/40" />
+      </div>
+
+      {/* Pink Coffee Mug (Right) */}
+      <div className="absolute -bottom-1 -right-4 z-20 flex items-center">
+        <div className="w-7 h-8 bg-gradient-to-b from-[#FF4F81] to-[#E03A6C] rounded-b-lg rounded-t-sm shadow-md relative">
+          {/* Mug Handle */}
+          <div className="absolute top-1.5 -right-2.5 w-3 h-4 border-2 border-[#FF4F81] rounded-r-md" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [forgotModalOpen, setForgotModalOpen] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
 
   const from = location.state?.from?.pathname;
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
@@ -74,367 +295,306 @@ export default function LoginPage() {
     } catch (error) {
       console.error('Login error:', error);
       const apiMsg = error.response?.data?.error?.message;
-      setErrorMessage(apiMsg || 'Invalid credentials. Please check your email and password.');
+      setErrorMessage(apiMsg || 'Invalid email or password. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleQuickFill = (email) => {
-    setValue('email', email, { shouldValidate: true });
-    setValue('password', 'Password123!', { shouldValidate: true });
-    setErrorMessage('');
+  const handleForgotSubmit = (e) => {
+    e.preventDefault();
+    if (!forgotEmail || !forgotEmail.includes('@')) {
+      alert('Please enter a valid email address.');
+      return;
+    }
+    setForgotSuccess(true);
+    setTimeout(() => {
+      setForgotSuccess(false);
+      setForgotModalOpen(false);
+      setForgotEmail('');
+    }, 2000);
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#080720] relative overflow-hidden font-sans select-none">
-      {/* ========================================================= */}
-      {/* LEFT SHOWCASE PANEL (Branded Visuals & 3D Desktop Mockup) */}
-      {/* ========================================================= */}
-      <div className="lg:w-[58%] xl:w-[60%] flex flex-col justify-between p-8 sm:p-12 lg:p-16 relative z-10 overflow-hidden bg-gradient-to-br from-[#07061d] via-[#0e0a38] to-[#1a0c4f]">
-        {/* Background Ambient Glow & Dot Matrix */}
-        <div className="absolute top-[-150px] left-[-100px] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-100px] right-[-80px] w-[450px] h-[450px] bg-pink-600/15 rounded-full blur-[130px] pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[150px] pointer-events-none" />
+    <div className="min-h-screen w-full flex flex-col lg:flex-row lg:h-screen lg:overflow-hidden bg-[#0D0728] font-sans antialiased text-gray-900">
+      {/* ========================================================================= */}
+      {/* LEFT SECTION - Dark Navy/Purple Marketing & Dashboard Preview Panel      */}
+      {/* ========================================================================= */}
+      <div className="w-full lg:w-1/2 min-h-screen lg:min-h-0 bg-gradient-to-br from-[#09041E] via-[#120738] to-[#250C5E] text-white p-6 sm:p-10 lg:p-12 xl:p-16 flex flex-col justify-between relative overflow-hidden shrink-0">
+        {/* Subtle Decorative Background Glows */}
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#7B2FF7]/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[#FF4F81]/15 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Subtle Background Geometric Grid */}
-        <div
-          className="absolute inset-0 opacity-[0.035] pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
-            backgroundSize: '28px 28px',
-          }}
-        />
+        {/* Top Header Logo */}
+        <div className="relative z-10">
+          <PayFluxLogo className="w-10 h-10" showText={true} isLight={true} />
+        </div>
 
-        {/* 1. Header / Brand Logo */}
-        <div className="flex items-center gap-3 relative z-10 animate-fadeInUp">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#FF3366] via-[#D83A92] to-[#7928CA] flex items-center justify-center shadow-lg shadow-pink-500/25 p-0.5">
-            <div className="w-full h-full bg-[#0d0a28]/60 rounded-[10px] backdrop-blur-xs flex items-center justify-center">
-              <span className="font-extrabold text-2xl text-transparent bg-clip-text bg-gradient-to-tr from-pink-400 via-rose-300 to-white">
-                P
+        {/* Center Content: Headline, Subtitle & Monitor Illustration */}
+        <div className="relative z-10 my-auto py-6 space-y-6 max-w-xl">
+          <div className="space-y-3">
+            <h1 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-5xl font-black tracking-tight leading-[1.15]">
+              Smarter HR.<br />
+              Seamless Payroll.<br />
+              <span className="bg-gradient-to-r from-[#FF4F81] via-[#D83B9B] to-[#7B2FF7] bg-clip-text text-transparent">
+                Stronger Teams.
               </span>
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-2xl font-bold tracking-tight text-white">Pay</span>
-              <span className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">
-                Flux
-              </span>
-            </div>
-            <p className="text-[11px] font-medium text-purple-200/70 tracking-wide uppercase">
-              HR &amp; Payroll Simplified
+            </h1>
+            <p className="text-sm sm:text-base text-purple-200/75 leading-relaxed font-normal max-w-lg">
+              Manage your workforce, attendance, leaves, payroll and insights — all in one powerful platform.
             </p>
           </div>
-        </div>
 
-        {/* 2. Hero Headline & Description */}
-        <div className="my-8 lg:my-auto max-w-xl relative z-10 animate-fadeInUp" style={{ animationDelay: '100ms' }}>
-          <h1 className="text-3xl sm:text-4xl lg:text-[44px] xl:text-[50px] font-extrabold tracking-tight leading-[1.12] text-white">
-            Smarter HR. <br />
-            Seamless Payroll. <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF4B72] via-[#E040FB] to-[#7C4DFF]">
-              Stronger Teams.
-            </span>
-          </h1>
-
-          <p className="mt-4 text-sm sm:text-base text-purple-100/75 leading-relaxed max-w-lg font-normal">
-            Manage your workforce, attendance, leaves, payroll and insights — all in one powerful platform.
-          </p>
-
-          {/* 3. 3D Stylized Interactive Desktop Screen Mockup */}
-          <div className="mt-8 relative max-w-lg lg:max-w-xl group">
-            {/* Monitor Outer Casing */}
-            <div className="bg-[#1c1840]/90 p-2 sm:p-2.5 rounded-2xl shadow-2xl border border-purple-500/30 backdrop-blur-md relative overflow-hidden transition-transform duration-500 hover:scale-[1.01]">
-              {/* Screen Top Bar */}
-              <div className="bg-[#0e0c24] rounded-xl overflow-hidden border border-white/5">
-                <div className="flex items-center justify-between px-3 py-1.5 bg-[#171436] border-b border-white/5 text-[10px] text-gray-300">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-rose-500" />
-                    <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="font-semibold text-gray-300 ml-2">Dashboard</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="bg-white/10 px-2 py-0.5 rounded-md text-[9px] text-gray-400">Search...</div>
-                    <div className="w-4 h-4 rounded-full bg-purple-500/30 flex items-center justify-center text-[9px]">🔔</div>
-                    <div className="w-4 h-4 rounded-full bg-pink-500 text-[8px] font-bold flex items-center justify-center text-white">TS</div>
-                  </div>
-                </div>
-
-                {/* Inside Screen Dashboard Layout */}
-                <div className="flex bg-[#0b0920] p-2.5 gap-2.5">
-                  {/* Mini Sidebar */}
-                  <div className="w-8 bg-[#18153b] rounded-lg flex flex-col items-center py-2 gap-2 shrink-0 border border-white/5">
-                    <div className="w-5 h-5 rounded-md bg-pink-500 text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
-                      ⚡
-                    </div>
-                    <div className="w-4 h-4 rounded text-gray-400 flex items-center justify-center text-[9px] hover:text-white">👤</div>
-                    <div className="w-4 h-4 rounded text-gray-400 flex items-center justify-center text-[9px] hover:text-white">📅</div>
-                    <div className="w-4 h-4 rounded text-gray-400 flex items-center justify-center text-[9px] hover:text-white">💳</div>
-                    <div className="w-4 h-4 rounded text-gray-400 flex items-center justify-center text-[9px] hover:text-white">📊</div>
-                    <div className="w-4 h-4 rounded text-gray-400 flex items-center justify-center text-[9px] hover:text-white mt-auto">⚙️</div>
-                  </div>
-
-                  {/* Dashboard Content Grid */}
-                  <div className="flex-1 space-y-2">
-                    {/* Top Row Cards */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-[#19153c] p-2 rounded-lg border border-white/5 shadow-xs flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
-                          <Users className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 leading-none">Employees</p>
-                          <p className="text-xs font-bold text-white mt-0.5 leading-none">245</p>
-                          <p className="text-[8px] text-emerald-400 mt-0.5 leading-none">Active Staff</p>
-                        </div>
-                      </div>
-
-                      <div className="bg-[#19153c] p-2 rounded-lg border border-white/5 shadow-xs flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                          <Calendar className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 leading-none">On Leave</p>
-                          <p className="text-xs font-bold text-white mt-0.5 leading-none">18</p>
-                          <p className="text-[8px] text-amber-400 mt-0.5 leading-none">This Month</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bottom Row Cards */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-[#19153c] p-2 rounded-lg border border-white/5 shadow-xs flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0">
-                          <DollarSign className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-gray-400 leading-none">Total Payroll</p>
-                          <p className="text-xs font-bold text-white mt-0.5 leading-none">₹ 24,80,000</p>
-                          <p className="text-[8px] text-pink-400 mt-0.5 leading-none">This Month</p>
-                        </div>
-                      </div>
-
-                      {/* Payroll Trend Sparkline */}
-                      <div className="bg-[#19153c] p-2 rounded-lg border border-white/5 shadow-xs">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[9px] text-gray-400">Payroll Trend</p>
-                          <TrendingUp className="w-2.5 h-2.5 text-pink-400" />
-                        </div>
-                        <div className="mt-1 h-5 flex items-end justify-between gap-1 px-1">
-                          <span className="w-1.5 h-2 bg-pink-500/40 rounded-t-xs" />
-                          <span className="w-1.5 h-3 bg-pink-500/60 rounded-t-xs" />
-                          <span className="w-1.5 h-2.5 bg-pink-500/50 rounded-t-xs" />
-                          <span className="w-1.5 h-4 bg-pink-500/80 rounded-t-xs" />
-                          <span className="w-1.5 h-5 bg-gradient-to-t from-pink-500 to-purple-400 rounded-t-xs shadow-xs shadow-pink-500/50" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Monitor Stand */}
-            <div className="w-14 h-4 bg-gradient-to-b from-[#1c1840] to-[#120f2e] mx-auto -mt-0.5 shadow-md" />
-            <div className="w-28 h-2 bg-gradient-to-r from-transparent via-[#2a245a] to-transparent mx-auto rounded-full shadow-lg" />
+          {/* Desktop Monitor Dashboard Illustration */}
+          <div className="pt-2">
+            <DashboardMonitorIllustration />
           </div>
         </div>
 
-        {/* 4. Bottom 3 Feature Badges */}
-        <div className="pt-6 border-t border-purple-500/20 grid grid-cols-3 gap-4 relative z-10 animate-fadeInUp" style={{ animationDelay: '200ms' }}>
-          {/* Secure */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full border border-purple-400/40 bg-purple-500/10 flex items-center justify-center shrink-0">
-              <Shield className="w-4 h-4 text-purple-300" />
+        {/* Bottom 3 Compact Feature Highlights */}
+        <div className="relative z-10 pt-4 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-white/5 border border-white/15 flex items-center justify-center text-purple-300 shrink-0">
+              <Shield className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs font-bold text-white leading-tight">Secure</p>
-              <p className="text-[11px] text-purple-200/65 leading-tight mt-0.5">Your data is safe with us</p>
+              <div className="text-xs font-bold text-white leading-tight">Secure</div>
+              <div className="text-[11px] text-purple-200/60 leading-tight mt-0.5">Your data is safe with us</div>
             </div>
           </div>
 
-          {/* Efficient */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full border border-pink-400/40 bg-pink-500/10 flex items-center justify-center shrink-0">
-              <Zap className="w-4 h-4 text-pink-300" />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-white/5 border border-white/15 flex items-center justify-center text-[#FF4F81] shrink-0">
+              <Zap className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs font-bold text-white leading-tight">Efficient</p>
-              <p className="text-[11px] text-purple-200/65 leading-tight mt-0.5">Automate HR &amp; Payroll tasks</p>
+              <div className="text-xs font-bold text-white leading-tight">Efficient</div>
+              <div className="text-[11px] text-purple-200/60 leading-tight mt-0.5">Automate HR &amp; Payroll tasks</div>
             </div>
           </div>
 
-          {/* Insightful */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full border border-indigo-400/40 bg-indigo-500/10 flex items-center justify-center shrink-0">
-              <PieChartIcon className="w-4 h-4 text-indigo-300" />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-white/5 border border-white/15 flex items-center justify-center text-indigo-300 shrink-0">
+              <PieChart className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs font-bold text-white leading-tight">Insightful</p>
-              <p className="text-[11px] text-purple-200/65 leading-tight mt-0.5">Data-driven decisions</p>
+              <div className="text-xs font-bold text-white leading-tight">Insightful</div>
+              <div className="text-[11px] text-purple-200/60 leading-tight mt-0.5">Data-driven decisions</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ========================================================= */}
-      {/* RIGHT LOGIN FORM PANEL (Clean, Floating White Card)       */}
-      {/* ========================================================= */}
-      <div className="lg:w-[42%] xl:w-[40%] flex flex-col justify-center items-center p-6 sm:p-10 lg:p-12 bg-[#f8f9fe] relative z-10">
-        {/* Background Subtle Dot Pattern */}
-        <div
-          className="absolute bottom-6 right-6 w-32 h-32 opacity-20 pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, #7c4dff 1px, transparent 0)`,
-            backgroundSize: '12px 12px',
-          }}
-        />
+      {/* ========================================================================= */}
+      {/* RIGHT SECTION - Soft Lavender Canvas with Centered Premium White Login Card */}
+      {/* ========================================================================= */}
+      <div className="w-full lg:w-1/2 min-h-screen lg:min-h-0 bg-[#F7F8FE] p-6 sm:p-10 lg:p-12 xl:p-16 flex items-center justify-center relative overflow-hidden">
+        {/* Subtle Decorative Dot Matrix in Bottom Right */}
+        <div className="absolute bottom-6 right-8 grid grid-cols-6 gap-3 opacity-30 pointer-events-none hidden sm:grid">
+          {[...Array(24)].map((_, i) => (
+            <div key={i} className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+          ))}
+        </div>
 
-        {/* Ambient Top Light */}
-        <div className="absolute top-0 right-0 w-72 h-72 bg-purple-200/30 rounded-full blur-[90px] pointer-events-none" />
+        {/* Decorative Light Glow Behind Card */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[580px] h-[580px] bg-purple-200/30 rounded-full blur-3xl pointer-events-none" />
 
-        {/* The White Login Card */}
-        <div className="w-full max-w-md bg-white rounded-3xl p-7 sm:p-10 shadow-[0_15px_40px_rgba(0,0,0,0.06)] border border-gray-100 relative z-10 animate-fadeInUp">
-          {/* Card Top P Emblem */}
-          <div className="flex justify-center mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#FF3366] via-[#D83A92] to-[#7928CA] flex items-center justify-center shadow-lg shadow-pink-500/20 p-0.5">
-              <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
-                <span className="font-extrabold text-2xl text-transparent bg-clip-text bg-gradient-to-tr from-[#FF3366] to-[#7928CA]">
-                  P
-                </span>
-              </div>
+        {/* Centered White Login Card */}
+        <div className="relative z-10 w-full max-w-[540px] bg-white rounded-[24px] sm:rounded-[28px] p-8 sm:p-11 lg:p-12 shadow-[0_20px_60px_rgba(23,15,68,0.06)] border border-purple-100/60 backdrop-blur-sm">
+          {/* Card Top Branding Header */}
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-50 to-pink-50 border border-purple-100/80 flex items-center justify-center shadow-xs mb-4">
+              <PayFluxLogo className="w-9 h-9" showText={false} />
             </div>
-          </div>
-
-          {/* Welcome back! Header */}
-          <div className="text-center mb-6">
-            <h2 className="text-2xl sm:text-[28px] font-extrabold text-gray-900 tracking-tight">Welcome back!</h2>
-            <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#110C35] tracking-tight">
+              Welcome back!
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1.5">
               Sign in to access your PayFlux account
             </p>
           </div>
 
-          {/* Error Message Alert */}
+          {/* Authentication Error Feedback Banner */}
           {errorMessage && (
-            <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-700 shadow-xs">
+            <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-700 animate-shake">
               <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
               <span className="leading-relaxed font-medium">{errorMessage}</span>
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Email Address */}
-            <div>
-              <label htmlFor="email" className="block text-xs font-bold text-gray-800 uppercase tracking-wider mb-1.5">
+          {/* Login Form */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
+            {/* Email Address Field */}
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="block text-xs font-bold text-gray-700 tracking-wide">
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5 pointer-events-none" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                  <Mail className="w-4 h-4" />
+                </div>
                 <input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="Enter your email"
                   {...register('email')}
-                  className={`w-full bg-white border ${
-                    errors.email ? 'border-rose-400 focus:ring-rose-400' : 'border-gray-200 focus:border-purple-500 focus:ring-purple-500/20'
-                  } rounded-xl py-3 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 transition-all shadow-2xs focus:outline-none focus:ring-2`}
+                  className={`w-full pl-10 pr-3.5 py-3 text-sm bg-gray-50/70 focus:bg-white border rounded-xl transition-all outline-none ${
+                    errors.email
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
+                      : 'border-gray-200 focus:border-purple-500 focus:ring-3 focus:ring-purple-500/10'
+                  }`}
                 />
               </div>
-              {errors.email && <p className="text-xs text-rose-600 mt-1 font-medium">{errors.email.message}</p>}
+              {errors.email && (
+                <p className="text-[11px] font-medium text-rose-600 pl-1">{errors.email.message}</p>
+              )}
             </div>
 
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-xs font-bold text-gray-800 uppercase tracking-wider mb-1.5">
+            {/* Password Field */}
+            <div className="space-y-1.5">
+              <label htmlFor="password" className="block text-xs font-bold text-gray-700 tracking-wide">
                 Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5 pointer-events-none" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                  <Lock className="w-4 h-4" />
+                </div>
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   placeholder="Enter your password"
                   {...register('password')}
-                  className={`w-full bg-white border ${
-                    errors.password ? 'border-rose-400 focus:ring-rose-400' : 'border-gray-200 focus:border-purple-500 focus:ring-purple-500/20'
-                  } rounded-xl py-3 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 transition-all shadow-2xs focus:outline-none focus:ring-2`}
+                  className={`w-full pl-10 pr-10 py-3 text-sm bg-gray-50/70 focus:bg-white border rounded-xl transition-all outline-none ${
+                    errors.password
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
+                      : 'border-gray-200 focus:border-purple-500 focus:ring-3 focus:ring-purple-500/10'
+                  }`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3.5 top-3.5 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {errors.password && <p className="text-xs text-rose-600 mt-1 font-medium">{errors.password.message}</p>}
+              {errors.password && (
+                <p className="text-[11px] font-medium text-rose-600 pl-1">{errors.password.message}</p>
+              )}
             </div>
 
-            {/* Forgot Password Link */}
-            <div className="flex justify-end pt-0.5">
+            {/* Forgot Password Right-Aligned Link */}
+            <div className="flex items-center justify-end pt-0.5">
               <button
                 type="button"
-                onClick={() => setErrorMessage('Please contact your HR administrator to reset your password.')}
-                className="text-xs font-bold text-purple-600 hover:text-purple-800 transition-colors"
+                onClick={() => setForgotModalOpen(true)}
+                className="text-xs font-semibold text-[#7B2FF7] hover:text-[#9333EA] transition-colors"
               >
                 Forgot password?
               </button>
             </div>
 
-            {/* Sign In Gradient Button */}
+            {/* Full-width Gradient Sign In Button */}
             <button
               type="submit"
               id="login-submit"
               disabled={isSubmitting}
-              className="w-full mt-2 py-3.5 px-4 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-md shadow-pink-500/25 hover:shadow-lg hover:shadow-pink-500/35 hover:brightness-105 active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+              className="w-full py-3.5 px-6 rounded-xl text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-purple-500/25 transition-all duration-200 disabled:opacity-60 cursor-pointer select-none mt-2"
               style={{
-                background: 'linear-gradient(90deg, #FF3366 0%, #D83A92 50%, #7928CA 100%)',
+                background: 'linear-gradient(90deg, #FF4F81 0%, #B034B7 50%, #7B2FF7 100%)',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(123, 47, 247, 0.35)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(123, 47, 247, 0.25)';
               }}
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  Signing in...
+                  <span>Signing In...</span>
                 </span>
               ) : (
                 <>
                   <span>Sign In</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                 </>
               )}
             </button>
           </form>
+        </div>
+      </div>
 
-          {/* Quick Demo Credentials Bar */}
-          <div className="mt-6 pt-5 border-t border-gray-100">
-            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center mb-2.5">
-              1-Click Demo Login Roles
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              {DEMO_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.role}
-                  type="button"
-                  onClick={() => handleQuickFill(acc.email)}
-                  className="px-2.5 py-1 text-[11px] font-semibold text-gray-700 bg-gray-50 hover:bg-purple-50 hover:text-purple-700 border border-gray-200 hover:border-purple-200 rounded-lg transition-all shadow-2xs"
-                  title={`Click to fill credentials for ${acc.name} (${acc.email})`}
-                >
-                  {acc.role}
-                </button>
-              ))}
+      {/* ========================================================================= */}
+      {/* Forgot Password Modal Assistance                                         */}
+      {/* ========================================================================= */}
+      {forgotModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="relative w-full max-w-md bg-white rounded-2xl p-6 sm:p-8 shadow-2xl border border-gray-100">
+            <button
+              type="button"
+              onClick={() => setForgotModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-full bg-purple-50 text-[#7B2FF7] flex items-center justify-center mx-auto mb-3">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Reset Password</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Enter your work email address to receive password recovery instructions.
+              </p>
             </div>
+
+            {forgotSuccess ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3 text-xs text-emerald-800">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span>Password reset link sent to your email address.</span>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="Enter your registered email"
+                    className="w-full px-3.5 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-purple-500 outline-none"
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setForgotModalOpen(false)}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-[#FF4F81] to-[#7B2FF7] rounded-lg shadow-sm hover:opacity-95 transition-opacity"
+                  >
+                    Send Reset Link
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
-
-        {/* Footer info */}
-        <p className="mt-6 text-xs text-gray-400 font-medium text-center">
-          © {new Date().getFullYear()} PayFlux Inc. All rights reserved.
-        </p>
-      </div>
+      )}
     </div>
   );
 }
