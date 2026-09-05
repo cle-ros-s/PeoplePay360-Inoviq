@@ -55,14 +55,15 @@ async function startServer() {
     let currentServer = null;
 
     const listenOnPort = (port) => {
+      killPortProcess(port);
       currentServer = http.createServer(app);
 
       currentServer.on('error', (error) => {
         if (error.code === 'EADDRINUSE') {
-          console.log(`⚠️ Port ${port} is temporarily busy (EADDRINUSE). Retrying in 1s...`);
+          killPortProcess(port);
           setTimeout(() => {
             listenOnPort(port);
-          }, 1000);
+          }, 300);
         } else {
           console.error('❌ Server error:', error.message);
         }
