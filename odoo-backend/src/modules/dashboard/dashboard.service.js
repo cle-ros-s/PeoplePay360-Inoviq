@@ -550,9 +550,9 @@ async function computeDashboardData(query = {}) {
   }
 
   const timeOffOverview = {
-    pendingRequests: byStatus['PENDING']?.count || 8,
-    approvedDays: byStatus['APPROVED']?.totalDuration || 53,
-    activeAllocations: activeAllocationsCount || Math.max(15, activeEmployeesCount * 2),
+    pendingRequests: byStatus['PENDING']?.count ?? 0,
+    approvedDays: byStatus['APPROVED']?.totalDuration ?? 0,
+    activeAllocations: activeAllocationsCount !== undefined ? activeAllocationsCount : 0,
     byStatus,
     byType,
   };

@@ -16,6 +16,7 @@ import Modal from '../../components/common/Modal';
 import FormField from '../../components/common/FormField';
 import TimeOffRequestFormPage from '../timeOff/TimeOffRequestFormPage';
 import TimeOffTypeFormPage from '../timeOff/TimeOffTypeFormPage';
+import AllocationFormPage from '../timeOff/AllocationFormPage';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -72,6 +73,7 @@ export default function PayrollDashboardPage() {
   const [deptFeedback, setDeptFeedback] = useState({ type: '', message: '' });
   const [timeOffModalOpen, setTimeOffModalOpen] = useState(false);
   const [timeOffTypeModalOpen, setTimeOffTypeModalOpen] = useState(false);
+  const [allocationModalOpen, setAllocationModalOpen] = useState(false);
 
   const params = {
     period: period || undefined,
@@ -478,6 +480,16 @@ export default function PayrollDashboardPage() {
                 Add Time Off Type
               </button>
             )}
+            {can('MANAGE_ALLOCATIONS') && (
+              <button
+                type="button"
+                onClick={() => setAllocationModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg shadow-sm transition-colors"
+              >
+                <Plus className="w-4 h-4 text-indigo-600" />
+                Grant Allocation
+              </button>
+            )}
             {can('CREATE_PAYRUN') && (
               <button
                 type="button"
@@ -688,6 +700,15 @@ export default function PayrollDashboardPage() {
                 >
                   + Leave Type
                 </button>
+                {can('MANAGE_ALLOCATIONS') && (
+                  <button
+                    type="button"
+                    onClick={() => setAllocationModalOpen(true)}
+                    className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md transition-colors"
+                  >
+                    + Grant Allocation
+                  </button>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3 text-center">
@@ -913,6 +934,14 @@ export default function PayrollDashboardPage() {
         <TimeOffTypeFormPage
           isOpen={timeOffTypeModalOpen}
           onClose={() => setTimeOffTypeModalOpen(false)}
+        />
+      )}
+
+      {/* Grant Leave Allocation Modal Directly Accessible from Dashboard */}
+      {allocationModalOpen && (
+        <AllocationFormPage
+          isOpen={allocationModalOpen}
+          onClose={() => setAllocationModalOpen(false)}
         />
       )}
     </div>
