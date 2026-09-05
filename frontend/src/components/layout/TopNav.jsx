@@ -1,8 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu, User as UserIcon, Clock } from 'lucide-react';
 import { formatEnumLabel } from '../../utils/formatters';
-import PayFluxLogo from '../common/PayFluxLogo';
 
 export default function TopNav({ onMobileMenuToggle }) {
   const { user, logout } = useAuth();
@@ -22,9 +21,11 @@ export default function TopNav({ onMobileMenuToggle }) {
           </button>
 
           <div className="flex items-center gap-2.5">
-            <PayFluxLogo className="h-8 w-auto" />
+            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+              360
+            </div>
             <span className="font-bold text-lg text-gray-900 tracking-tight hidden sm:inline-block">
-              PayFlux
+              PeoplePay360
             </span>
           </div>
         </div>
