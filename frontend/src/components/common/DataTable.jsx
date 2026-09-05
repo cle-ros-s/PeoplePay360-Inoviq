@@ -20,54 +20,26 @@ export default function DataTable({
   }
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden animate-fadeInUp"
-      style={{
-        background: 'rgba(255,255,255,0.85)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        border: '1px solid rgba(113,75,103,0.12)',
-        boxShadow: '0 2px 16px rgba(113,75,103,0.07)',
-      }}
-    >
+    <div className="rounded-2xl overflow-hidden bg-white border border-slate-200/90 shadow-2xs animate-fadeInUp">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr
-              className="text-xs font-bold uppercase tracking-wider"
-              style={{
-                background: 'linear-gradient(135deg, rgba(113,75,103,0.07) 0%, rgba(1,126,132,0.05) 100%)',
-                borderBottom: '1px solid rgba(113,75,103,0.12)',
-                color: '#4B3B44',
-              }}
-            >
+            <tr className="text-xs font-bold uppercase tracking-wider bg-slate-50/90 border-b border-slate-200 text-slate-700">
               {columns.map((col, idx) => (
-                <th key={idx} className={`px-6 py-4 ${col.className || ''}`}>
+                <th key={idx} className={`px-6 py-4 font-bold ${col.className || ''}`}>
                   {col.header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100">
             {data.map((row, rIdx) => (
               <tr
                 key={row.id || rIdx}
                 onClick={() => onRowClick && onRowClick(row)}
-                className="transition-all duration-150"
-                style={{
-                  borderBottom: '1px solid rgba(113,75,103,0.07)',
-                  cursor: onRowClick ? 'pointer' : 'default',
-                  color: '#212121',
-                  fontSize: '0.875rem',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = onRowClick
-                    ? 'linear-gradient(135deg, rgba(113,75,103,0.05) 0%, rgba(1,126,132,0.04) 100%)'
-                    : 'rgba(113,75,103,0.02)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'transparent';
-                }}
+                className={`transition-colors duration-150 ${
+                  onRowClick ? 'cursor-pointer hover:bg-purple-50/25' : 'hover:bg-slate-50/50'
+                } text-sm font-medium text-slate-900`}
               >
                 {columns.map((col, cIdx) => (
                   <td key={cIdx} className={`px-6 py-4 ${col.className || ''}`}>

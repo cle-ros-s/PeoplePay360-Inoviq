@@ -452,7 +452,7 @@ export default function PayrollDashboardPage() {
               type="button"
               onClick={handleExportAllEmployees}
               disabled={isExporting}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded-lg shadow-sm transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded-xl shadow-2xs transition-colors disabled:opacity-50"
               title="Extract full details of all 60 employees to CSV"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
@@ -462,7 +462,7 @@ export default function PayrollDashboardPage() {
               <button
                 type="button"
                 onClick={() => navigate('/employees/new')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold text-white bg-gradient-to-r from-[#FF4F81] to-[#7B2FF7] hover:opacity-95 rounded-xl shadow-2xs transition-all"
               >
                 <UserPlus className="w-4 h-4" />
                 New Employee
@@ -476,9 +476,9 @@ export default function PayrollDashboardPage() {
                   setDeptFeedback({ type: '', message: '' });
                   setDeptModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl shadow-2xs transition-colors"
               >
-                <Building className="w-4 h-4 text-gray-500" />
+                <Building className="w-4 h-4 text-slate-500" />
                 Add Department
               </button>
             )}
@@ -486,7 +486,7 @@ export default function PayrollDashboardPage() {
               <button
                 type="button"
                 onClick={() => setTimeOffModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl shadow-2xs transition-colors"
               >
                 <Palmtree className="w-4 h-4 text-amber-500" />
                 Request Time Off
@@ -496,7 +496,7 @@ export default function PayrollDashboardPage() {
               <button
                 type="button"
                 onClick={() => setTimeOffTypeModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl shadow-2xs transition-colors"
               >
                 <Plus className="w-4 h-4 text-emerald-600" />
                 Add Time Off Type
@@ -506,9 +506,9 @@ export default function PayrollDashboardPage() {
               <button
                 type="button"
                 onClick={() => setAllocationModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl shadow-2xs transition-colors"
               >
-                <Plus className="w-4 h-4 text-indigo-600" />
+                <Plus className="w-4 h-4 text-purple-600" />
                 Grant Allocation
               </button>
             )}
@@ -516,7 +516,7 @@ export default function PayrollDashboardPage() {
               <button
                 type="button"
                 onClick={() => navigate('/payroll/payruns/new')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold text-white bg-[#7B2FF7] hover:bg-[#6D28D9] rounded-xl shadow-2xs transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 New Payrun

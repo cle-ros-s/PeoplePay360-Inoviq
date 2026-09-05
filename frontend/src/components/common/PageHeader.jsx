@@ -2,12 +2,11 @@ import React from 'react';
 
 export default function PageHeader({ title, description, actions, children }) {
   return (
-    <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4 pb-5"
-         style={{ borderBottom: '1px solid rgba(113,75,103,0.12)' }}>
+    <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4 pb-5 border-b border-slate-200">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: '#212121' }}>{title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">{title}</h1>
         {description && (
-          <p className="text-sm mt-1.5 leading-relaxed" style={{ color: '#6B7280' }}>{description}</p>
+          <p className="text-sm font-medium mt-1.5 leading-relaxed text-slate-600">{description}</p>
         )}
       </div>
       {(actions || children) && (
