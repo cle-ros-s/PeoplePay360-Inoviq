@@ -13,22 +13,40 @@ async function startServer() {
       console.log(`✓ Health endpoint: http://localhost:${env.PORT}/api/health`);
     });
 
-    // Graceful shutdown
-    const shutdown = async () => {
-      console.log('\nShutting down gracefully...');
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${env.PORT} is in use (EADDRINUSE). Please release port ${env.PORT} or restart nodemon.`);
+      } else {
+        console.error('❌ Server error:', error.message);
+      }
+      process.exit(1);
+    });
+
+    // Graceful shutdown helpers
+    const shutdown = async (signal) => {
+      console.log(`\nShutting down gracefully (${signal})...`);
       server.close(async () => {
-        await prisma.$disconnect();
+        try {
+          await prisma.$disconnect();
+        } catch (e) {}
         console.log('✓ PostgreSQL disconnected. Server closed.');
-        process.exit(0);
+        if (signal === 'SIGUSR2') {
+          process.kill(process.pid, 'SIGUSR2');
+        } else {
+          process.exit(0);
+        }
       });
     };
 
-    process.on('SIGTERM', shutdown);
-    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.once('SIGUSR2', () => shutdown('SIGUSR2'));
   } catch (error) {
     console.error('FATAL: Could not start server:', error);
     process.exit(1);
   }
 }
 
+// Server initialization entry point
 startServer();
+
