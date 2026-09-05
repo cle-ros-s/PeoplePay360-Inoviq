@@ -11,16 +11,15 @@ function invalidateAttendanceCache() {
 }
 
 async function listAttendance(query, scopedEmployeeId = null) {
-  const cacheKey = `${scopedEmployeeId || 'all'}:${JSON.stringify(query || {})}`;
+  const { page, pageSize, skip, take } = getPaginationParams(query);
+  const { employeeId, status, from, to } = query;
+  const cacheKey = `${scopedEmployeeId || 'all'}:${employeeId || ''}:${status || ''}:${from || ''}:${to || ''}:${page}:${pageSize}`;
   const cached = attendanceCache.get(cacheKey);
   const now = Date.now();
 
   if (cached && now - cached.timestamp < ATTENDANCE_CACHE_TTL) {
     return cached.data;
   }
-
-  const { page, pageSize, skip, take } = getPaginationParams(query);
-  const { employeeId, status, from, to } = query;
 
   const where = {};
   if (scopedEmployeeId) {

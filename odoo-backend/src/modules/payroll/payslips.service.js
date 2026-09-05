@@ -13,16 +13,15 @@ function invalidatePayslipCache() {
 }
 
 async function listPayslips(query, scopedEmployeeId = null) {
-  const cacheKey = `${scopedEmployeeId || 'all'}:${JSON.stringify(query || {})}`;
+  const { page, pageSize, skip, take } = getPaginationParams(query);
+  const { payrunId, employeeId, status, period } = query;
+  const cacheKey = `${scopedEmployeeId || 'all'}:${payrunId || ''}:${employeeId || ''}:${status || ''}:${period || ''}:${page}:${pageSize}`;
   const cached = payslipCache.get(cacheKey);
   const now = Date.now();
 
   if (cached && now - cached.timestamp < PAYSLIP_CACHE_TTL) {
     return cached.data;
   }
-
-  const { page, pageSize, skip, take } = getPaginationParams(query);
-  const { payrunId, employeeId, status, period } = query;
 
   const where = {};
   if (scopedEmployeeId) {

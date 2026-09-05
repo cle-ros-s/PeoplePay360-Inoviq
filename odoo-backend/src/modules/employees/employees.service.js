@@ -43,16 +43,15 @@ function getEmpCacheKey(query, scopedEmployeeId) {
 }
 
 async function listEmployees(query, scopedEmployeeId = null) {
-  const cacheKey = getEmpCacheKey(query, scopedEmployeeId);
+  const { page, pageSize, skip, take } = getPaginationParams(query);
+  const { search, department, status, type } = query;
+  const cacheKey = `${scopedEmployeeId || 'all'}:${search || ''}:${department || ''}:${status || ''}:${type || ''}:${page}:${pageSize}`;
   const cached = employeeListCache.get(cacheKey);
   const now = Date.now();
 
   if (cached && now - cached.timestamp < EMP_CACHE_TTL) {
     return cached.data;
   }
-
-  const { page, pageSize, skip, take } = getPaginationParams(query);
-  const { search, department, status, type } = query;
 
   const where = {};
 

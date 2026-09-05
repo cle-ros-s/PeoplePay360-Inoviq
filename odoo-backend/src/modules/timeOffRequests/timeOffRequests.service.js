@@ -10,16 +10,15 @@ function invalidateTimeOffRequestCache() {
 }
 
 async function listTimeOffRequests(query, scopedEmployeeId = null) {
-  const cacheKey = `${scopedEmployeeId || 'all'}:${JSON.stringify(query || {})}`;
+  const { page, pageSize, skip, take } = getPaginationParams(query);
+  const { employeeId, status, timeOffTypeId } = query;
+  const cacheKey = `${scopedEmployeeId || 'all'}:${employeeId || ''}:${status || ''}:${timeOffTypeId || ''}:${page}:${pageSize}`;
   const cached = timeOffRequestCache.get(cacheKey);
   const now = Date.now();
 
   if (cached && now - cached.timestamp < TIMEOFF_CACHE_TTL) {
     return cached.data;
   }
-
-  const { page, pageSize, skip, take } = getPaginationParams(query);
-  const { employeeId, status, timeOffTypeId } = query;
 
   const where = {};
   if (scopedEmployeeId) {
