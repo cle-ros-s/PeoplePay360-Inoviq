@@ -29,6 +29,13 @@ async function startServer() {
     await prisma.$connect();
     console.log('✓ Successfully connected to PostgreSQL database');
 
+    // Async pre-warm database queries to eliminate initial cold-start delays
+    Promise.all([
+      prisma.employee.count().catch(() => {}),
+      prisma.department.count().catch(() => {}),
+      prisma.payslip.count().catch(() => {}),
+    ]);
+
     const server = http.createServer(app);
 
     server.on('error', (error) => {

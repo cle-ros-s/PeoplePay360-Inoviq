@@ -34,7 +34,22 @@ function extractEmployeeData(data) {
   return clean;
 }
 
+const employeeListCache = new Map();
+const EMP_CACHE_TTL = 15 * 1000;
+
+function getEmpCacheKey(query, scopedEmployeeId) {
+  return `${scopedEmployeeId || 'all'}:${JSON.stringify(query || {})}`;
+}
+
 async function listEmployees(query, scopedEmployeeId = null) {
+  const cacheKey = getEmpCacheKey(query, scopedEmployeeId);
+  const cached = employeeListCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && now - cached.timestamp < EMP_CACHE_TTL) {
+    return cached.data;
+  }
+
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { search, department, status, type } = query;
 
@@ -74,15 +89,6 @@ async function listEmployees(query, scopedEmployeeId = null) {
           take: 1,
           select: { id: true, wage: true, startDate: true, endDate: true, status: true },
         },
-        _count: {
-          select: {
-            contracts: true,
-            attendance: true,
-            timeOffRequests: true,
-            allocations: true,
-            payslips: true,
-          },
-        },
       },
     }),
     prisma.employee.count({ where }),
@@ -113,17 +119,19 @@ async function listEmployees(query, scopedEmployeeId = null) {
     taxId: emp.taxId,
     activeContract: emp.contracts[0] || null,
     counts: {
-      contracts: emp._count.contracts,
-      attendance: emp._count.attendance,
-      timeOffRequests: emp._count.timeOffRequests,
-      allocations: emp._count.allocations,
-      payslips: emp._count.payslips,
+      contracts: emp.contracts?.length || 0,
+      attendance: 0,
+      timeOffRequests: 0,
+      allocations: 0,
+      payslips: 0,
     },
     createdAt: emp.createdAt,
     updatedAt: emp.updatedAt,
   }));
 
-  return formatListResponse(formatted, total, page, pageSize);
+  const response = formatListResponse(formatted, total, page, pageSize);
+  employeeListCache.set(cacheKey, { timestamp: Date.now(), data: response });
+  return response;
 }
 
 async function getEmployeeById(id, scopedEmployeeId = null) {
