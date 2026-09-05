@@ -1,7 +1,27 @@
 const http = require('http');
+const { execSync } = require('child_process');
 const app = require('./app');
 const env = require('./config/env');
 const prisma = require('./config/prisma');
+
+function killPortProcess(port) {
+  try {
+    if (process.platform === 'win32') {
+      const output = execSync(`netstat -ano | findstr :${port}`, { encoding: 'utf8' });
+      const lines = output.trim().split('\n');
+      for (const line of lines) {
+        if (line.includes('LISTENING')) {
+          const parts = line.trim().split(/\s+/);
+          const pid = parts[parts.length - 1];
+          if (pid && pid !== '0' && pid != process.pid) {
+            console.log(`🧹 Auto-clearing conflicting process PID ${pid} on port ${port}...`);
+            execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
+          }
+        }
+      }
+    }
+  } catch (e) {}
+}
 
 async function startServer() {
   try {
@@ -13,13 +33,14 @@ async function startServer() {
 
     server.on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
-        console.error(`⚠️ Port ${env.PORT} is temporarily busy (EADDRINUSE). Retrying listen in 1s...`);
+        console.log(`⚠️ Port ${env.PORT} busy. Auto-clearing conflicting process on port ${env.PORT}...`);
+        killPortProcess(env.PORT);
         setTimeout(() => {
           try {
             server.close();
           } catch (e) {}
           server.listen(env.PORT);
-        }, 1000);
+        }, 500);
       } else {
         console.error('❌ Server error:', error.message);
         process.exit(1);
