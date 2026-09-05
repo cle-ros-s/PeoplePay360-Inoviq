@@ -52,16 +52,19 @@ export default function TimeOffRequestsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-off-requests'] });
       queryClient.invalidateQueries({ queryKey: ['allocations'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
     },
   });
 
   // Refuse mutation
   const refuseMutation = useMutation({
-    mutationFn: timeOffRequestsApi.refuseTimeOffRequest,
+    mutationFn: (id) => timeOffRequestsApi.refuseTimeOffRequest(id, { refusalReason: 'Refused by manager' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-off-requests'] });
       queryClient.invalidateQueries({ queryKey: ['allocations'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
     },
   });
 
@@ -123,32 +126,35 @@ export default function TimeOffRequestsPage() {
     },
     {
       header: 'Actions',
-      render: (r) => (
-        <div className="flex items-center gap-2">
-          {can('APPROVE_TIME_OFF') && (r.status === TimeOffReqStatus.SUBMITTED || r.status === TimeOffReqStatus.DRAFT) && (
-            <>
-              <button
-                onClick={() => approveMutation.mutate(r.id)}
-                disabled={approveMutation.isPending}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs transition-colors"
-                title="Approve Leave Request"
-              >
-                <CheckCircle className="w-3.5 h-3.5" />
-                Approve
-              </button>
-              <button
-                onClick={() => refuseMutation.mutate(r.id)}
-                disabled={refuseMutation.isPending}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-lg transition-colors"
-                title="Refuse Leave Request"
-              >
-                <XCircle className="w-3.5 h-3.5" />
-                Refuse
-              </button>
-            </>
-          )}
-        </div>
-      ),
+      render: (r) => {
+        const isPending = r.status === 'PENDING' || r.status === 'SUBMITTED' || r.status === 'DRAFT';
+        return (
+          <div className="flex items-center gap-2">
+            {can('APPROVE_TIME_OFF') && isPending && (
+              <>
+                <button
+                  onClick={() => approveMutation.mutate(r.id)}
+                  disabled={approveMutation.isPending}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs transition-colors disabled:opacity-50"
+                  title="Approve Leave Request"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Approve
+                </button>
+                <button
+                  onClick={() => refuseMutation.mutate(r.id)}
+                  disabled={refuseMutation.isPending}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
+                  title="Refuse Leave Request"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  Refuse
+                </button>
+              </>
+            )}
+          </div>
+        );
+      },
     },
   ];
 

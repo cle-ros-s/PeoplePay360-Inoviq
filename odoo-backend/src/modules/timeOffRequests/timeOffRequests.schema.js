@@ -6,7 +6,7 @@ const {
   flexiblePositiveNumber,
 } = require('../../utils/schemaTypes');
 
-const timeOffStatusEnum = z.enum(['DRAFT', 'PENDING', 'APPROVED', 'REFUSED']);
+const timeOffStatusEnum = z.enum(['DRAFT', 'PENDING', 'SUBMITTED', 'APPROVED', 'REFUSED']).transform((val) => (val === 'SUBMITTED' ? 'PENDING' : val));
 
 const createTimeOffRequestSchema = {
   body: z.object({

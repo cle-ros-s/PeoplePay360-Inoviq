@@ -53,10 +53,11 @@ export const AllocationStatus = {
 };
 
 export const TimeOffReqStatus = {
-  DRAFT: 'DRAFT',
-  SUBMITTED: 'SUBMITTED',
+  PENDING: 'PENDING',
+  SUBMITTED: 'PENDING',
   APPROVED: 'APPROVED',
   REFUSED: 'REFUSED',
+  DRAFT: 'DRAFT',
 };
 
 export const SalaryCategory = {
