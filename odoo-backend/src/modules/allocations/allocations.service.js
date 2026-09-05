@@ -1,94 +1,111 @@
 const prisma = require('../../config/prisma');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
+const { globalCache } = require('../../utils/cache');
+const { invalidateDashboardCache } = require('../dashboard/dashboard.service');
+
+function invalidateAllocationCache() {
+  globalCache.invalidatePrefix('allocations:');
+  globalCache.invalidatePrefix('timeoff:');
+  invalidateDashboardCache();
+}
 
 async function listAllocations(query, scopedEmployeeId = null) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { employeeId, timeOffTypeId, status } = query;
+  const cacheKey = `allocations:list:${scopedEmployeeId || 'all'}:${employeeId || ''}:${timeOffTypeId || ''}:${status || ''}:${page}:${pageSize}`;
 
-  const where = {};
-  if (scopedEmployeeId) {
-    where.employeeId = scopedEmployeeId;
-  } else if (employeeId) {
-    where.employeeId = employeeId;
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
+    if (scopedEmployeeId) {
+      where.employeeId = scopedEmployeeId;
+    } else if (employeeId) {
+      where.employeeId = employeeId;
+    }
 
-  if (timeOffTypeId) {
-    where.timeOffTypeId = timeOffTypeId;
-  }
+    if (timeOffTypeId) {
+      where.timeOffTypeId = timeOffTypeId;
+    }
 
-  if (status) {
-    where.status = status;
-  }
+    if (status) {
+      where.status = status;
+    }
 
-  const [allocations, total] = await Promise.all([
-    prisma.leaveAllocation.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { validFrom: 'desc' },
-      include: {
-        employee: {
-          select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true },
+    const [allocations, total] = await Promise.all([
+      prisma.leaveAllocation.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { validFrom: 'desc' },
+        include: {
+          employee: {
+            select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true },
+          },
+          timeOffType: {
+            select: { id: true, name: true, code: true, unit: true, requiresAllocation: true },
+          },
         },
-        timeOffType: {
-          select: { id: true, name: true, code: true, unit: true, requiresAllocation: true },
-        },
-      },
-    }),
-    prisma.leaveAllocation.count({ where }),
-  ]);
+      }),
+      prisma.leaveAllocation.count({ where }),
+    ]);
 
-  const formatted = allocations.map((a) => ({
-    id: a.id,
-    employeeId: a.employeeId,
-    employee: a.employee
-      ? {
-          ...a.employee,
-          name: `${a.employee.firstName || ''} ${a.employee.lastName || ''}`.trim(),
-        }
-      : null,
-    timeOffTypeId: a.timeOffTypeId,
-    timeOffType: a.timeOffType,
-    allocatedAmount: a.allocatedAmount,
-    takenAmount: a.takenAmount,
-    remainingAmount: Math.max(0, Math.round((a.allocatedAmount - a.takenAmount) * 100) / 100),
-    validFrom: a.validFrom,
-    validTo: a.validTo,
-    status: a.status,
-    createdAt: a.createdAt,
-    updatedAt: a.updatedAt,
-  }));
+    const formatted = allocations.map((a) => ({
+      id: a.id,
+      employeeId: a.employeeId,
+      employee: a.employee
+        ? {
+            ...a.employee,
+            name: `${a.employee.firstName || ''} ${a.employee.lastName || ''}`.trim(),
+          }
+        : null,
+      timeOffTypeId: a.timeOffTypeId,
+      timeOffType: a.timeOffType,
+      allocatedAmount: a.allocatedAmount,
+      takenAmount: a.takenAmount,
+      remainingAmount: Math.max(0, Math.round((a.allocatedAmount - a.takenAmount) * 100) / 100),
+      validFrom: a.validFrom,
+      validTo: a.validTo,
+      status: a.status,
+      createdAt: a.createdAt,
+      updatedAt: a.updatedAt,
+    }));
 
-  return formatListResponse(formatted, total, page, pageSize);
+    return formatListResponse(formatted, total, page, pageSize);
+  }, 30000);
 }
 
 async function getAllocationById(id, scopedEmployeeId = null) {
-  const allocation = await prisma.leaveAllocation.findUnique({
-    where: { id },
-    include: {
-      employee: {
-        select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true, departmentId: true },
-      },
-      timeOffType: true,
-      requests: {
-        orderBy: { startDate: 'desc' },
-      },
-    },
-  });
+  const cacheKey = `allocations:detail:${id}`;
 
-  if (!allocation) {
-    throw new AppError('ALLOCATION_NOT_FOUND', 'Leave allocation not found', 404);
-  }
+  const allocation = await globalCache.getOrFetch(cacheKey, async () => {
+    const found = await prisma.leaveAllocation.findUnique({
+      where: { id },
+      include: {
+        employee: {
+          select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true, departmentId: true },
+        },
+        timeOffType: true,
+        requests: {
+          orderBy: { startDate: 'desc' },
+        },
+      },
+    });
+
+    if (!found) {
+      throw new AppError('ALLOCATION_NOT_FOUND', 'Leave allocation not found', 404);
+    }
+
+    return {
+      ...found,
+      remainingAmount: Math.max(0, Math.round((found.allocatedAmount - found.takenAmount) * 100) / 100),
+    };
+  }, 30000);
 
   if (scopedEmployeeId && allocation.employeeId !== scopedEmployeeId) {
     throw new AppError('FORBIDDEN', 'Access denied to this allocation record', 403);
   }
 
-  return {
-    ...allocation,
-    remainingAmount: Math.max(0, Math.round((allocation.allocatedAmount - allocation.takenAmount) * 100) / 100),
-  };
+  return allocation;
 }
 
 async function createAllocation(data) {
@@ -109,7 +126,7 @@ async function createAllocation(data) {
     throw new AppError('INVALID_DATE_RANGE', 'validTo must be strictly after validFrom', 422);
   }
 
-  return prisma.leaveAllocation.create({
+  const result = await prisma.leaveAllocation.create({
     data: {
       employeeId: data.employeeId,
       timeOffTypeId: data.timeOffTypeId,
@@ -124,6 +141,9 @@ async function createAllocation(data) {
       timeOffType: { select: { id: true, name: true, code: true, unit: true } },
     },
   });
+
+  invalidateAllocationCache();
+  return result;
 }
 
 async function updateAllocation(id, data) {
@@ -136,7 +156,7 @@ async function updateAllocation(id, data) {
   if (updateData.validFrom) updateData.validFrom = new Date(updateData.validFrom);
   if (updateData.validTo) updateData.validTo = new Date(updateData.validTo);
 
-  return prisma.leaveAllocation.update({
+  const result = await prisma.leaveAllocation.update({
     where: { id },
     data: updateData,
     include: {
@@ -144,6 +164,9 @@ async function updateAllocation(id, data) {
       timeOffType: { select: { id: true, name: true, code: true } },
     },
   });
+
+  invalidateAllocationCache();
+  return result;
 }
 
 async function deleteAllocation(id) {
@@ -161,6 +184,7 @@ async function deleteAllocation(id) {
   }
 
   await prisma.leaveAllocation.delete({ where: { id } });
+  invalidateAllocationCache();
   return { message: 'Allocation deleted successfully' };
 }
 
@@ -170,4 +194,6 @@ module.exports = {
   createAllocation,
   updateAllocation,
   deleteAllocation,
+  invalidateAllocationCache,
 };
+

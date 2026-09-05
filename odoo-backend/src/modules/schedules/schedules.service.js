@@ -2,72 +2,84 @@ const prisma = require('../../config/prisma');
 const { processScheduleLines } = require('./schedules.hours');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
+const { globalCache } = require('../../utils/cache');
+
+function invalidateScheduleCache() {
+  globalCache.invalidatePrefix('schedules:');
+}
 
 async function listSchedules(query) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { search } = query;
+  const cacheKey = `schedules:list:${search || ''}:${page}:${pageSize}`;
 
-  const where = {};
-  if (search) {
-    where.name = { contains: search, mode: 'insensitive' };
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' };
+    }
 
-  const [schedules, total] = await Promise.all([
-    prisma.workingSchedule.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { name: 'asc' },
-      include: {
-        lines: { orderBy: { dayOfWeek: 'asc' } },
-        _count: { select: { employees: true, contracts: true } },
-      },
-    }),
-    prisma.workingSchedule.count({ where }),
-  ]);
+    const [schedules, total] = await Promise.all([
+      prisma.workingSchedule.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { name: 'asc' },
+        include: {
+          lines: { orderBy: { dayOfWeek: 'asc' } },
+          _count: { select: { employees: true, contracts: true } },
+        },
+      }),
+      prisma.workingSchedule.count({ where }),
+    ]);
 
-  const formatted = schedules.map((s) => ({
-    id: s.id,
-    name: s.name,
-    type: s.type,
-    totalWeeklyHours: s.totalWeeklyHours,
-    lines: s.lines,
-    employeeCount: s._count.employees,
-    contractCount: s._count.contracts,
-    createdAt: s.createdAt,
-    updatedAt: s.updatedAt,
-  }));
+    const formatted = schedules.map((s) => ({
+      id: s.id,
+      name: s.name,
+      type: s.type,
+      totalWeeklyHours: s.totalWeeklyHours,
+      lines: s.lines,
+      employeeCount: s._count.employees,
+      contractCount: s._count.contracts,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    }));
 
-  return formatListResponse(formatted, total, page, pageSize);
+    return formatListResponse(formatted, total, page, pageSize);
+  }, 30000);
 }
 
 async function getScheduleById(id) {
-  const schedule = await prisma.workingSchedule.findUnique({
-    where: { id },
-    include: {
-      lines: { orderBy: { dayOfWeek: 'asc' } },
-      employees: {
-        select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true },
+  const cacheKey = `schedules:detail:${id}`;
+
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const schedule = await prisma.workingSchedule.findUnique({
+      where: { id },
+      include: {
+        lines: { orderBy: { dayOfWeek: 'asc' } },
+        employees: {
+          select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true },
+        },
+        _count: { select: { employees: true, contracts: true } },
       },
-      _count: { select: { employees: true, contracts: true } },
-    },
-  });
+    });
 
-  if (!schedule) {
-    throw new AppError('SCHEDULE_NOT_FOUND', 'Working schedule not found', 404);
-  }
+    if (!schedule) {
+      throw new AppError('SCHEDULE_NOT_FOUND', 'Working schedule not found', 404);
+    }
 
-  return {
-    ...schedule,
-    employeeCount: schedule._count.employees,
-    contractCount: schedule._count.contracts,
-  };
+    return {
+      ...schedule,
+      employeeCount: schedule._count.employees,
+      contractCount: schedule._count.contracts,
+    };
+  }, 30000);
 }
 
 async function createSchedule(data) {
   const { processedLines, totalWeeklyHours } = processScheduleLines(data.lines);
 
-  return prisma.workingSchedule.create({
+  const result = await prisma.workingSchedule.create({
     data: {
       name: data.name,
       type: data.type || 'STANDARD',
@@ -80,6 +92,9 @@ async function createSchedule(data) {
       lines: { orderBy: { dayOfWeek: 'asc' } },
     },
   });
+
+  invalidateScheduleCache();
+  return result;
 }
 
 async function executeTx(fn) {
@@ -99,10 +114,11 @@ async function updateSchedule(id, data) {
     throw new AppError('SCHEDULE_NOT_FOUND', 'Working schedule not found', 404);
   }
 
+  let result;
   if (data.lines) {
     const { processedLines, totalWeeklyHours } = processScheduleLines(data.lines);
 
-    return executeTx(async (tx) => {
+    result = await executeTx(async (tx) => {
       await tx.workingScheduleLine.deleteMany({ where: { scheduleId: id } });
 
       return tx.workingSchedule.update({
@@ -120,18 +136,21 @@ async function updateSchedule(id, data) {
         },
       });
     });
+  } else {
+    result = await prisma.workingSchedule.update({
+      where: { id },
+      data: {
+        name: data.name,
+        type: data.type,
+      },
+      include: {
+        lines: { orderBy: { dayOfWeek: 'asc' } },
+      },
+    });
   }
 
-  return prisma.workingSchedule.update({
-    where: { id },
-    data: {
-      name: data.name,
-      type: data.type,
-    },
-    include: {
-      lines: { orderBy: { dayOfWeek: 'asc' } },
-    },
-  });
+  invalidateScheduleCache();
+  return result;
 }
 
 async function deleteSchedule(id) {
@@ -153,6 +172,7 @@ async function deleteSchedule(id) {
   }
 
   await prisma.workingSchedule.delete({ where: { id } });
+  invalidateScheduleCache();
   return { message: 'Schedule deleted successfully' };
 }
 
@@ -162,4 +182,6 @@ module.exports = {
   createSchedule,
   updateSchedule,
   deleteSchedule,
+  invalidateScheduleCache,
 };
+

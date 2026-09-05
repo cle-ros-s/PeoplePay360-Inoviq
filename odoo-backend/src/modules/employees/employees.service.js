@@ -34,132 +34,116 @@ function extractEmployeeData(data) {
   return clean;
 }
 
-const employeeListCache = new Map();
-const EMP_CACHE_TTL = 15 * 1000;
-let cachedEmpTotal = 0;
+const { globalCache } = require('../../utils/cache');
+const { invalidateDashboardCache } = require('../dashboard/dashboard.service');
 
-function getEmpCacheKey(query, scopedEmployeeId) {
-  return `${scopedEmployeeId || 'all'}:${JSON.stringify(query || {})}`;
+function invalidateEmployeeCache() {
+  globalCache.invalidatePrefix('employees:');
+  invalidateDashboardCache();
 }
 
 async function listEmployees(query, scopedEmployeeId = null) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { search, department, status, type } = query;
-  const cacheKey = `${scopedEmployeeId || 'all'}:${search || ''}:${department || ''}:${status || ''}:${type || ''}:${page}:${pageSize}`;
-  const cached = employeeListCache.get(cacheKey);
-  const now = Date.now();
+  const cacheKey = `employees:list:${scopedEmployeeId || 'all'}:${search || ''}:${department || ''}:${status || ''}:${type || ''}:${page}:${pageSize}`;
 
-  if (cached && now - cached.timestamp < EMP_CACHE_TTL) {
-    return cached.data;
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
 
-  const where = {};
-
-  if (scopedEmployeeId) {
-    where.id = scopedEmployeeId;
-  } else {
-    if (status) where.status = status;
-    if (type) where.employeeType = type;
-    if (department) {
-      where.OR = [{ departmentId: department }, { department: { name: { contains: department, mode: 'insensitive' } } }];
+    if (scopedEmployeeId) {
+      where.id = scopedEmployeeId;
+    } else {
+      if (status) where.status = status;
+      if (type) where.employeeType = type;
+      if (department) {
+        where.OR = [{ departmentId: department }, { department: { name: { contains: department, mode: 'insensitive' } } }];
+      }
+      if (search) {
+        where.OR = [
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { jobPosition: { contains: search, mode: 'insensitive' } },
+        ];
+      }
     }
-    if (search) {
-      where.OR = [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { jobPosition: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-  }
 
-  let totalCountPromise;
-  if (Object.keys(where).length === 0 && cachedEmpTotal > 0) {
-    totalCountPromise = Promise.resolve(cachedEmpTotal);
-  } else {
-    totalCountPromise = prisma.employee.count({ where }).then((c) => {
-      if (Object.keys(where).length === 0) cachedEmpTotal = c;
-      return c;
-    });
-  }
-
-  const [employees, total] = await Promise.all([
-    prisma.employee.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        userId: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phone: true,
-        jobPosition: true,
-        employeeType: true,
-        status: true,
-        departmentId: true,
-        managerId: true,
-        scheduleId: true,
-        bankName: true,
-        bankAccountNumber: true,
-        bankIfscOrRouting: true,
-        taxId: true,
-        createdAt: true,
-        updatedAt: true,
-        user: { select: { id: true, name: true, email: true, role: true } },
-        department: { select: { id: true, name: true, code: true } },
-        manager: { select: { id: true, firstName: true, lastName: true, email: true } },
-        schedule: { select: { id: true, name: true, totalWeeklyHours: true } },
-        contracts: {
-          where: { status: 'RUNNING' },
-          take: 1,
-          select: { id: true, wage: true, startDate: true, endDate: true, status: true },
+    const [employees, total] = await Promise.all([
+      prisma.employee.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          userId: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          jobPosition: true,
+          employeeType: true,
+          status: true,
+          departmentId: true,
+          managerId: true,
+          scheduleId: true,
+          bankName: true,
+          bankAccountNumber: true,
+          bankIfscOrRouting: true,
+          taxId: true,
+          createdAt: true,
+          updatedAt: true,
+          user: { select: { id: true, name: true, email: true, role: true } },
+          department: { select: { id: true, name: true, code: true } },
+          manager: { select: { id: true, firstName: true, lastName: true, email: true } },
+          schedule: { select: { id: true, name: true, totalWeeklyHours: true } },
+          contracts: {
+            where: { status: 'RUNNING' },
+            take: 1,
+            select: { id: true, wage: true, startDate: true, endDate: true, status: true },
+          },
         },
+      }),
+      prisma.employee.count({ where }),
+    ]);
+
+    const formatted = employees.map((emp) => ({
+      id: emp.id,
+      userId: emp.userId,
+      user: emp.user,
+      role: emp.user?.role || 'EMPLOYEE',
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      name: `${emp.firstName} ${emp.lastName}`.trim(),
+      email: emp.email,
+      phone: emp.phone,
+      jobPosition: emp.jobPosition,
+      employeeType: emp.employeeType,
+      status: emp.status,
+      departmentId: emp.departmentId,
+      department: emp.department,
+      managerId: emp.managerId,
+      manager: emp.manager,
+      scheduleId: emp.scheduleId,
+      schedule: emp.schedule,
+      bankName: emp.bankName,
+      bankAccountNumber: emp.bankAccountNumber,
+      bankIfscOrRouting: emp.bankIfscOrRouting,
+      taxId: emp.taxId,
+      activeContract: emp.contracts[0] || null,
+      counts: {
+        contracts: emp.contracts?.length || 0,
+        attendance: 0,
+        timeOffRequests: 0,
+        allocations: 0,
+        payslips: 0,
       },
-    }),
-    totalCountPromise,
-  ]);
+      createdAt: emp.createdAt,
+      updatedAt: emp.updatedAt,
+    }));
 
-  const formatted = employees.map((emp) => ({
-    id: emp.id,
-    userId: emp.userId,
-    user: emp.user,
-    role: emp.user?.role || 'EMPLOYEE',
-    firstName: emp.firstName,
-    lastName: emp.lastName,
-    name: `${emp.firstName} ${emp.lastName}`.trim(),
-    email: emp.email,
-    phone: emp.phone,
-    jobPosition: emp.jobPosition,
-    employeeType: emp.employeeType,
-    status: emp.status,
-    departmentId: emp.departmentId,
-    department: emp.department,
-    managerId: emp.managerId,
-    manager: emp.manager,
-    scheduleId: emp.scheduleId,
-    schedule: emp.schedule,
-    bankName: emp.bankName,
-    bankAccountNumber: emp.bankAccountNumber,
-    bankIfscOrRouting: emp.bankIfscOrRouting,
-    taxId: emp.taxId,
-    activeContract: emp.contracts[0] || null,
-    counts: {
-      contracts: emp.contracts?.length || 0,
-      attendance: 0,
-      timeOffRequests: 0,
-      allocations: 0,
-      payslips: 0,
-    },
-    createdAt: emp.createdAt,
-    updatedAt: emp.updatedAt,
-  }));
-
-  const response = formatListResponse(formatted, total, page, pageSize);
-  employeeListCache.set(cacheKey, { timestamp: Date.now(), data: response });
-  return response;
+    return formatListResponse(formatted, total, page, pageSize);
+  }, 30000);
 }
 
 async function getEmployeeById(id, scopedEmployeeId = null) {
@@ -167,54 +151,57 @@ async function getEmployeeById(id, scopedEmployeeId = null) {
     throw new AppError('FORBIDDEN', 'Access denied to this employee record', 403);
   }
 
-  const employee = await prisma.employee.findUnique({
-    where: { id },
-    include: {
-      user: { select: { id: true, email: true, role: true } },
-      department: true,
-      manager: { select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true } },
-      subordinates: { select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true } },
-      schedule: {
-        include: {
-          lines: { orderBy: { dayOfWeek: 'asc' } },
+  const cacheKey = `employees:detail:${id}`;
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const employee = await prisma.employee.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, email: true, role: true } },
+        department: true,
+        manager: { select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true } },
+        subordinates: { select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true } },
+        schedule: {
+          include: {
+            lines: { orderBy: { dayOfWeek: 'asc' } },
+          },
+        },
+        contracts: {
+          orderBy: { startDate: 'desc' },
+          include: {
+            salaryStructure: { select: { id: true, name: true, code: true } },
+          },
+        },
+        _count: {
+          select: {
+            contracts: true,
+            attendance: true,
+            timeOffRequests: true,
+            allocations: true,
+            payslips: true,
+          },
         },
       },
-      contracts: {
-        orderBy: { startDate: 'desc' },
-        include: {
-          salaryStructure: { select: { id: true, name: true, code: true } },
-        },
+    });
+
+    if (!employee) {
+      throw new AppError('EMPLOYEE_NOT_FOUND', 'Employee not found', 404);
+    }
+
+    const activeContract = employee.contracts.find((c) => c.status === 'RUNNING') || null;
+
+    return {
+      ...employee,
+      name: `${employee.firstName} ${employee.lastName}`,
+      activeContract,
+      counts: {
+        contracts: employee._count.contracts,
+        attendance: employee._count.attendance,
+        timeOffRequests: employee._count.timeOffRequests,
+        allocations: employee._count.allocations,
+        payslips: employee._count.payslips,
       },
-      _count: {
-        select: {
-          contracts: true,
-          attendance: true,
-          timeOffRequests: true,
-          allocations: true,
-          payslips: true,
-        },
-      },
-    },
-  });
-
-  if (!employee) {
-    throw new AppError('EMPLOYEE_NOT_FOUND', 'Employee not found', 404);
-  }
-
-  const activeContract = employee.contracts.find((c) => c.status === 'RUNNING') || null;
-
-  return {
-    ...employee,
-    name: `${employee.firstName} ${employee.lastName}`,
-    activeContract,
-    counts: {
-      contracts: employee._count.contracts,
-      attendance: employee._count.attendance,
-      timeOffRequests: employee._count.timeOffRequests,
-      allocations: employee._count.allocations,
-      payslips: employee._count.payslips,
-    },
-  };
+    };
+  }, 30000);
 }
 
 async function createEmployee(data) {
@@ -237,7 +224,7 @@ async function createEmployee(data) {
     }
   }
 
-  return prisma.employee.create({
+  const result = await prisma.employee.create({
     data: cleanData,
     include: {
       department: true,
@@ -245,6 +232,9 @@ async function createEmployee(data) {
       manager: { select: { id: true, firstName: true, lastName: true } },
     },
   });
+
+  invalidateEmployeeCache();
+  return result;
 }
 
 async function updateEmployee(id, data) {
@@ -267,7 +257,7 @@ async function updateEmployee(id, data) {
     }
   }
 
-  return prisma.employee.update({
+  const result = await prisma.employee.update({
     where: { id },
     data: cleanData,
     include: {
@@ -276,6 +266,9 @@ async function updateEmployee(id, data) {
       manager: { select: { id: true, firstName: true, lastName: true } },
     },
   });
+
+  invalidateEmployeeCache();
+  return result;
 }
 
 async function deleteEmployee(id) {
@@ -285,6 +278,7 @@ async function deleteEmployee(id) {
   }
 
   await prisma.employee.delete({ where: { id } });
+  invalidateEmployeeCache();
   return { message: 'Employee deleted successfully' };
 }
 
@@ -294,4 +288,5 @@ module.exports = {
   createEmployee,
   updateEmployee,
   deleteEmployee,
+  invalidateEmployeeCache,
 };

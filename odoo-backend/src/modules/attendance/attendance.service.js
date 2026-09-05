@@ -3,47 +3,79 @@ const { deriveAttendanceStatus } = require('./attendance.status');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
 
-const attendanceCache = new Map();
-const ATTENDANCE_CACHE_TTL = 30 * 1000;
+const { globalCache } = require('../../utils/cache');
+const { invalidateDashboardCache } = require('../dashboard/dashboard.service');
 
 function invalidateAttendanceCache() {
-  attendanceCache.clear();
+  globalCache.invalidatePrefix('attendance:');
+  invalidateDashboardCache();
 }
 
 async function listAttendance(query, scopedEmployeeId = null) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { employeeId, status, from, to } = query;
-  const cacheKey = `${scopedEmployeeId || 'all'}:${employeeId || ''}:${status || ''}:${from || ''}:${to || ''}:${page}:${pageSize}`;
-  const cached = attendanceCache.get(cacheKey);
-  const now = Date.now();
+  const cacheKey = `attendance:list:${scopedEmployeeId || 'all'}:${employeeId || ''}:${status || ''}:${from || ''}:${to || ''}:${page}:${pageSize}`;
 
-  if (cached && now - cached.timestamp < ATTENDANCE_CACHE_TTL) {
-    return cached.data;
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
+    if (scopedEmployeeId) {
+      where.employeeId = scopedEmployeeId;
+    } else if (employeeId) {
+      where.employeeId = employeeId;
+    }
 
-  const where = {};
-  if (scopedEmployeeId) {
-    where.employeeId = scopedEmployeeId;
-  } else if (employeeId) {
-    where.employeeId = employeeId;
-  }
+    if (status) {
+      where.status = status;
+    }
 
-  if (status) {
-    where.status = status;
-  }
+    if (from || to) {
+      where.checkIn = {};
+      if (from) where.checkIn.gte = new Date(from);
+      if (to) where.checkIn.lte = new Date(to);
+    }
 
-  if (from || to) {
-    where.checkIn = {};
-    if (from) where.checkIn.gte = new Date(from);
-    if (to) where.checkIn.lte = new Date(to);
-  }
+    const [records, total] = await Promise.all([
+      prisma.attendance.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { checkIn: 'desc' },
+        include: {
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              jobPosition: true,
+              department: { select: { id: true, name: true } },
+            },
+          },
+        },
+      }),
+      prisma.attendance.count({ where }),
+    ]);
 
-  const [records, total] = await Promise.all([
-    prisma.attendance.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { checkIn: 'desc' },
+    const formattedRecords = records.map((r) => ({
+      ...r,
+      employee: r.employee
+        ? {
+            ...r.employee,
+            name: `${r.employee.firstName || ''} ${r.employee.lastName || ''}`.trim(),
+          }
+        : null,
+    }));
+
+    return formatListResponse(formattedRecords, total, page, pageSize);
+  }, 30000);
+}
+
+async function getAttendanceById(id, scopedEmployeeId = null) {
+  const cacheKey = `attendance:detail:${id}`;
+
+  const record = await globalCache.getOrFetch(cacheKey, async () => {
+    const found = await prisma.attendance.findUnique({
+      where: { id },
       include: {
         employee: {
           select: {
@@ -56,45 +88,13 @@ async function listAttendance(query, scopedEmployeeId = null) {
           },
         },
       },
-    }),
-    prisma.attendance.count({ where }),
-  ]);
+    });
 
-  const formattedRecords = records.map((r) => ({
-    ...r,
-    employee: r.employee
-      ? {
-          ...r.employee,
-          name: `${r.employee.firstName || ''} ${r.employee.lastName || ''}`.trim(),
-        }
-      : null,
-  }));
-
-  const response = formatListResponse(formattedRecords, total, page, pageSize);
-  attendanceCache.set(cacheKey, { timestamp: now, data: response });
-  return response;
-}
-
-async function getAttendanceById(id, scopedEmployeeId = null) {
-  const record = await prisma.attendance.findUnique({
-    where: { id },
-    include: {
-      employee: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          jobPosition: true,
-          department: { select: { id: true, name: true } },
-        },
-      },
-    },
-  });
-
-  if (!record) {
-    throw new AppError('ATTENDANCE_NOT_FOUND', 'Attendance record not found', 404);
-  }
+    if (!found) {
+      throw new AppError('ATTENDANCE_NOT_FOUND', 'Attendance record not found', 404);
+    }
+    return found;
+  }, 30000);
 
   if (scopedEmployeeId && record.employeeId !== scopedEmployeeId) {
     throw new AppError('FORBIDDEN', 'Access denied to this attendance record', 403);
@@ -124,7 +124,7 @@ async function checkIn(data, user) {
 
   const checkInTime = data.checkIn ? new Date(data.checkIn) : new Date();
 
-  return prisma.attendance.create({
+  const result = await prisma.attendance.create({
     data: {
       employeeId: targetEmployeeId,
       checkIn: checkInTime,
@@ -139,6 +139,9 @@ async function checkIn(data, user) {
       },
     },
   });
+
+  invalidateAttendanceCache();
+  return result;
 }
 
 async function checkOut(id, data, user) {
@@ -179,7 +182,7 @@ async function checkOut(id, data, user) {
     record.employee.schedule
   );
 
-  return prisma.attendance.update({
+  const result = await prisma.attendance.update({
     where: { id },
     data: {
       checkOut: checkOutTime,
@@ -192,6 +195,9 @@ async function checkOut(id, data, user) {
       },
     },
   });
+
+  invalidateAttendanceCache();
+  return result;
 }
 
 async function updateAttendance(id, data, user) {
@@ -234,7 +240,7 @@ async function updateAttendance(id, data, user) {
 
   const noteContent = data.notes !== undefined ? data.notes : (data.note !== undefined ? data.note : record.note);
 
-  return prisma.attendance.update({
+  const result = await prisma.attendance.update({
     where: { id },
     data: {
       checkIn,
@@ -251,6 +257,9 @@ async function updateAttendance(id, data, user) {
       },
     },
   });
+
+  invalidateAttendanceCache();
+  return result;
 }
 
 async function deleteAttendance(id) {
@@ -260,6 +269,7 @@ async function deleteAttendance(id) {
   }
 
   await prisma.attendance.delete({ where: { id } });
+  invalidateAttendanceCache();
   return { message: 'Attendance record deleted successfully' };
 }
 
@@ -270,4 +280,5 @@ module.exports = {
   checkOut,
   updateAttendance,
   deleteAttendance,
+  invalidateAttendanceCache,
 };

@@ -5,122 +5,123 @@ const { sendPayslipEmail } = require('./emailSender.service');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
 
-const payslipCache = new Map();
-const PAYSLIP_CACHE_TTL = 30 * 1000;
+const { globalCache } = require('../../utils/cache');
+const { invalidateDashboardCache } = require('../dashboard/dashboard.service');
 
 function invalidatePayslipCache() {
-  payslipCache.clear();
+  globalCache.invalidatePrefix('payslips:');
+  globalCache.invalidatePrefix('payruns:');
+  invalidateDashboardCache();
 }
 
 async function listPayslips(query, scopedEmployeeId = null) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { payrunId, employeeId, status, period } = query;
-  const cacheKey = `${scopedEmployeeId || 'all'}:${payrunId || ''}:${employeeId || ''}:${status || ''}:${period || ''}:${page}:${pageSize}`;
-  const cached = payslipCache.get(cacheKey);
-  const now = Date.now();
+  const cacheKey = `payslips:list:${scopedEmployeeId || 'all'}:${payrunId || ''}:${employeeId || ''}:${status || ''}:${period || ''}:${page}:${pageSize}`;
 
-  if (cached && now - cached.timestamp < PAYSLIP_CACHE_TTL) {
-    return cached.data;
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
+    if (scopedEmployeeId) {
+      where.employeeId = scopedEmployeeId;
+    } else if (employeeId) {
+      where.employeeId = employeeId;
+    }
 
-  const where = {};
-  if (scopedEmployeeId) {
-    where.employeeId = scopedEmployeeId;
-  } else if (employeeId) {
-    where.employeeId = employeeId;
-  }
+    if (payrunId) where.payrunId = payrunId;
+    if (status) where.status = status;
+    if (period) {
+      where.payrun = { name: { contains: period, mode: 'insensitive' } };
+    }
 
-  if (payrunId) where.payrunId = payrunId;
-  if (status) where.status = status;
-  if (period) {
-    where.payrun = { name: { contains: period, mode: 'insensitive' } };
-  }
-
-  const [payslips, total] = await Promise.all([
-    prisma.payslip.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { periodStart: 'desc' },
-      include: {
-        employee: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            jobPosition: true,
-            department: { select: { id: true, name: true } },
+    const [payslips, total] = await Promise.all([
+      prisma.payslip.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { periodStart: 'desc' },
+        include: {
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              jobPosition: true,
+              department: { select: { id: true, name: true } },
+            },
           },
+          payrun: { select: { id: true, name: true, status: true } },
+          salaryStructure: { select: { id: true, name: true, code: true } },
+          _count: { select: { lines: true, warnings: true } },
         },
-        payrun: { select: { id: true, name: true, status: true } },
-        salaryStructure: { select: { id: true, name: true, code: true } },
-        _count: { select: { lines: true, warnings: true } },
-      },
-    }),
-    prisma.payslip.count({ where }),
-  ]);
+      }),
+      prisma.payslip.count({ where }),
+    ]);
 
-  const formatted = payslips.map((p) => ({
-    id: p.id,
-    payrunId: p.payrunId,
-    payrun: p.payrun,
-    employeeId: p.employeeId,
-    employee: p.employee
-      ? {
-          ...p.employee,
-          name: `${p.employee.firstName || ''} ${p.employee.lastName || ''}`.trim(),
-        }
-      : null,
-    contractId: p.contractId,
-    salaryStructureId: p.salaryStructureId,
-    salaryStructure: p.salaryStructure,
-    periodStart: p.periodStart,
-    periodEnd: p.periodEnd,
-    workedDays: p.workedDays,
-    totalDays: p.totalDays,
-    basic: p.basic,
-    gross: p.gross,
-    net: p.net,
-    status: p.status,
-    lineCount: p._count.lines,
-    warningCount: p._count.warnings,
-    createdAt: p.createdAt,
-    updatedAt: p.updatedAt,
-  }));
+    const formatted = payslips.map((p) => ({
+      id: p.id,
+      payrunId: p.payrunId,
+      payrun: p.payrun,
+      employeeId: p.employeeId,
+      employee: p.employee
+        ? {
+            ...p.employee,
+            name: `${p.employee.firstName || ''} ${p.employee.lastName || ''}`.trim(),
+          }
+        : null,
+      contractId: p.contractId,
+      salaryStructureId: p.salaryStructureId,
+      salaryStructure: p.salaryStructure,
+      periodStart: p.periodStart,
+      periodEnd: p.periodEnd,
+      workedDays: p.workedDays,
+      totalDays: p.totalDays,
+      basic: p.basic,
+      gross: p.gross,
+      net: p.net,
+      status: p.status,
+      lineCount: p._count.lines,
+      warningCount: p._count.warnings,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
 
-  const response = formatListResponse(formatted, total, page, pageSize);
-  payslipCache.set(cacheKey, { timestamp: now, data: response });
-  return response;
+    return formatListResponse(formatted, total, page, pageSize);
+  }, 30000);
 }
 
 async function getPayslipById(id, scopedEmployeeId = null) {
-  const payslip = await prisma.payslip.findUnique({
-    where: { id },
-    include: {
-      employee: {
-        include: {
-          department: true,
-          schedule: true,
-        },
-      },
-      contract: true,
-      payrun: true,
-      salaryStructure: {
-        include: {
-          rules: { orderBy: { sequence: 'asc' } },
-        },
-      },
-      lines: {
-        orderBy: { sequence: 'asc' },
-      },
-      warnings: true,
-    },
-  });
+  const cacheKey = `payslips:detail:${id}`;
 
-  if (!payslip) {
-    throw new AppError('PAYSLIP_NOT_FOUND', 'Payslip not found', 404);
-  }
+  const payslip = await globalCache.getOrFetch(cacheKey, async () => {
+    const found = await prisma.payslip.findUnique({
+      where: { id },
+      include: {
+        employee: {
+          include: {
+            department: true,
+            schedule: true,
+          },
+        },
+        contract: true,
+        payrun: true,
+        salaryStructure: {
+          include: {
+            rules: { orderBy: { sequence: 'asc' } },
+          },
+        },
+        lines: {
+          orderBy: { sequence: 'asc' },
+        },
+        warnings: true,
+      },
+    });
+
+    if (!found) {
+      throw new AppError('PAYSLIP_NOT_FOUND', 'Payslip not found', 404);
+    }
+    return found;
+  }, 30000);
 
   if (scopedEmployeeId && payslip.employeeId !== scopedEmployeeId) {
     throw new AppError('FORBIDDEN', 'Access denied to this payslip', 403);

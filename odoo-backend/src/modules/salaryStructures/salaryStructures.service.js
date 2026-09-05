@@ -1,71 +1,86 @@
 const prisma = require('../../config/prisma');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
+const { globalCache } = require('../../utils/cache');
+const { invalidateDashboardCache } = require('../dashboard/dashboard.service');
+
+function invalidateSalaryStructureCache() {
+  globalCache.invalidatePrefix('structures:');
+  globalCache.invalidatePrefix('contracts:');
+  invalidateDashboardCache();
+}
 
 async function listSalaryStructures(query) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { search, isActive } = query;
+  const cacheKey = `structures:list:${search || ''}:${isActive || ''}:${page}:${pageSize}`;
 
-  const where = {};
-  if (isActive !== undefined) {
-    where.isActive = isActive === 'true' || isActive === true;
-  }
-  if (search) {
-    where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { code: { contains: search, mode: 'insensitive' } },
-    ];
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
+    if (isActive !== undefined) {
+      where.isActive = isActive === 'true' || isActive === true;
+    }
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
-  const [structures, total] = await Promise.all([
-    prisma.salaryStructure.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { name: 'asc' },
+    const [structures, total] = await Promise.all([
+      prisma.salaryStructure.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { name: 'asc' },
+        include: {
+          rules: { orderBy: { sequence: 'asc' } },
+          _count: { select: { contracts: true, payruns: true } },
+        },
+      }),
+      prisma.salaryStructure.count({ where }),
+    ]);
+
+    const formatted = structures.map((s) => ({
+      id: s.id,
+      name: s.name,
+      code: s.code,
+      isActive: s.isActive,
+      rules: s.rules,
+      ruleCount: s.rules.length,
+      contractCount: s._count.contracts,
+      payrunCount: s._count.payruns,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    }));
+
+    return formatListResponse(formatted, total, page, pageSize);
+  }, 60000);
+}
+
+async function getSalaryStructureById(id) {
+  const cacheKey = `structures:detail:${id}`;
+
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const structure = await prisma.salaryStructure.findUnique({
+      where: { id },
       include: {
         rules: { orderBy: { sequence: 'asc' } },
         _count: { select: { contracts: true, payruns: true } },
       },
-    }),
-    prisma.salaryStructure.count({ where }),
-  ]);
+    });
 
-  const formatted = structures.map((s) => ({
-    id: s.id,
-    name: s.name,
-    code: s.code,
-    isActive: s.isActive,
-    rules: s.rules,
-    ruleCount: s.rules.length,
-    contractCount: s._count.contracts,
-    payrunCount: s._count.payruns,
-    createdAt: s.createdAt,
-    updatedAt: s.updatedAt,
-  }));
+    if (!structure) {
+      throw new AppError('SALARY_STRUCTURE_NOT_FOUND', 'Salary structure not found', 404);
+    }
 
-  return formatListResponse(formatted, total, page, pageSize);
-}
-
-async function getSalaryStructureById(id) {
-  const structure = await prisma.salaryStructure.findUnique({
-    where: { id },
-    include: {
-      rules: { orderBy: { sequence: 'asc' } },
-      _count: { select: { contracts: true, payruns: true } },
-    },
-  });
-
-  if (!structure) {
-    throw new AppError('SALARY_STRUCTURE_NOT_FOUND', 'Salary structure not found', 404);
-  }
-
-  return {
-    ...structure,
-    ruleCount: structure.rules.length,
-    contractCount: structure._count.contracts,
-    payrunCount: structure._count.payruns,
-  };
+    return {
+      ...structure,
+      ruleCount: structure.rules.length,
+      contractCount: structure._count.contracts,
+      payrunCount: structure._count.payruns,
+    };
+  }, 60000);
 }
 
 async function createSalaryStructure(data) {
@@ -84,7 +99,7 @@ async function createSalaryStructure(data) {
     throw new AppError('DUPLICATE_SALARY_STRUCTURE', 'Salary structure name or code already exists', 409);
   }
 
-  return prisma.salaryStructure.create({
+  const result = await prisma.salaryStructure.create({
     data: {
       name: data.name,
       code,
@@ -94,6 +109,9 @@ async function createSalaryStructure(data) {
       rules: { orderBy: { sequence: 'asc' } },
     },
   });
+
+  invalidateSalaryStructureCache();
+  return result;
 }
 
 async function updateSalaryStructure(id, data) {
@@ -107,13 +125,16 @@ async function updateSalaryStructure(id, data) {
   if (data.code !== undefined) updateData.code = data.code.toUpperCase();
   if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
-  return prisma.salaryStructure.update({
+  const result = await prisma.salaryStructure.update({
     where: { id },
     data: updateData,
     include: {
       rules: { orderBy: { sequence: 'asc' } },
     },
   });
+
+  invalidateSalaryStructureCache();
+  return result;
 }
 
 async function executeTx(fn) {
@@ -146,7 +167,7 @@ async function reorderRules(id, payload) {
     items = payload.ruleIds.map((ruleId, idx) => ({ ruleId, sequence: idx + 1 }));
   }
 
-  return executeTx(async (tx) => {
+  const result = await executeTx(async (tx) => {
     for (const item of items) {
       if (item.ruleId) {
         await tx.salaryRule.update({
@@ -163,6 +184,9 @@ async function reorderRules(id, payload) {
       },
     });
   });
+
+  invalidateSalaryStructureCache();
+  return result;
 }
 
 async function deleteSalaryStructure(id) {
@@ -184,6 +208,7 @@ async function deleteSalaryStructure(id) {
   }
 
   await prisma.salaryStructure.delete({ where: { id } });
+  invalidateSalaryStructureCache();
   return { message: 'Salary structure deleted successfully' };
 }
 
@@ -194,4 +219,6 @@ module.exports = {
   updateSalaryStructure,
   reorderRules,
   deleteSalaryStructure,
+  invalidateSalaryStructureCache,
 };
+

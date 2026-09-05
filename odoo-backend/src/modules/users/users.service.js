@@ -2,28 +2,60 @@ const prisma = require('../../config/prisma');
 const { hashPassword } = require('../../utils/password');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
+const { globalCache } = require('../../utils/cache');
+
+function invalidateUserCache() {
+  globalCache.invalidatePrefix('users:');
+}
 
 async function listUsers(query) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { search, role } = query;
+  const cacheKey = `users:list:${search || ''}:${role || ''}:${page}:${pageSize}`;
 
-  const where = {};
-  if (role) {
-    where.role = role;
-  }
-  if (search) {
-    where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { email: { contains: search, mode: 'insensitive' } },
-    ];
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
+    if (role) {
+      where.role = role;
+    }
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
-  const [users, total] = await Promise.all([
-    prisma.user.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { createdAt: 'desc' },
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+          employee: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return formatListResponse(users, total, page, pageSize);
+  }, 60000);
+}
+
+async function getUserById(id) {
+  const cacheKey = `users:detail:${id}`;
+
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const user = await prisma.user.findUnique({
+      where: { id },
       select: {
         id: true,
         email: true,
@@ -32,37 +64,17 @@ async function listUsers(query) {
         createdAt: true,
         updatedAt: true,
         employee: {
-          select: { id: true, firstName: true, lastName: true },
+          select: { id: true, firstName: true, lastName: true, jobPosition: true, departmentId: true },
         },
       },
-    }),
-    prisma.user.count({ where }),
-  ]);
+    });
 
-  return formatListResponse(users, total, page, pageSize);
-}
+    if (!user) {
+      throw new AppError('USER_NOT_FOUND', 'User not found', 404);
+    }
 
-async function getUserById(id) {
-  const user = await prisma.user.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-      employee: {
-        select: { id: true, firstName: true, lastName: true, jobPosition: true, departmentId: true },
-      },
-    },
-  });
-
-  if (!user) {
-    throw new AppError('USER_NOT_FOUND', 'User not found', 404);
-  }
-
-  return user;
+    return user;
+  }, 60000);
 }
 
 async function createUser(data) {
@@ -92,6 +104,7 @@ async function createUser(data) {
     },
   });
 
+  invalidateUserCache();
   return user;
 }
 
@@ -134,6 +147,7 @@ async function updateUser(id, data) {
     },
   });
 
+  invalidateUserCache();
   return updated;
 }
 
@@ -144,6 +158,7 @@ async function deleteUser(id) {
   }
 
   await prisma.user.delete({ where: { id } });
+  invalidateUserCache();
   return { message: 'User deleted successfully' };
 }
 
@@ -153,4 +168,6 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  invalidateUserCache,
 };
+

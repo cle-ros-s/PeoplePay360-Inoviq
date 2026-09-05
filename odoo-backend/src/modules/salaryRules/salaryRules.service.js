@@ -1,56 +1,71 @@
 const prisma = require('../../config/prisma');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
+const { globalCache } = require('../../utils/cache');
+const { invalidateDashboardCache } = require('../dashboard/dashboard.service');
+
+function invalidateSalaryRuleCache() {
+  globalCache.invalidatePrefix('salaryrules:');
+  globalCache.invalidatePrefix('structures:');
+  invalidateDashboardCache();
+}
 
 async function listSalaryRules(query) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { salaryStructureId, category, search } = query;
+  const cacheKey = `salaryrules:list:${salaryStructureId || ''}:${category || ''}:${search || ''}:${page}:${pageSize}`;
 
-  const where = {};
-  if (salaryStructureId) {
-    where.salaryStructureId = salaryStructureId;
-  }
-  if (category) {
-    where.category = category;
-  }
-  if (search) {
-    where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { code: { contains: search, mode: 'insensitive' } },
-    ];
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
+    if (salaryStructureId) {
+      where.salaryStructureId = salaryStructureId;
+    }
+    if (category) {
+      where.category = category;
+    }
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
-  const [rules, total] = await Promise.all([
-    prisma.salaryRule.findMany({
-      where,
-      skip,
-      take,
-      orderBy: [{ salaryStructureId: 'asc' }, { sequence: 'asc' }],
-      include: {
-        salaryStructure: {
-          select: { id: true, name: true, code: true },
+    const [rules, total] = await Promise.all([
+      prisma.salaryRule.findMany({
+        where,
+        skip,
+        take,
+        orderBy: [{ salaryStructureId: 'asc' }, { sequence: 'asc' }],
+        include: {
+          salaryStructure: {
+            select: { id: true, name: true, code: true },
+          },
         },
-      },
-    }),
-    prisma.salaryRule.count({ where }),
-  ]);
+      }),
+      prisma.salaryRule.count({ where }),
+    ]);
 
-  return formatListResponse(rules, total, page, pageSize);
+    return formatListResponse(rules, total, page, pageSize);
+  }, 60000);
 }
 
 async function getSalaryRuleById(id) {
-  const rule = await prisma.salaryRule.findUnique({
-    where: { id },
-    include: {
-      salaryStructure: true,
-    },
-  });
+  const cacheKey = `salaryrules:detail:${id}`;
 
-  if (!rule) {
-    throw new AppError('SALARY_RULE_NOT_FOUND', 'Salary rule not found', 404);
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const rule = await prisma.salaryRule.findUnique({
+      where: { id },
+      include: {
+        salaryStructure: true,
+      },
+    });
 
-  return rule;
+    if (!rule) {
+      throw new AppError('SALARY_RULE_NOT_FOUND', 'Salary rule not found', 404);
+    }
+
+    return rule;
+  }, 60000);
 }
 
 async function createSalaryRule(data) {
@@ -74,7 +89,7 @@ async function createSalaryRule(data) {
     throw new AppError('DUPLICATE_RULE_CODE', 'A rule with this code already exists in the selected salary structure', 409);
   }
 
-  return prisma.salaryRule.create({
+  const result = await prisma.salaryRule.create({
     data: {
       salaryStructureId: data.salaryStructureId,
       name: data.name,
@@ -91,6 +106,9 @@ async function createSalaryRule(data) {
       salaryStructure: { select: { id: true, name: true, code: true } },
     },
   });
+
+  invalidateSalaryRuleCache();
+  return result;
 }
 
 async function updateSalaryRule(id, data) {
@@ -103,13 +121,16 @@ async function updateSalaryRule(id, data) {
   if (updateData.code) updateData.code = updateData.code.toUpperCase();
   if (updateData.percentageBasisCode) updateData.percentageBasisCode = updateData.percentageBasisCode.toUpperCase();
 
-  return prisma.salaryRule.update({
+  const result = await prisma.salaryRule.update({
     where: { id },
     data: updateData,
     include: {
       salaryStructure: { select: { id: true, name: true, code: true } },
     },
   });
+
+  invalidateSalaryRuleCache();
+  return result;
 }
 
 async function deleteSalaryRule(id) {
@@ -127,6 +148,7 @@ async function deleteSalaryRule(id) {
   }
 
   await prisma.salaryRule.delete({ where: { id } });
+  invalidateSalaryRuleCache();
   return { message: 'Salary rule deleted successfully' };
 }
 
@@ -136,4 +158,6 @@ module.exports = {
   createSalaryRule,
   updateSalaryRule,
   deleteSalaryRule,
+  invalidateSalaryRuleCache,
 };
+

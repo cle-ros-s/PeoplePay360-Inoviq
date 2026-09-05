@@ -1,83 +1,99 @@
 const prisma = require('../../config/prisma');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
+const { globalCache } = require('../../utils/cache');
+const { invalidateDashboardCache } = require('../dashboard/dashboard.service');
+
+function invalidateContractCache() {
+  globalCache.invalidatePrefix('contracts:');
+  globalCache.invalidatePrefix('employees:');
+  invalidateDashboardCache();
+}
 
 async function listContracts(query, scopedEmployeeId = null) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { employeeId, status } = query;
+  const cacheKey = `contracts:list:${scopedEmployeeId || 'all'}:${employeeId || ''}:${status || ''}:${page}:${pageSize}`;
 
-  const where = {};
-  if (scopedEmployeeId) {
-    where.employeeId = scopedEmployeeId;
-  } else if (employeeId) {
-    where.employeeId = employeeId;
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
+    if (scopedEmployeeId) {
+      where.employeeId = scopedEmployeeId;
+    } else if (employeeId) {
+      where.employeeId = employeeId;
+    }
 
-  if (status) {
-    where.status = status;
-  }
+    if (status) {
+      where.status = status;
+    }
 
-  const [contracts, total] = await Promise.all([
-    prisma.contract.findMany({
-      where,
-      skip,
-      take,
-      orderBy: [{ status: 'asc' }, { startDate: 'desc' }],
-      include: {
-        employee: {
-          select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true },
+    const [contracts, total] = await Promise.all([
+      prisma.contract.findMany({
+        where,
+        skip,
+        take,
+        orderBy: [{ status: 'asc' }, { startDate: 'desc' }],
+        include: {
+          employee: {
+            select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true },
+          },
+          salaryStructure: {
+            select: { id: true, name: true, code: true },
+          },
+          schedule: {
+            select: { id: true, name: true, totalWeeklyHours: true },
+          },
+          department: {
+            select: { id: true, name: true, code: true },
+          },
         },
-        salaryStructure: {
-          select: { id: true, name: true, code: true },
-        },
-        schedule: {
-          select: { id: true, name: true, totalWeeklyHours: true },
-        },
-        department: {
-          select: { id: true, name: true, code: true },
-        },
-      },
-    }),
-    prisma.contract.count({ where }),
-  ]);
+      }),
+      prisma.contract.count({ where }),
+    ]);
 
-  const formattedContracts = contracts.map((c) => ({
-    ...c,
-    employee: c.employee
-      ? {
-          ...c.employee,
-          name: `${c.employee.firstName || ''} ${c.employee.lastName || ''}`.trim(),
-        }
-      : null,
-  }));
+    const formattedContracts = contracts.map((c) => ({
+      ...c,
+      employee: c.employee
+        ? {
+            ...c.employee,
+            name: `${c.employee.firstName || ''} ${c.employee.lastName || ''}`.trim(),
+          }
+        : null,
+    }));
 
-  return formatListResponse(formattedContracts, total, page, pageSize);
+    return formatListResponse(formattedContracts, total, page, pageSize);
+  }, 30000);
 }
 
 async function getContractById(id, scopedEmployeeId = null) {
-  const contract = await prisma.contract.findUnique({
-    where: { id },
-    include: {
-      employee: {
-        select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true, departmentId: true },
-      },
-      salaryStructure: {
-        include: {
-          rules: { orderBy: { sequence: 'asc' } },
-        },
-      },
-      schedule: {
-        include: {
-          lines: { orderBy: { dayOfWeek: 'asc' } },
-        },
-      },
-      department: true,
-    },
-  });
+  const cacheKey = `contracts:detail:${id}`;
 
-  if (!contract) {
-    throw new AppError('CONTRACT_NOT_FOUND', 'Contract not found', 404);
-  }
+  const contract = await globalCache.getOrFetch(cacheKey, async () => {
+    const found = await prisma.contract.findUnique({
+      where: { id },
+      include: {
+        employee: {
+          select: { id: true, firstName: true, lastName: true, email: true, jobPosition: true, departmentId: true },
+        },
+        salaryStructure: {
+          include: {
+            rules: { orderBy: { sequence: 'asc' } },
+          },
+        },
+        schedule: {
+          include: {
+            lines: { orderBy: { dayOfWeek: 'asc' } },
+          },
+        },
+        department: true,
+      },
+    });
+
+    if (!found) {
+      throw new AppError('CONTRACT_NOT_FOUND', 'Contract not found', 404);
+    }
+    return found;
+  }, 30000);
 
   if (scopedEmployeeId && contract.employeeId !== scopedEmployeeId) {
     throw new AppError('FORBIDDEN', 'Access denied to this contract record', 403);
@@ -109,7 +125,7 @@ async function createContract(data) {
 
   const contractName = data.name || `${employee.firstName} ${employee.lastName} Contract`;
 
-  return prisma.contract.create({
+  const result = await prisma.contract.create({
     data: {
       employeeId: data.employeeId,
       name: contractName,
@@ -127,6 +143,9 @@ async function createContract(data) {
       salaryStructure: { select: { id: true, name: true, code: true } },
     },
   });
+
+  invalidateContractCache();
+  return result;
 }
 
 async function updateContract(id, data) {
@@ -148,7 +167,7 @@ async function updateContract(id, data) {
     updateData.endDate = updateData.endDate ? new Date(updateData.endDate) : null;
   }
 
-  return prisma.contract.update({
+  const result = await prisma.contract.update({
     where: { id },
     data: updateData,
     include: {
@@ -157,6 +176,9 @@ async function updateContract(id, data) {
       schedule: { select: { id: true, name: true } },
     },
   });
+
+  invalidateContractCache();
+  return result;
 }
 
 async function deleteContract(id) {
@@ -174,6 +196,7 @@ async function deleteContract(id) {
   }
 
   await prisma.contract.delete({ where: { id } });
+  invalidateContractCache();
   return { message: 'Contract deleted successfully' };
 }
 
@@ -183,4 +206,6 @@ module.exports = {
   createContract,
   updateContract,
   deleteContract,
+  invalidateContractCache,
 };
+

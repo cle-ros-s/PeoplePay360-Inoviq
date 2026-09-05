@@ -1,64 +1,79 @@
 const prisma = require('../../config/prisma');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
+const { globalCache } = require('../../utils/cache');
+const { invalidateDashboardCache } = require('../dashboard/dashboard.service');
+
+function invalidateTimeOffTypeCache() {
+  globalCache.invalidatePrefix('timeofftypes:');
+  globalCache.invalidatePrefix('timeoff:');
+  invalidateDashboardCache();
+}
 
 async function listTimeOffTypes(query) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { search } = query;
+  const cacheKey = `timeofftypes:list:${search || ''}:${page}:${pageSize}`;
 
-  const where = {};
-  if (search) {
-    where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { code: { contains: search, mode: 'insensitive' } },
-    ];
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
-  const [types, total] = await Promise.all([
-    prisma.timeOffType.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { name: 'asc' },
-      include: {
-        _count: { select: { allocations: true, requests: true } },
-      },
-    }),
-    prisma.timeOffType.count({ where }),
-  ]);
+    const [types, total] = await Promise.all([
+      prisma.timeOffType.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { name: 'asc' },
+        include: {
+          _count: { select: { allocations: true, requests: true } },
+        },
+      }),
+      prisma.timeOffType.count({ where }),
+    ]);
 
-  const formatted = types.map((t) => ({
-    id: t.id,
-    name: t.name,
-    code: t.code,
-    requiresAllocation: t.requiresAllocation,
-    unit: t.unit,
-    allocationCount: t._count.allocations,
-    requestCount: t._count.requests,
-    createdAt: t.createdAt,
-    updatedAt: t.updatedAt,
-  }));
+    const formatted = types.map((t) => ({
+      id: t.id,
+      name: t.name,
+      code: t.code,
+      requiresAllocation: t.requiresAllocation,
+      unit: t.unit,
+      allocationCount: t._count.allocations,
+      requestCount: t._count.requests,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    }));
 
-  return formatListResponse(formatted, total, page, pageSize);
+    return formatListResponse(formatted, total, page, pageSize);
+  }, 60000);
 }
 
 async function getTimeOffTypeById(id) {
-  const type = await prisma.timeOffType.findUnique({
-    where: { id },
-    include: {
-      _count: { select: { allocations: true, requests: true } },
-    },
-  });
+  const cacheKey = `timeofftypes:detail:${id}`;
 
-  if (!type) {
-    throw new AppError('TIME_OFF_TYPE_NOT_FOUND', 'Time off type not found', 404);
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const type = await prisma.timeOffType.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { allocations: true, requests: true } },
+      },
+    });
 
-  return {
-    ...type,
-    allocationCount: type._count.allocations,
-    requestCount: type._count.requests,
-  };
+    if (!type) {
+      throw new AppError('TIME_OFF_TYPE_NOT_FOUND', 'Time off type not found', 404);
+    }
+
+    return {
+      ...type,
+      allocationCount: type._count.allocations,
+      requestCount: type._count.requests,
+    };
+  }, 60000);
 }
 
 async function createTimeOffType(data) {
@@ -79,7 +94,7 @@ async function createTimeOffType(data) {
     throw new AppError('DUPLICATE_TIME_OFF_TYPE', 'Time off type name or code already exists', 409);
   }
 
-  return prisma.timeOffType.create({
+  const result = await prisma.timeOffType.create({
     data: {
       name: data.name.trim(),
       code,
@@ -87,6 +102,9 @@ async function createTimeOffType(data) {
       unit: data.unit || 'DAYS',
     },
   });
+
+  invalidateTimeOffTypeCache();
+  return result;
 }
 
 async function updateTimeOffType(id, data) {
@@ -101,10 +119,13 @@ async function updateTimeOffType(id, data) {
   if (data.requiresAllocation !== undefined) updateData.requiresAllocation = data.requiresAllocation;
   if (data.unit !== undefined) updateData.unit = data.unit;
 
-  return prisma.timeOffType.update({
+  const result = await prisma.timeOffType.update({
     where: { id },
     data: updateData,
   });
+
+  invalidateTimeOffTypeCache();
+  return result;
 }
 
 async function deleteTimeOffType(id) {
@@ -126,6 +147,7 @@ async function deleteTimeOffType(id) {
   }
 
   await prisma.timeOffType.delete({ where: { id } });
+  invalidateTimeOffTypeCache();
   return { message: 'Time off type deleted successfully' };
 }
 
@@ -135,4 +157,6 @@ module.exports = {
   createTimeOffType,
   updateTimeOffType,
   deleteTimeOffType,
+  invalidateTimeOffTypeCache,
 };
+

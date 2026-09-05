@@ -7,6 +7,13 @@ const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
 const { invalidatePayslipCache } = require('./payslips.service');
 const { invalidateDashboardCache } = require('../dashboard/dashboard.service');
+const { globalCache } = require('../../utils/cache');
+
+function invalidatePayrunCache() {
+  globalCache.invalidatePrefix('payruns:');
+  invalidatePayslipCache();
+  invalidateDashboardCache();
+}
 
 /**
  * Lists eligible employees for a payrun without modifying the database.
@@ -415,158 +422,162 @@ async function markPayrunAsPaid(id) {
   return getPayrunById(updatedId);
 }
 
-/**
- * Lists payruns with pagination and stats.
- */
 async function listPayruns(query) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { status, period } = query;
+  const cacheKey = `payruns:list:${status || ''}:${period || ''}:${page}:${pageSize}`;
 
-  const where = {};
-  if (status) where.status = status;
-  if (period) {
-    where.OR = [
-      { name: { contains: period, mode: 'insensitive' } },
-    ];
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
+    if (status) where.status = status;
+    if (period) {
+      where.OR = [
+        { name: { contains: period, mode: 'insensitive' } },
+      ];
+    }
 
-  const [payruns, total] = await Promise.all([
-    prisma.payrun.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        salaryStructure: { select: { id: true, name: true, code: true } },
-        payslips: {
-          select: { basic: true, gross: true, net: true, status: true },
+    const [payruns, total] = await Promise.all([
+      prisma.payrun.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          salaryStructure: { select: { id: true, name: true, code: true } },
+          payslips: {
+            select: { basic: true, gross: true, net: true, status: true },
+          },
+          warnings: {
+            where: { isResolved: false },
+            select: { id: true, severity: true },
+          },
+          _count: { select: { payrunEmployees: true, payslips: true } },
         },
-        warnings: {
-          where: { isResolved: false },
-          select: { id: true, severity: true },
-        },
-        _count: { select: { payrunEmployees: true, payslips: true } },
-      },
-    }),
-    prisma.payrun.count({ where }),
-  ]);
+      }),
+      prisma.payrun.count({ where }),
+    ]);
 
-  const formatted = payruns.map((p) => {
-    const totalBasic = p.payslips.reduce((sum, ps) => sum + (ps.basic || 0), 0);
-    const totalGross = p.payslips.reduce((sum, ps) => sum + (ps.gross || 0), 0);
-    const totalNet = p.payslips.reduce((sum, ps) => sum + (ps.net || 0), 0);
-    const criticalWarningCount = p.warnings.filter((w) => w.severity === 'CRITICAL').length;
+    const formatted = payruns.map((p) => {
+      const totalBasic = p.payslips.reduce((sum, ps) => sum + (ps.basic || 0), 0);
+      const totalGross = p.payslips.reduce((sum, ps) => sum + (ps.gross || 0), 0);
+      const totalNet = p.payslips.reduce((sum, ps) => sum + (ps.net || 0), 0);
+      const criticalWarningCount = p.warnings.filter((w) => w.severity === 'CRITICAL').length;
 
-    return {
-      id: p.id,
-      name: p.name,
-      periodStart: p.periodStart,
-      periodEnd: p.periodEnd,
-      salaryStructureId: p.salaryStructureId,
-      salaryStructure: p.salaryStructure,
-      status: p.status,
-      employeeCount: p._count.payrunEmployees,
-      payslipCount: p._count.payslips,
-      totalBasic: Math.round(totalBasic * 100) / 100,
-      totalGross: Math.round(totalGross * 100) / 100,
-      totalNet: Math.round(totalNet * 100) / 100,
-      warningCount: p.warnings.length,
-      criticalWarningCount,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-    };
-  });
+      return {
+        id: p.id,
+        name: p.name,
+        periodStart: p.periodStart,
+        periodEnd: p.periodEnd,
+        salaryStructureId: p.salaryStructureId,
+        salaryStructure: p.salaryStructure,
+        status: p.status,
+        employeeCount: p._count.payrunEmployees,
+        payslipCount: p._count.payslips,
+        totalBasic: Math.round(totalBasic * 100) / 100,
+        totalGross: Math.round(totalGross * 100) / 100,
+        totalNet: Math.round(totalNet * 100) / 100,
+        warningCount: p.warnings.length,
+        criticalWarningCount,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      };
+    });
 
-  return formatListResponse(formatted, total, page, pageSize);
+    return formatListResponse(formatted, total, page, pageSize);
+  }, 30000);
 }
 
 /**
  * Gets a single payrun by ID with full details.
  */
 async function getPayrunById(id, db = prisma) {
-  const payrun = await db.payrun.findUnique({
-    where: { id },
-    include: {
-      salaryStructure: {
-        include: {
-          rules: { orderBy: { sequence: 'asc' } },
+  const cacheKey = `payruns:detail:${id}`;
+
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const payrun = await db.payrun.findUnique({
+      where: { id },
+      include: {
+        salaryStructure: {
+          include: {
+            rules: { orderBy: { sequence: 'asc' } },
+          },
         },
-      },
-      payrunEmployees: {
-        include: {
-          employee: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              jobPosition: true,
-              department: { select: { id: true, name: true } },
+        payrunEmployees: {
+          include: {
+            employee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                jobPosition: true,
+                department: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+        payslips: {
+          include: {
+            employee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                jobPosition: true,
+                department: { select: { id: true, name: true } },
+              },
+            },
+            contract: {
+              select: { id: true, wage: true, status: true },
+            },
+            lines: { orderBy: { sequence: 'asc' } },
+          },
+          orderBy: { employee: { firstName: 'asc' } },
+        },
+        warnings: {
+          include: {
+            employee: {
+              select: { id: true, firstName: true, lastName: true, email: true },
             },
           },
         },
       },
-      payslips: {
-        include: {
-          employee: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              jobPosition: true,
-              department: { select: { id: true, name: true } },
-            },
-          },
-          contract: {
-            select: { id: true, wage: true, status: true },
-          },
-          lines: { orderBy: { sequence: 'asc' } },
-        },
-        orderBy: { employee: { firstName: 'asc' } },
-      },
-      warnings: {
-        include: {
-          employee: {
-            select: { id: true, firstName: true, lastName: true, email: true },
-          },
-        },
-      },
-    },
-  });
+    });
 
-  if (!payrun) {
-    throw new AppError('PAYRUN_NOT_FOUND', 'Payrun not found', 404);
-  }
+    if (!payrun) {
+      throw new AppError('PAYRUN_NOT_FOUND', 'Payrun not found', 404);
+    }
 
-  const totalBasic = payrun.payslips.reduce((sum, ps) => sum + (ps.basic || 0), 0);
-  const totalGross = payrun.payslips.reduce((sum, ps) => sum + (ps.gross || 0), 0);
-  const totalNet = payrun.payslips.reduce((sum, ps) => sum + (ps.net || 0), 0);
-  const criticalWarnings = payrun.warnings.filter((w) => w.severity === 'CRITICAL' && !w.isResolved);
+    const totalBasic = payrun.payslips.reduce((sum, ps) => sum + (ps.basic || 0), 0);
+    const totalGross = payrun.payslips.reduce((sum, ps) => sum + (ps.gross || 0), 0);
+    const totalNet = payrun.payslips.reduce((sum, ps) => sum + (ps.net || 0), 0);
+    const criticalWarnings = payrun.warnings.filter((w) => w.severity === 'CRITICAL' && !w.isResolved);
 
-  const formattedPayslips = payrun.payslips.map((ps) => ({
-    ...ps,
-    employee: ps.employee
-      ? {
-          ...ps.employee,
-          name: `${ps.employee.firstName || ''} ${ps.employee.lastName || ''}`.trim(),
-        }
-      : null,
-  }));
+    const formattedPayslips = payrun.payslips.map((ps) => ({
+      ...ps,
+      employee: ps.employee
+        ? {
+            ...ps.employee,
+            name: `${ps.employee.firstName || ''} ${ps.employee.lastName || ''}`.trim(),
+          }
+        : null,
+    }));
 
-  return {
-    ...payrun,
-    payslips: formattedPayslips,
-    employeeCount: payrun.payrunEmployees.length,
-    payslipCount: payrun.payslips.length,
-    totalBasic: Math.round(totalBasic * 100) / 100,
-    totalGross: Math.round(totalGross * 100) / 100,
-    totalNet: Math.round(totalNet * 100) / 100,
-    warningCount: payrun.warnings.length,
-    criticalWarningCount: criticalWarnings.length,
-    canValidate: criticalWarnings.length === 0 && payrun.status !== 'PAID',
-    canMarkPaid: payrun.status === 'VALIDATED',
-  };
+    return {
+      ...payrun,
+      payslips: formattedPayslips,
+      employeeCount: payrun.payrunEmployees.length,
+      payslipCount: payrun.payslips.length,
+      totalBasic: Math.round(totalBasic * 100) / 100,
+      totalGross: Math.round(totalGross * 100) / 100,
+      totalNet: Math.round(totalNet * 100) / 100,
+      warningCount: payrun.warnings.length,
+      criticalWarningCount: criticalWarnings.length,
+      canValidate: criticalWarnings.length === 0 && payrun.status !== 'PAID',
+      canMarkPaid: payrun.status === 'VALIDATED',
+    };
+  }, 30000);
 }
 
 /**
@@ -595,6 +606,7 @@ async function deletePayrun(id) {
     await tx.payrun.delete({ where: { id } });
   });
 
+  invalidatePayrunCache();
   return { message: 'Payrun deleted successfully' };
 }
 

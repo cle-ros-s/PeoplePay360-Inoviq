@@ -1,46 +1,86 @@
 const prisma = require('../../config/prisma');
 const { getPaginationParams } = require('../../utils/pagination');
 const { formatListResponse, AppError } = require('../../utils/responseFormatter');
-
-const timeOffRequestCache = new Map();
-const TIMEOFF_CACHE_TTL = 30 * 1000;
+const { globalCache } = require('../../utils/cache');
+const { invalidateDashboardCache } = require('../dashboard/dashboard.service');
 
 function invalidateTimeOffRequestCache() {
-  timeOffRequestCache.clear();
+  globalCache.invalidatePrefix('timeoff:');
+  globalCache.invalidatePrefix('allocations:');
+  invalidateDashboardCache();
 }
 
 async function listTimeOffRequests(query, scopedEmployeeId = null) {
   const { page, pageSize, skip, take } = getPaginationParams(query);
   const { employeeId, status, timeOffTypeId } = query;
-  const cacheKey = `${scopedEmployeeId || 'all'}:${employeeId || ''}:${status || ''}:${timeOffTypeId || ''}:${page}:${pageSize}`;
-  const cached = timeOffRequestCache.get(cacheKey);
-  const now = Date.now();
+  const cacheKey = `timeoff:list:${scopedEmployeeId || 'all'}:${employeeId || ''}:${status || ''}:${timeOffTypeId || ''}:${page}:${pageSize}`;
 
-  if (cached && now - cached.timestamp < TIMEOFF_CACHE_TTL) {
-    return cached.data;
-  }
+  return globalCache.getOrFetch(cacheKey, async () => {
+    const where = {};
+    if (scopedEmployeeId) {
+      where.employeeId = scopedEmployeeId;
+    } else if (employeeId) {
+      where.employeeId = employeeId;
+    }
 
-  const where = {};
-  if (scopedEmployeeId) {
-    where.employeeId = scopedEmployeeId;
-  } else if (employeeId) {
-    where.employeeId = employeeId;
-  }
+    if (status) {
+      where.status = status;
+    }
 
-  if (status) {
-    where.status = status;
-  }
+    if (timeOffTypeId) {
+      where.timeOffTypeId = timeOffTypeId;
+    }
 
-  if (timeOffTypeId) {
-    where.timeOffTypeId = timeOffTypeId;
-  }
+    const [requests, total] = await Promise.all([
+      prisma.timeOffRequest.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              jobPosition: true,
+              department: { select: { id: true, name: true } },
+              user: { select: { id: true, role: true, email: true } },
+            },
+          },
+          timeOffType: {
+            select: { id: true, name: true, code: true, unit: true, requiresAllocation: true },
+          },
+          allocation: {
+            select: { id: true, allocatedAmount: true, takenAmount: true },
+          },
+        },
+      }),
+      prisma.timeOffRequest.count({ where }),
+    ]);
 
-  const [requests, total] = await Promise.all([
-    prisma.timeOffRequest.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { createdAt: 'desc' },
+    const formattedRequests = requests.map((req) => ({
+      ...req,
+      employee: req.employee
+        ? {
+            ...req.employee,
+            name: `${req.employee.firstName || ''} ${req.employee.lastName || ''}`.trim(),
+            role: req.employee.user?.role || 'EMPLOYEE',
+          }
+        : null,
+    }));
+
+    return formatListResponse(formattedRequests, total, page, pageSize);
+  }, 30000);
+}
+
+async function getTimeOffRequestById(id, scopedEmployeeId = null) {
+  const cacheKey = `timeoff:detail:${id}`;
+
+  const request = await globalCache.getOrFetch(cacheKey, async () => {
+    const found = await prisma.timeOffRequest.findUnique({
+      where: { id },
       include: {
         employee: {
           select: {
@@ -50,58 +90,18 @@ async function listTimeOffRequests(query, scopedEmployeeId = null) {
             email: true,
             jobPosition: true,
             department: { select: { id: true, name: true } },
-            user: { select: { id: true, role: true, email: true } },
           },
         },
-        timeOffType: {
-          select: { id: true, name: true, code: true, unit: true, requiresAllocation: true },
-        },
-        allocation: {
-          select: { id: true, allocatedAmount: true, takenAmount: true },
-        },
+        timeOffType: true,
+        allocation: true,
       },
-    }),
-    prisma.timeOffRequest.count({ where }),
-  ]);
+    });
 
-  const formattedRequests = requests.map((req) => ({
-    ...req,
-    employee: req.employee
-      ? {
-          ...req.employee,
-          name: `${req.employee.firstName || ''} ${req.employee.lastName || ''}`.trim(),
-          role: req.employee.user?.role || 'EMPLOYEE',
-        }
-      : null,
-  }));
-
-  const response = formatListResponse(formattedRequests, total, page, pageSize);
-  timeOffRequestCache.set(cacheKey, { timestamp: now, data: response });
-  return response;
-}
-
-async function getTimeOffRequestById(id, scopedEmployeeId = null) {
-  const request = await prisma.timeOffRequest.findUnique({
-    where: { id },
-    include: {
-      employee: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          jobPosition: true,
-          department: { select: { id: true, name: true } },
-        },
-      },
-      timeOffType: true,
-      allocation: true,
-    },
-  });
-
-  if (!request) {
-    throw new AppError('TIME_OFF_REQUEST_NOT_FOUND', 'Time off request not found', 404);
-  }
+    if (!found) {
+      throw new AppError('TIME_OFF_REQUEST_NOT_FOUND', 'Time off request not found', 404);
+    }
+    return found;
+  }, 30000);
 
   if (scopedEmployeeId && request.employeeId !== scopedEmployeeId) {
     throw new AppError('FORBIDDEN', 'Access denied to this time-off request', 403);
@@ -138,7 +138,7 @@ async function createTimeOffRequest(data, user) {
     throw new AppError('INVALID_DATE_RANGE', 'endDate must be on or after startDate', 422);
   }
 
-  return prisma.timeOffRequest.create({
+  const result = await prisma.timeOffRequest.create({
     data: {
       employeeId: targetEmployeeId,
       timeOffTypeId: data.timeOffTypeId,
@@ -153,6 +153,9 @@ async function createTimeOffRequest(data, user) {
       timeOffType: { select: { id: true, name: true, code: true, unit: true } },
     },
   });
+
+  invalidateTimeOffRequestCache();
+  return result;
 }
 
 async function executeTx(fn) {
@@ -167,7 +170,7 @@ async function executeTx(fn) {
 }
 
 async function approveTimeOffRequest(id, user) {
-  return executeTx(async (tx) => {
+  const result = await executeTx(async (tx) => {
     const request = await tx.timeOffRequest.findUnique({
       where: { id },
       include: { timeOffType: true },
@@ -248,10 +251,13 @@ async function approveTimeOffRequest(id, user) {
       },
     });
   });
+
+  invalidateTimeOffRequestCache();
+  return result;
 }
 
 async function refuseTimeOffRequest(id, refusalReason, user) {
-  return executeTx(async (tx) => {
+  const result = await executeTx(async (tx) => {
     const request = await tx.timeOffRequest.findUnique({
       where: { id },
       include: { allocation: true },
@@ -284,6 +290,9 @@ async function refuseTimeOffRequest(id, refusalReason, user) {
       },
     });
   });
+
+  invalidateTimeOffRequestCache();
+  return result;
 }
 
 async function updateTimeOffRequest(id, data, scopedEmployeeId = null) {
@@ -304,7 +313,7 @@ async function updateTimeOffRequest(id, data, scopedEmployeeId = null) {
   if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
   if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
 
-  return prisma.timeOffRequest.update({
+  const result = await prisma.timeOffRequest.update({
     where: { id },
     data: updateData,
     include: {
@@ -312,6 +321,9 @@ async function updateTimeOffRequest(id, data, scopedEmployeeId = null) {
       timeOffType: { select: { id: true, name: true, code: true } },
     },
   });
+
+  invalidateTimeOffRequestCache();
+  return result;
 }
 
 async function deleteTimeOffRequest(id, scopedEmployeeId = null) {
@@ -329,6 +341,7 @@ async function deleteTimeOffRequest(id, scopedEmployeeId = null) {
   }
 
   await prisma.timeOffRequest.delete({ where: { id } });
+  invalidateTimeOffRequestCache();
   return { message: 'Time off request deleted successfully' };
 }
 
@@ -340,4 +353,5 @@ module.exports = {
   refuseTimeOffRequest,
   updateTimeOffRequest,
   deleteTimeOffRequest,
+  invalidateTimeOffRequestCache,
 };
