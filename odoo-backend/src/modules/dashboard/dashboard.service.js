@@ -305,6 +305,9 @@ async function computeDashboardData(query = {}) {
         employee: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
       take: 20,
+    }).catch((err) => {
+      console.warn('Dashboard warnings query suppressed error:', err.message);
+      return [];
     }),
     // Query 14: Active Attendance Risk Alerts
     prisma.attendanceAlert.findMany({
@@ -324,6 +327,9 @@ async function computeDashboardData(query = {}) {
         },
         department: { select: { id: true, name: true } },
       },
+    }).catch((err) => {
+      console.warn('Dashboard attendance alerts query suppressed error:', err.message);
+      return [];
     }),
   ]);
 
