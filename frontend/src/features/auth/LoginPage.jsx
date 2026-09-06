@@ -16,7 +16,7 @@ import {
   AlertCircle,
   Users,
   Calendar,
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   Search,
   Bell,
@@ -108,7 +108,7 @@ function DashboardMonitorIllustration() {
               <Calendar className="w-3.5 h-3.5" />
             </div>
             <div className="w-7 h-7 rounded-md bg-white/10 flex items-center justify-center text-purple-200/80 hover:bg-white/20 transition-colors">
-              <DollarSign className="w-3.5 h-3.5" />
+              <IndianRupee className="w-3.5 h-3.5" />
             </div>
           </div>
 

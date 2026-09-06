@@ -8,7 +8,7 @@ import DataTable from '../../components/common/DataTable';
 import FilterBar from '../../components/common/FilterBar';
 import StatusBadge from '../../components/common/StatusBadge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import { Plus, Eye, Trash2, DollarSign, Calendar, Users } from 'lucide-react';
+import { Plus, Eye, Trash2, IndianRupee, Calendar, Users } from 'lucide-react';
 import { formatDate, formatEnumLabel } from '../../utils/formatters';
 import { PayrunStatus } from '../../utils/constants';
 

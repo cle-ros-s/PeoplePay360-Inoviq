@@ -98,7 +98,7 @@ function generatePayslipPdfBuffer(payslip) {
       doc.text('Rule / Component', 60, y + 6);
       doc.text('Code', 220, y + 6);
       doc.text('Category', 320, y + 6);
-      doc.text('Amount ($)', 460, y + 6, { align: 'right' });
+      doc.text('Amount (Rs.)', 460, y + 6, { align: 'right' });
       y += 24;
 
       const lines = payslip.lines || [];
@@ -116,7 +116,7 @@ function generatePayslipPdfBuffer(payslip) {
         doc.text(line.code, 220, y + 5);
         doc.fillColor(mutedColor).text(line.category, 320, y + 5);
 
-        const formattedAmount = (Number(line.amount) || 0).toLocaleString('en-US', {
+        const formattedAmount = (Number(line.amount) || 0).toLocaleString('en-IN', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         });
@@ -141,18 +141,18 @@ function generatePayslipPdfBuffer(payslip) {
 
       let summaryY = y + 10;
       doc.fillColor(textColor).fontSize(9).font('Helvetica').text('Basic Wage:', 315, summaryY);
-      doc.font('Helvetica-Bold').text(`$${(payslip.basic || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 450, summaryY, { align: 'right' });
+      doc.font('Helvetica-Bold').text(`Rs. ${(payslip.basic || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 450, summaryY, { align: 'right' });
       summaryY += 18;
 
       doc.font('Helvetica').text('Gross Salary:', 315, summaryY);
-      doc.font('Helvetica-Bold').text(`$${(payslip.gross || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 450, summaryY, { align: 'right' });
+      doc.font('Helvetica-Bold').text(`Rs. ${(payslip.gross || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 450, summaryY, { align: 'right' });
       summaryY += 18;
 
       doc.strokeColor(borderColor).lineWidth(0.5).moveTo(315, summaryY).lineTo(530, summaryY).stroke();
       summaryY += 8;
 
       doc.fillColor(successColor).fontSize(12).font('Helvetica-Bold').text('Net Payable:', 315, summaryY);
-      doc.text(`$${(payslip.net || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 430, summaryY, { align: 'right' });
+      doc.text(`Rs. ${(payslip.net || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 430, summaryY, { align: 'right' });
 
       // Footer
       doc.fillColor(mutedColor).fontSize(8).font('Helvetica').text('This is a system-generated payslip from PeoplePay360. No signature is required.', 50, 770, { align: 'center' });

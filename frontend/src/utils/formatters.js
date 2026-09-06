@@ -3,12 +3,12 @@ import { format, parseISO, isValid } from 'date-fns';
 /**
  * Format currency amount
  */
-export function formatCurrency(amount, currency = 'USD') {
+export function formatCurrency(amount, currency = 'INR') {
   if (amount === null || amount === undefined || isNaN(amount)) {
-    return '$0.00';
+    return '₹0.00';
   }
   const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: currency,
     minimumFractionDigits: 2,

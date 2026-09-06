@@ -23,7 +23,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  DollarSign,
+  IndianRupee,
   Users,
   FileCheck,
   Palmtree,
@@ -836,7 +836,7 @@ export default function PayrollDashboardPage() {
           title="Total Net Salary Paid"
           value={kpiLoading ? '...' : formatCurrency(kpis?.totalNetPaid || kpis?.totalNetSalaryPaid || 0)}
           subtext="Processed in selected period"
-          icon={DollarSign}
+          icon={IndianRupee}
           color="emerald"
         />
         <KpiCard

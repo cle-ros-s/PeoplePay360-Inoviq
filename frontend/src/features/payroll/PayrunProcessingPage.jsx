@@ -10,7 +10,7 @@ import LoadingState from '../../components/common/LoadingState';
 import ErrorState from '../../components/common/ErrorState';
 import { PayrunStatus, WarningSeverity } from '../../utils/constants';
 import { formatDate, formatCurrency, formatEnumLabel } from '../../utils/formatters';
-import { Play, CheckCircle2, DollarSign, Mail, AlertTriangle, ArrowLeft, Eye, ShieldAlert, Trash2 } from 'lucide-react';
+import { Play, CheckCircle2, IndianRupee, Mail, AlertTriangle, ArrowLeft, Eye, ShieldAlert, Trash2 } from 'lucide-react';
 
 export default function PayrunProcessingPage() {
   const { id } = useParams();
@@ -264,7 +264,7 @@ export default function PayrunProcessingPage() {
                 disabled={markPaidMutation.isPending}
                 className="inline-flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm disabled:opacity-50"
               >
-                <DollarSign className="w-4 h-4" />
+                <IndianRupee className="w-4 h-4" />
                 {markPaidMutation.isPending ? 'Processing Payment...' : 'Mark Paid'}
               </button>
             )}

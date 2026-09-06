@@ -9,7 +9,7 @@ import {
   Calendar,
   Clock,
   Palmtree,
-  DollarSign,
+  IndianRupee,
   Settings,
   UserCog,
   ChevronDown,
