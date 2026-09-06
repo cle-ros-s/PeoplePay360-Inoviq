@@ -127,11 +127,10 @@ export default function PayrollDashboardPage() {
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
     queryKey: ['dashboard-summary', params],
     queryFn: () => dashboardApi.getSummary(params),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-    placeholderData: (previousData) => previousData,
+    staleTime: 15 * 1000,
+    gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
   });
 
   // Query employees for the dashboard directory table
@@ -188,10 +187,10 @@ export default function PayrollDashboardPage() {
         { month: '30', totalNet: 2480000 },
       ];
 
-  const kpiLoading = false;
-  const salaryCostLoading = false;
-  const netTrendLoading = false;
-  const breakdownLoading = false;
+  const kpiLoading = summaryLoading;
+  const salaryCostLoading = summaryLoading;
+  const netTrendLoading = summaryLoading;
+  const breakdownLoading = summaryLoading;
 
   const {
     register: registerDept,
@@ -809,14 +808,26 @@ export default function PayrollDashboardPage() {
 
       {/* Top Filter Bar */}
       <FilterBar filters={filterConfigs} onReset={handleResetFilters}>
-        <div className="w-full sm:w-48">
+        <div className="w-full sm:w-56 flex items-center gap-2">
+          <span className="text-xs font-semibold text-gray-600 shrink-0">Period:</span>
           <input
             type="month"
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-sm"
+            className="w-full px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg shadow-2xs focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            title="Filter dashboard charts and metrics by period"
           />
         </div>
+        {Boolean(period) && (
+          <button
+            type="button"
+            onClick={() => setPeriod('')}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors cursor-pointer"
+            title="Clear period filter"
+          >
+            Clear Date
+          </button>
+        )}
       </FilterBar>
 
       {/* 5 Live KPI Cards */}

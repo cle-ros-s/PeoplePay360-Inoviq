@@ -64,9 +64,13 @@ function buildDashboardFilters(query = {}) {
 
   const payslipDateWhere = {};
   if (startDate && endDate) {
-    payslipDateWhere.periodStart = { gte: startDate, lte: endDate };
+    payslipDateWhere.OR = [
+      { periodStart: { lte: endDate }, periodEnd: { gte: startDate } },
+      { periodStart: { gte: startDate, lte: endDate } },
+      { periodEnd: { gte: startDate, lte: endDate } },
+    ];
   } else if (startDate) {
-    payslipDateWhere.periodStart = { gte: startDate };
+    payslipDateWhere.periodEnd = { gte: startDate };
   } else if (endDate) {
     payslipDateWhere.periodStart = { lte: endDate };
   }
@@ -84,7 +88,13 @@ function buildDashboardFilters(query = {}) {
   if (startDate && endDate) {
     timeOffDateWhere.OR = [
       { startDate: { lte: endDate }, endDate: { gte: startDate } },
+      { startDate: { gte: startDate, lte: endDate } },
+      { endDate: { gte: startDate, lte: endDate } },
     ];
+  } else if (startDate) {
+    timeOffDateWhere.endDate = { gte: startDate };
+  } else if (endDate) {
+    timeOffDateWhere.startDate = { lte: endDate };
   }
 
   return {
@@ -127,10 +137,43 @@ async function computeDashboardData(query = {}) {
     ];
   }
 
-  // Consolidated Single Pass (11 Lean Parallel DB Queries)
+  // 6-Month Timeline window relative to the selected period (or current date if none provided)
+  let targetYear;
+  let targetMonth; // 0-indexed
+  if (query.period) {
+    const parts = query.period.split('-').map(Number);
+    if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      targetYear = parts[0];
+      targetMonth = parts[1] - 1;
+    }
+  }
+  if (targetYear === undefined) {
+    const now = new Date();
+    targetYear = now.getFullYear();
+    targetMonth = now.getMonth();
+  }
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const timeline = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(Date.UTC(targetYear, targetMonth - i, 1));
+    const year = d.getUTCFullYear();
+    const monthIdx = d.getUTCMonth();
+    const monthLabel = `${monthNames[monthIdx]} ${year}`;
+    const periodStart = new Date(Date.UTC(year, monthIdx, 1, 0, 0, 0));
+    const periodEnd = new Date(Date.UTC(year, monthIdx + 1, 0, 23, 59, 59, 999));
+    timeline.push({ monthLabel, year, monthIdx, periodStart, periodEnd });
+  }
+
+  const windowStart = timeline[0].periodStart;
+  const windowEnd = timeline[timeline.length - 1].periodEnd;
+
+  // Consolidated Parallel DB Queries
   const [
     activeEmployees,
     payslipGroups,
+    periodPayslips,
+    trendPayslips,
     timeOffGroups,
     timeOffTypeGroups,
     attendanceGroups,
@@ -141,7 +184,7 @@ async function computeDashboardData(query = {}) {
     manualEditsCount,
     dbWarnings,
   ] = await Promise.all([
-    // Query 1: Active Employees with contract & bank info in 1 query
+    // Query 1: Active Employees with contract & bank info
     prisma.employee.findMany({
       where: { status: 'ACTIVE', ...employeeWhere },
       select: {
@@ -154,7 +197,7 @@ async function computeDashboardData(query = {}) {
         },
       },
     }),
-    // Query 2: Payslips grouped by status
+    // Query 2: Payslips grouped by status for selected period
     prisma.payslip.groupBy({
       by: ['status'],
       where: payslipWhere,
@@ -162,50 +205,91 @@ async function computeDashboardData(query = {}) {
       _sum: { net: true, gross: true, basic: true },
       _avg: { net: true },
     }),
-    // Query 3: Time Off Requests grouped by status
+    // Query 3: Individual payslips for accurate departmental salary cost aggregation
+    prisma.payslip.findMany({
+      where: payslipWhere,
+      select: {
+        id: true,
+        gross: true,
+        net: true,
+        basic: true,
+        status: true,
+        employee: {
+          select: {
+            id: true,
+            departmentId: true,
+          },
+        },
+      },
+    }),
+    // Query 4: Payslips across the 6-month historical timeline window
+    prisma.payslip.findMany({
+      where: {
+        AND: [
+          {
+            OR: [
+              { periodStart: { lte: windowEnd }, periodEnd: { gte: windowStart } },
+              { periodStart: { gte: windowStart, lte: windowEnd } },
+              { periodEnd: { gte: windowStart, lte: windowEnd } },
+            ],
+          },
+          ...(Object.keys(employeeWhere).length ? [{ employee: employeeWhere }] : []),
+        ],
+      },
+      select: {
+        id: true,
+        periodStart: true,
+        periodEnd: true,
+        net: true,
+        gross: true,
+        basic: true,
+        status: true,
+      },
+    }),
+    // Query 5: Time Off Requests grouped by status
     prisma.timeOffRequest.groupBy({
       by: ['status'],
       where: timeOffWhere,
       _count: { id: true },
       _sum: { duration: true },
     }),
-    // Query 4: Time Off Requests grouped by type
+    // Query 6: Time Off Requests grouped by type
     prisma.timeOffRequest.groupBy({
       by: ['timeOffTypeId'],
       where: { ...timeOffWhere, status: 'APPROVED' },
       _count: { id: true },
       _sum: { duration: true },
     }),
-    // Query 5: Attendance grouped by status
+    // Query 7: Attendance grouped by status
     prisma.attendance.groupBy({
       by: ['status'],
       where: attendanceWhere,
       _count: { id: true },
       _sum: { workedHours: true },
     }),
-    // Query 6: Departments
+    // Query 8: Departments
     prisma.department.findMany({
       where: deptWhere,
       select: { id: true, name: true, code: true },
       orderBy: { name: 'asc' },
     }),
-    // Query 7: Payruns
+    // Query 9: Payruns
     prisma.payrun.findMany({
       orderBy: { periodStart: 'desc' },
       take: 12,
       select: { id: true, name: true, periodStart: true, periodEnd: true, status: true },
     }),
-    // Query 8: Time Off Types
+    // Query 10: Time Off Types
     prisma.timeOffType.findMany({ select: { id: true, name: true } }),
-    // Query 9: Active Allocations Count
+    // Query 11: Active Allocations Count
     prisma.leaveAllocation.count({
       where: { status: 'APPROVED', ...(Object.keys(employeeWhere).length ? { employee: employeeWhere } : {}) },
     }),
-    // Query 10: Manual Edits Attendance Count
+    // Query 12: Manual Edits Attendance Count
     prisma.attendance.count({
       where: { ...attendanceWhere, isManualEdit: true },
     }),
-    // Query 11: Warnings
+    // Query 13: Warnings
     prisma.payrollWarning.findMany({
       where: { isResolved: false },
       orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
@@ -258,6 +342,7 @@ async function computeDashboardData(query = {}) {
   }
 
   const avgContractWage = contractCount > 0 ? totalContractWageSum / contractCount : 75000;
+  const hasDateFilter = Boolean(query.period || query.from || query.to);
 
   // Payslips computation
   let totalNetPaid = 0;
@@ -275,35 +360,23 @@ async function computeDashboardData(query = {}) {
       totalNetPaid += net;
       totalGrossPaid += gross;
       paidPayslipCount += count;
-      averageNetSalary = g._avg.net || (count > 0 ? net / count : 0);
     }
   }
 
-  if (totalNetPaid === 0) {
-    for (const g of payslipGroups) {
-      if (g._sum.net) {
-        totalNetPaid += g._sum.net;
-        totalGrossPaid += g._sum.gross || g._sum.net * 1.1;
-      }
-    }
-    if (totalPayslipsCount > 0 && averageNetSalary === 0) {
-      averageNetSalary = totalNetPaid / totalPayslipsCount;
-    }
+  if (paidPayslipCount > 0) {
+    averageNetSalary = totalNetPaid / paidPayslipCount;
+  } else if (totalPayslipsCount > 0) {
+    const allNet = payslipGroups.reduce((acc, g) => acc + (g._sum.net || 0), 0);
+    averageNetSalary = allNet / totalPayslipsCount;
   }
 
-  if (totalNetPaid === 0 && totalContractWageSum > 0) {
+  if (!hasDateFilter && totalPayslipsCount === 0 && totalContractWageSum > 0) {
     totalNetPaid = Math.round(totalContractWageSum * 0.85);
     totalGrossPaid = Math.round(totalContractWageSum);
     averageNetSalary = Math.round(avgContractWage * 0.85);
   }
 
-  if (totalNetPaid === 0 && activeEmployeesCount > 0) {
-    averageNetSalary = 65000;
-    totalNetPaid = activeEmployeesCount * averageNetSalary;
-    totalGrossPaid = Math.round(totalNetPaid * 1.15);
-  }
-
-  const payslipsGenerated = totalPayslipsCount || paidPayslipCount || activeEmployeesCount;
+  const payslipsGenerated = totalPayslipsCount;
 
   // Time off computation
   let approvedTimeOffDays = 0;
@@ -319,7 +392,7 @@ async function computeDashboardData(query = {}) {
     }
   }
 
-  if (approvedTimeOffDays === 0) {
+  if (!hasDateFilter && approvedTimeOffDays === 0) {
     approvedTimeOffDays = Math.max(12, Math.round(activeEmployeesCount * 0.8));
   }
 
@@ -343,7 +416,24 @@ async function computeDashboardData(query = {}) {
   let attendanceHealth =
     totalAttendanceRows > 0
       ? Math.round((healthyAttendanceRows / totalAttendanceRows) * 10000) / 100
-      : 96.5;
+      : (hasDateFilter ? 0 : 96.5);
+
+  let present = attendanceStatusMap['PRESENT']?.count || 0;
+  let late = attendanceStatusMap['LATE']?.count || 0;
+  let overtime = attendanceStatusMap['OVERTIME']?.count || 0;
+  let missingCheckout = attendanceStatusMap['MISSING_CHECKOUT']?.count || 0;
+  let absent = attendanceStatusMap['ABSENT']?.count || 0;
+
+  if (!hasDateFilter && totalAttendanceRows === 0) {
+    const baseEmp = activeEmployeesCount || 60;
+    present = Math.round(baseEmp * 0.72);
+    late = Math.round(baseEmp * 0.15);
+    overtime = Math.round(baseEmp * 0.10);
+    missingCheckout = Math.max(1, Math.round(baseEmp * 0.03));
+    absent = Math.max(1, Math.round(baseEmp * 0.05));
+    totalAttendanceRows = present + late + overtime + missingCheckout + absent;
+    attendanceHealth = 96.5;
+  }
 
   const kpis = {
     totalNetPaid: Math.round(totalNetPaid * 100) / 100,
@@ -358,24 +448,68 @@ async function computeDashboardData(query = {}) {
     approvedTimeOff: approvedTimeOffDays,
     approvedTimeOffCount: approvedTimeOffCount || Math.ceil(approvedTimeOffDays / 3),
     approvedTimeOffDays,
-    pendingTimeOffCount: pendingTimeOffCount || Math.max(3, Math.round(activeEmployeesCount * 0.1)),
+    pendingTimeOffCount: pendingTimeOffCount || (hasDateFilter ? 0 : Math.max(3, Math.round(activeEmployeesCount * 0.1))),
     attendanceHealth,
     attendanceRate: attendanceHealth,
     activeEmployeesCount,
-    unresolvedWarningsCount: dbWarnings.length || 4,
+    unresolvedWarningsCount: dbWarnings.length || 0,
   };
 
-  // Salary Cost by Department
-  const salaryCost = departmentsList.map((dept, index) => {
-    const headcount = deptEmpCountMap.get(dept.id) || 0;
-    let deptCost = deptWageMap.get(dept.id) || 0;
+  // Salary Cost Expenditure by Department (changes dynamically per date/period!)
+  const deptSlipMap = new Map();
+  for (const ps of periodPayslips) {
+    const deptId = ps.employee?.departmentId;
+    if (deptId) {
+      if (!deptSlipMap.has(deptId)) {
+        deptSlipMap.set(deptId, { gross: 0, net: 0, basic: 0, count: 0, empIds: new Set() });
+      }
+      const record = deptSlipMap.get(deptId);
+      record.gross += ps.gross || 0;
+      record.net += ps.net || 0;
+      record.basic += ps.basic || 0;
+      record.count += 1;
+      if (ps.employee?.id) record.empIds.add(ps.employee.id);
+    }
+  }
 
-    if (deptCost === 0) {
-      if (headcount > 0) {
-        deptCost = headcount * avgContractWage;
+  const salaryCost = departmentsList.map((dept) => {
+    const slipData = deptSlipMap.get(dept.id);
+    const contractHeadcount = deptEmpCountMap.get(dept.id) || 0;
+    const contractCost = deptWageMap.get(dept.id) || 0;
+
+    let cost = 0;
+    let headcount = 0;
+    let gross = 0;
+    let net = 0;
+
+    if (hasDateFilter) {
+      if (slipData) {
+        cost = slipData.gross;
+        gross = slipData.gross;
+        net = slipData.net;
+        headcount = slipData.empIds.size;
       } else {
-        const base = 45000 + ((index * 12500) % 60000);
-        deptCost = base;
+        cost = 0;
+        gross = 0;
+        net = 0;
+        headcount = 0;
+      }
+    } else {
+      if (slipData && slipData.count > 0) {
+        cost = slipData.gross;
+        gross = slipData.gross;
+        net = slipData.net;
+        headcount = slipData.empIds.size;
+      } else if (contractCost > 0) {
+        cost = contractCost;
+        gross = contractCost;
+        net = Math.round(contractCost * 0.85);
+        headcount = contractHeadcount;
+      } else {
+        cost = contractHeadcount * avgContractWage;
+        gross = cost;
+        net = Math.round(cost * 0.85);
+        headcount = contractHeadcount;
       }
     }
 
@@ -383,55 +517,32 @@ async function computeDashboardData(query = {}) {
       departmentId: dept.id,
       departmentName: dept.name,
       department: dept.name,
-      cost: Math.round(deptCost * 100) / 100,
+      cost: Math.round(cost * 100) / 100,
       departmentCode: dept.code || dept.name.slice(0, 4).toUpperCase(),
-      headcount: headcount || Math.max(1, Math.round(deptCost / avgContractWage)),
-      totalContractWage: Math.round(deptCost * 100) / 100,
-      totalGross: Math.round(deptCost * 100) / 100,
-      totalNet: Math.round(deptCost * 0.85 * 100) / 100,
+      headcount,
+      totalContractWage: Math.round(cost * 100) / 100,
+      totalGross: Math.round(gross * 100) / 100,
+      totalNet: Math.round(net * 100) / 100,
     };
   });
 
-  // Net Salary Trend (6-month historical timeline)
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const now = new Date();
-  const timeline = [];
-
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const year = d.getFullYear();
-    const monthIdx = d.getMonth();
-    const monthLabel = `${monthNames[monthIdx]} ${year}`;
-    const periodStart = new Date(Date.UTC(year, monthIdx, 1, 0, 0, 0));
-    const periodEnd = new Date(Date.UTC(year, monthIdx + 1, 0, 23, 59, 59, 999));
-    timeline.push({ monthLabel, year, monthIdx, periodStart, periodEnd });
-  }
-
-  const baseMonthlySalary = totalContractWageSum > 0 ? totalContractWageSum * 0.85 : 650000;
-
-  const netTrend = timeline.map((item, idx) => {
+  // Net Salary Disbursement Trend (6-month historical timeline ending at the selected period)
+  const netTrend = timeline.map((item) => {
     const matchingPayrun = payrunsList.find((p) => {
       const pDate = new Date(p.periodStart);
       return pDate.getUTCFullYear() === item.year && pDate.getUTCMonth() === item.monthIdx;
     });
 
-    let totalNet = 0;
-    let totalGross = 0;
-    let totalBasic = 0;
-    let payslipCount = 0;
+    const monthSlips = trendPayslips.filter((p) => {
+      const pStart = new Date(p.periodStart);
+      const pEnd = new Date(p.periodEnd);
+      return (pStart <= item.periodEnd && pEnd >= item.periodStart);
+    });
 
-    if (matchingPayrun) {
-      totalNet = totalNetPaid > 0 ? Math.round(totalNetPaid * (0.85 + (idx * 0.03))) : 0;
-      payslipCount = payslipsGenerated;
-    }
-
-    if (totalNet === 0) {
-      const varianceFactor = 0.92 + ((idx * 37) % 15) / 100;
-      totalNet = Math.round(baseMonthlySalary * varianceFactor);
-      totalGross = Math.round(totalNet * 1.12);
-      totalBasic = Math.round(totalNet * 0.75);
-      payslipCount = payslipsGenerated || 11;
-    }
+    const totalNet = monthSlips.reduce((sum, p) => sum + (p.net || 0), 0);
+    const totalGross = monthSlips.reduce((sum, p) => sum + (p.gross || 0), 0);
+    const totalBasic = monthSlips.reduce((sum, p) => sum + (p.basic || 0), 0);
+    const payslipCount = monthSlips.length;
 
     return {
       payrunId: matchingPayrun?.id || `sim-${item.year}-${item.monthIdx}`,
@@ -439,7 +550,7 @@ async function computeDashboardData(query = {}) {
       month: item.monthLabel,
       periodStart: item.periodStart.toISOString(),
       periodEnd: item.periodEnd.toISOString(),
-      status: matchingPayrun?.status || 'PAID',
+      status: matchingPayrun?.status || (payslipCount > 0 ? 'PAID' : 'DRAFT'),
       payslipCount,
       totalBasic: Math.round(totalBasic * 100) / 100,
       totalGross: Math.round(totalGross * 100) / 100,
@@ -447,45 +558,23 @@ async function computeDashboardData(query = {}) {
     };
   });
 
-  // Payslip Breakdown
+  // Payslip Breakdown (Real status distribution for selected period)
   const allStatuses = ['DRAFT', 'COMPUTED', 'VALIDATED', 'PAID'];
-  const totalPayslipsInDb = payslipGroups.reduce((acc, g) => acc + g._count.id, 0);
-  const defaultRatio = { DRAFT: 0.10, COMPUTED: 0.20, VALIDATED: 0.15, PAID: 0.55 };
-  const baseCount = totalPayslipsInDb > 0 ? totalPayslipsInDb : Math.max(12, activeEmployeesCount);
-  const avgNetPerSlip = 68000;
-
   const payslipBreakdown = allStatuses.map((status) => {
     const match = payslipGroups.find((g) => g.status === status);
-    let count = match ? match._count.id : 0;
-    let totalNet = match && match._sum.net ? match._sum.net : 0;
-
-    if (count === 0) {
-      count = Math.max(1, Math.round(baseCount * defaultRatio[status]));
-      totalNet = Math.round(count * avgNetPerSlip);
-    }
+    const count = match ? match._count.id : 0;
+    const totalNet = match && match._sum.net ? match._sum.net : 0;
+    const totalGross = match && match._sum.gross ? match._sum.gross : 0;
 
     return {
       status,
       count,
       totalNet: Math.round(totalNet * 100) / 100,
-      totalGross: Math.round(totalNet * 1.15 * 100) / 100,
+      totalGross: Math.round(totalGross * 100) / 100,
     };
   });
 
   // Attendance Overview
-  let present = attendanceStatusMap['PRESENT']?.count || 0;
-  let late = attendanceStatusMap['LATE']?.count || 0;
-  let overtime = attendanceStatusMap['OVERTIME']?.count || 0;
-  let missingCheckout = attendanceStatusMap['MISSING_CHECKOUT']?.count || 0;
-  let absent = attendanceStatusMap['ABSENT']?.count || 0;
-
-  const baseEmp = activeEmployeesCount || 60;
-  if (present === 0) present = Math.round(baseEmp * 0.72);
-  if (late === 0) late = Math.round(baseEmp * 0.15);
-  if (overtime === 0) overtime = Math.round(baseEmp * 0.10);
-  if (missingCheckout === 0) missingCheckout = Math.max(1, Math.round(baseEmp * 0.03));
-  if (absent === 0) absent = Math.max(1, Math.round(baseEmp * 0.05));
-
   const totalRecords = present + late + overtime + missingCheckout + absent;
   const averageWorkedHours = 8.5;
 
@@ -498,7 +587,7 @@ async function computeDashboardData(query = {}) {
     totalRecords,
     totalWorkedHours: Math.round(totalWorkedHours || totalRecords * 8.5),
     averageWorkedHours,
-    manualEditsCount: manualEditsCount || 3,
+    manualEditsCount: manualEditsCount || 0,
     breakdown: {
       PRESENT: { count: present, totalHours: Math.round(present * 8) },
       LATE: { count: late, totalHours: Math.round(late * 7.5) },
@@ -513,23 +602,10 @@ async function computeDashboardData(query = {}) {
   timeOffTypesList.forEach((t) => { typeMap[t.id] = t.name; });
 
   const byStatus = {};
-  const statusDefaults = {
-    DRAFT: { count: 2, totalDuration: 4 },
-    PENDING: { count: 8, totalDuration: 20 },
-    APPROVED: { count: 18, totalDuration: 53 },
-    REFUSED: { count: 3, totalDuration: 7 },
-  };
-
   ['DRAFT', 'PENDING', 'APPROVED', 'REFUSED'].forEach((st) => {
     const match = timeOffGroups.find((g) => g.status === st);
-    let count = match ? match._count.id : 0;
-    let totalDuration = match && match._sum.duration ? match._sum.duration : 0;
-
-    if (count === 0) {
-      count = statusDefaults[st].count;
-      totalDuration = statusDefaults[st].totalDuration;
-    }
-
+    const count = match ? match._count.id : 0;
+    const totalDuration = match && match._sum.duration ? match._sum.duration : 0;
     byStatus[st] = { count, totalDuration };
   });
 
@@ -539,15 +615,6 @@ async function computeDashboardData(query = {}) {
     approvedCount: g._count.id,
     totalDuration: g._sum.duration || 0,
   }));
-
-  if (!byType.length) {
-    byType = timeOffTypesList.map((t, idx) => ({
-      timeOffTypeId: t.id,
-      name: t.name,
-      approvedCount: 5 + idx * 3,
-      totalDuration: 15 + idx * 8,
-    }));
-  }
 
   const timeOffOverview = {
     pendingRequests: byStatus['PENDING']?.count ?? 0,
@@ -671,8 +738,8 @@ async function getSalaryCostByDepartment(query) {
   return summary.salaryCost;
 }
 
-async function getNetSalaryTrend() {
-  const summary = await getDashboardSummary({});
+async function getNetSalaryTrend(query = {}) {
+  const summary = await getDashboardSummary(query);
   return summary.netTrend;
 }
 
@@ -691,8 +758,8 @@ async function getTimeOffOverview(query) {
   return summary.timeOffOverview;
 }
 
-async function getDashboardWarnings() {
-  const summary = await getDashboardSummary({});
+async function getDashboardWarnings(query = {}) {
+  const summary = await getDashboardSummary(query);
   return summary.warnings;
 }
 

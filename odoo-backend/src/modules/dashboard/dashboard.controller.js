@@ -20,7 +20,7 @@ async function getSalaryCostByDepartment(req, res, next) {
 
 async function getNetSalaryTrend(req, res, next) {
   try {
-    const result = await dashboardService.getNetSalaryTrend();
+    const result = await dashboardService.getNetSalaryTrend(req.query);
     return res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -56,7 +56,7 @@ async function getTimeOffOverview(req, res, next) {
 
 async function getDashboardWarnings(req, res, next) {
   try {
-    const result = await dashboardService.getDashboardWarnings();
+    const result = await dashboardService.getDashboardWarnings(req.query);
     return res.status(200).json(result);
   } catch (error) {
     next(error);

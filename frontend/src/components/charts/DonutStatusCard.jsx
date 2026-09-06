@@ -14,11 +14,15 @@ export default function DonutStatusCard({ title, data = [], dataKey = 'count', n
     );
   }
 
-  if (!data || data.length === 0) {
+  const activeData = Array.isArray(data)
+    ? data.filter((item) => (Number(item[dataKey]) || 0) > 0)
+    : [];
+
+  if (!data || data.length === 0 || activeData.length === 0) {
     return (
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm min-h-[300px] flex flex-col justify-center">
         <h3 className="text-sm font-semibold text-gray-900 mb-4">{title}</h3>
-        <EmptyState description="No breakdown data available." />
+        <EmptyState description="No payslip status data available for this period." />
       </div>
     );
   }
@@ -30,7 +34,7 @@ export default function DonutStatusCard({ title, data = [], dataKey = 'count', n
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={data}
+              data={activeData}
               cx="50%"
               cy="50%"
               innerRadius={50}
@@ -39,7 +43,7 @@ export default function DonutStatusCard({ title, data = [], dataKey = 'count', n
               dataKey={dataKey}
               nameKey={nameKey}
             >
-              {data.map((entry, index) => (
+              {activeData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
