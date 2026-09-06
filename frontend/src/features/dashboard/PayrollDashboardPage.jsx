@@ -568,61 +568,6 @@ export default function PayrollDashboardPage() {
       accessorKey: 'status',
       render: (emp) => <StatusBadge status={emp.status} />,
     },
-    {
-      header: 'Actions',
-      render: (emp) => (
-        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          {(can('VIEW_ALL_EMPLOYEES') || user?.employeeId === emp.id) && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/employees/${emp.id}`);
-              }}
-              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-              title="View Details"
-            >
-              <Eye className="w-3.5 h-3.5" />
-            </button>
-          )}
-          {can('MANAGE_EMPLOYEES') && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/employees/${emp.id}/edit`);
-              }}
-              className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-colors"
-              title="Edit Employee"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-          {can('VIEW_PAYSLIPS') && (
-            <button
-              type="button"
-              onClick={(e) => handleDownloadEmployeePayslip(e, emp)}
-              disabled={downloadingEmpId === emp.id}
-              className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition-colors disabled:opacity-50"
-              title="Download Latest Payslip (PDF)"
-            >
-              <Download className={`w-3.5 h-3.5 ${downloadingEmpId === emp.id ? 'animate-bounce text-emerald-800' : ''}`} />
-            </button>
-          )}
-          {can('SEND_PAYSLIPS') && (
-            <button
-              type="button"
-              onClick={(e) => handleQuickEmailEmployee(e, emp)}
-              disabled={sendingEmpEmailId === emp.id}
-              className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
-              title="Email Latest Payslip PDF to Employee"
-            >
-              <Mail className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      ),
-    },
   ];
 
   return (
