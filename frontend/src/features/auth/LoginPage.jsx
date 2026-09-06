@@ -377,8 +377,19 @@ export default function LoginPage() {
         <div className="relative z-10 w-full max-w-[560px] bg-white/95 backdrop-blur-xl rounded-[26px] sm:rounded-[32px] p-8 sm:p-12 lg:p-14 shadow-[0_25px_70px_rgba(20,10,70,0.14)] border border-white/80 ring-1 ring-purple-100">
           {/* Card Top Branding Header */}
           <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center mb-4">
-              <PayFluxLogo className="w-full h-full" showText={false} />
+            <div className="relative mb-4 group">
+              {/* Ambient gradient shade / glow behind logo */}
+              <div className="absolute -inset-2 bg-gradient-to-r from-[#0d2b6e]/20 via-[#00aadd]/25 to-blue-500/20 rounded-3xl blur-lg opacity-80 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              
+              {/* Shaded Logo Badge Box */}
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 p-3.5 rounded-2xl bg-gradient-to-b from-white via-slate-50/90 to-blue-50/40 shadow-[0_12px_28px_-6px_rgba(13,43,110,0.14),0_4px_10px_-2px_rgba(0,0,0,0.04)] border border-slate-100 flex items-center justify-center backdrop-blur-md transition-transform duration-300 group-hover:scale-105">
+                <img
+                  src="/payflux-logo.png"
+                  alt="PayFlux Logo"
+                  className="w-full h-full object-contain filter drop-shadow-[0_4px_8px_rgba(13,43,110,0.18)]"
+                  draggable={false}
+                />
+              </div>
             </div>
             <h2 className="text-2xl sm:text-3xl lg:text-[32px] font-black text-slate-900 tracking-tight">
               Welcome back!
