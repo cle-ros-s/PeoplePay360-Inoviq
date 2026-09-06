@@ -284,6 +284,19 @@ export default function AttendanceAlertsListPage() {
       },
     },
     {
+      header: 'HR Notes / Comments',
+      accessorKey: 'resolutionNote',
+      render: (alert) => {
+        const note = alert.resolutionNote || alert.resolutionNotes;
+        if (!note) return <span className="text-xs text-slate-400 italic">No notes yet</span>;
+        return (
+          <div className="max-w-[200px] text-xs text-slate-700 bg-slate-50 p-1.5 rounded-lg border border-slate-100 truncate" title={note}>
+            <span className="font-medium text-slate-800">{note}</span>
+          </div>
+        );
+      },
+    },
+    {
       header: 'Status',
       accessorKey: 'status',
       render: (alert) => <StatusBadge status={alert.status} />,

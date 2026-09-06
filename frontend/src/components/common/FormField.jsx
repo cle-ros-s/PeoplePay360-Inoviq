@@ -13,6 +13,7 @@ export default function FormField({
   min,
   max,
   className = 'mb-4',
+  children,
 }) {
   return (
     <div className={className}>
@@ -21,17 +22,21 @@ export default function FormField({
           {label} {required && <span style={{ color: '#EF4444' }}>*</span>}
         </label>
       )}
-      <input
-        id={name}
-        type={type}
-        step={step}
-        min={min}
-        max={max}
-        placeholder={placeholder}
-        disabled={disabled}
-        {...(register ? register(name) : {})}
-        className={`input-field ${error ? 'error' : ''}`}
-      />
+      {children ? (
+        children
+      ) : (
+        <input
+          id={name}
+          type={type}
+          step={step}
+          min={min}
+          max={max}
+          placeholder={placeholder}
+          disabled={disabled}
+          {...(register ? register(name) : {})}
+          className={`input-field ${error ? 'error' : ''}`}
+        />
+      )}
       {error && (
         <p className="text-xs mt-1.5 font-medium" style={{ color: '#EF4444' }}>
           {error.message || error}
