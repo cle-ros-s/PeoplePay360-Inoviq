@@ -439,57 +439,66 @@ export default function PayslipDetailPage() {
 
           {/* Action Options */}
           <div className="space-y-2.5 pt-2">
-            {/* Primary: Direct Server Dispatch */}
-            <button
-              type="button"
-              onClick={() => sendEmailMutation.mutate(recipientEmail)}
-              disabled={sendEmailMutation.isPending || !recipientEmail}
-              className="w-full py-3 px-4 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all duration-200 disabled:opacity-50 cursor-pointer"
-              style={{
-                background: 'linear-gradient(135deg, #714B67 0%, #017E84 100%)',
-              }}
-            >
-              {sendEmailMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Sending Payslip Email...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>Send Direct Email with PDF</span>
-                </>
-              )}
-            </button>
-
-            {/* Secondary: Open in Gmail Web */}
+            {/* Primary Option: Compose in Gmail Web (Opens browser Gmail + Downloads PDF) */}
             <button
               type="button"
               onClick={handleOpenGmailWeb}
-              className="w-full py-2.5 px-4 rounded-xl text-sm font-bold border flex items-center justify-center gap-2 transition-all hover:bg-purple-50 cursor-pointer"
+              className="w-full py-3 px-4 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all duration-200 cursor-pointer"
               style={{
-                color: '#714B67',
-                borderColor: '#714B67',
-                background: 'rgba(113,75,103,0.05)',
+                background: 'linear-gradient(135deg, #714B67 0%, #017E84 100%)',
+                boxShadow: '0 4px 14px rgba(113,75,103,0.30)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(113,75,103,0.40)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(113,75,103,0.30)';
               }}
             >
               <ExternalLink className="w-4 h-4" />
               <span>Compose in Gmail Web &amp; Download PDF</span>
             </button>
 
-            {/* Tertiary: Open in Native Mail App (mailto) */}
+            {/* Secondary Option: Direct Server Email Dispatch */}
+            <button
+              type="button"
+              onClick={() => sendEmailMutation.mutate(recipientEmail)}
+              disabled={sendEmailMutation.isPending || !recipientEmail}
+              className="w-full py-2.5 px-4 rounded-xl text-sm font-bold border flex items-center justify-center gap-2 transition-all hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+              style={{
+                color: '#714B67',
+                borderColor: 'rgba(113,75,103,0.30)',
+                background: 'rgba(113,75,103,0.04)',
+              }}
+            >
+              {sendEmailMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-[#714B67]" />
+                  <span>Dispatching Email...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>Send Direct Server Email</span>
+                </>
+              )}
+            </button>
+
+            {/* Tertiary Option: Open in Native Mail App (mailto) */}
             <button
               type="button"
               onClick={handleOpenMailto}
-              className="w-full py-2.5 px-4 rounded-xl text-sm font-bold border flex items-center justify-center gap-2 transition-all hover:bg-gray-50 cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-xl text-sm font-bold border flex items-center justify-center gap-2 transition-all hover:bg-teal-50 cursor-pointer"
               style={{
                 color: '#017E84',
-                borderColor: '#017E84',
+                borderColor: 'rgba(1,126,132,0.30)',
                 background: 'rgba(1,126,132,0.04)',
               }}
             >
               <Mail className="w-4 h-4" />
-              <span>Open in Mail App (Outlook / Apple Mail) &amp; Download PDF</span>
+              <span>Open in Desktop Mail (Outlook / Apple Mail)</span>
             </button>
 
             {/* Quaternary: Copy summary */}
