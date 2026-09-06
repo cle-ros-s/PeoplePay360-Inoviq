@@ -217,7 +217,23 @@ export default function EmployeeFormPage() {
   const managerOptions = allEmployees
     .filter((e) => e.id !== id)
     .map((e) => ({ value: e.id, label: `${e.name || `${e.firstName} ${e.lastName}`} (${e.jobPosition})` }));
-  const scheduleOptions = schedules.map((s) => ({ value: s.id, label: `${s.name} (${s.totalWeeklyHours} hrs/wk)` }));
+  const uniqueScheduleMap = new Map();
+  schedules.forEach((s) => {
+    const key = `${s.name.trim().toLowerCase()}-${s.totalWeeklyHours}`;
+    if (!uniqueScheduleMap.has(key)) {
+      uniqueScheduleMap.set(key, { value: s.id, label: `${s.name} (${s.totalWeeklyHours} hrs/wk)` });
+    }
+  });
+  if (employeeData?.scheduleId && !Array.from(uniqueScheduleMap.values()).some((opt) => opt.value === employeeData.scheduleId)) {
+    const currentSchedule = schedules.find((s) => s.id === employeeData.scheduleId);
+    if (currentSchedule) {
+      uniqueScheduleMap.set(currentSchedule.id, {
+        value: currentSchedule.id,
+        label: `${currentSchedule.name} (${currentSchedule.totalWeeklyHours} hrs/wk)`,
+      });
+    }
+  }
+  const scheduleOptions = Array.from(uniqueScheduleMap.values());
 
   const statusOptions = Object.values(EmployeeStatus).map((s) => ({ value: s, label: formatEnumLabel(s) }));
   const typeOptions = Object.values(EmployeeType).map((t) => ({ value: t, label: formatEnumLabel(t) }));

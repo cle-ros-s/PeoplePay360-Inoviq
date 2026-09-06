@@ -385,13 +385,47 @@ export default function TimeOffRequestsPage() {
         title="Time Off Requests"
         description="Submit leave requests and process approvals. Approving leave automatically deducts from employee leave balances on the server."
         actions={
-          <button
-            onClick={() => setRequestModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New Time Off Request
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {(can('APPROVE_TIME_OFF') || !isEmployee) && pendingRequests.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allPendingIds = pendingRequests.map((r) => r.id);
+                    bulkApproveMutation.mutate(allPendingIds);
+                  }}
+                  disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs rounded-lg shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Approve all pending leave requests"
+                  id="btn-header-approve-all"
+                >
+                  <CheckCheck className="w-4 h-4" />
+                  {bulkApproveMutation.isPending ? 'Approving All...' : `Approve All (${pendingRequests.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allPendingIds = pendingRequests.map((r) => r.id);
+                    bulkRefuseMutation.mutate(allPendingIds);
+                  }}
+                  disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 border border-rose-300 font-semibold text-xs rounded-lg shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Refuse all pending leave requests"
+                  id="btn-header-refuse-all"
+                >
+                  <XCircle className="w-4 h-4" />
+                  {bulkRefuseMutation.isPending ? 'Refusing All...' : `Refuse All (${pendingRequests.length})`}
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => setRequestModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              New Time Off Request
+            </button>
+          </div>
         }
       />
 
@@ -416,60 +450,104 @@ export default function TimeOffRequestsPage() {
       )}
 
       {(can('APPROVE_TIME_OFF') || !isEmployee) && pendingRequests.length > 0 && (
-        <div className="mb-4 p-3 bg-blue-50/80 border border-blue-200 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2">
+        <div className="mb-4 p-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-blue-50/90 border border-blue-200/80 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5">
             <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
             <span className="text-sm font-semibold text-gray-800">
               {selectedIds.length > 0 ? (
                 <span>
-                  {selectedIds.length} request(s) selected out of {pendingRequests.length} pending
+                  <strong className="text-blue-700">{selectedIds.length}</strong> request(s) selected out of{' '}
+                  <strong className="text-amber-700">{pendingRequests.length}</strong> pending
                 </span>
               ) : (
-                <span>{pendingRequests.length} pending leave request(s) awaiting action</span>
+                <span>
+                  <strong className="text-amber-700">{pendingRequests.length}</strong> pending leave request(s) awaiting approval
+                </span>
               )}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const idsToApprove = selectedIds.length > 0 ? selectedIds : pendingRequests.map((r) => r.id);
-                bulkApproveMutation.mutate(idsToApprove);
-              }}
-              disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              <CheckCheck className="w-4 h-4" />
-              {bulkApproveMutation.isPending
-                ? 'Approving...'
-                : selectedIds.length > 0
-                ? `Approve Selected (${selectedIds.length})`
-                : `Approve All Pending (${pendingRequests.length})`}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const idsToRefuse = selectedIds.length > 0 ? selectedIds : pendingRequests.map((r) => r.id);
-                bulkRefuseMutation.mutate(idsToRefuse);
-              }}
-              disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-rose-700 bg-rose-100 hover:bg-rose-200 active:bg-rose-300 border border-rose-300 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              <XCircle className="w-4 h-4" />
-              {bulkRefuseMutation.isPending
-                ? 'Refusing...'
-                : selectedIds.length > 0
-                ? `Refuse Selected (${selectedIds.length})`
-                : `Refuse All Pending (${pendingRequests.length})`}
-            </button>
-            {selectedIds.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSelectedIds([])}
-                className="text-xs text-gray-500 hover:text-gray-700 underline px-1 cursor-pointer"
-              >
-                Clear Selection
-              </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedIds.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => bulkApproveMutation.mutate(selectedIds)}
+                  disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  {bulkApproveMutation.isPending ? 'Approving...' : `Approve Selected (${selectedIds.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => bulkRefuseMutation.mutate(selectedIds)}
+                  disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-100 hover:bg-rose-200 active:bg-rose-300 border border-rose-300 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  {bulkRefuseMutation.isPending ? 'Refusing...' : `Refuse Selected (${selectedIds.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allPendingIds = pendingRequests.map((r) => r.id);
+                    bulkApproveMutation.mutate(allPendingIds);
+                  }}
+                  disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-300 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  Approve All Pending ({pendingRequests.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allPendingIds = pendingRequests.map((r) => r.id);
+                    bulkRefuseMutation.mutate(allPendingIds);
+                  }}
+                  disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-white hover:bg-rose-50 border border-rose-200 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  Refuse All Pending ({pendingRequests.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  className="text-xs text-gray-500 hover:text-gray-700 underline px-1.5 cursor-pointer"
+                >
+                  Clear Selection
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allPendingIds = pendingRequests.map((r) => r.id);
+                    bulkApproveMutation.mutate(allPendingIds);
+                  }}
+                  disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                  id="btn-approve-all-pending"
+                >
+                  <CheckCheck className="w-4 h-4" />
+                  {bulkApproveMutation.isPending ? 'Approving All...' : `Approve All Pending (${pendingRequests.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allPendingIds = pendingRequests.map((r) => r.id);
+                    bulkRefuseMutation.mutate(allPendingIds);
+                  }}
+                  disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-rose-700 bg-rose-100 hover:bg-rose-200 active:bg-rose-300 border border-rose-300 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                  id="btn-refuse-all-pending"
+                >
+                  <XCircle className="w-4 h-4" />
+                  {bulkRefuseMutation.isPending ? 'Refusing All...' : `Refuse All Pending (${pendingRequests.length})`}
+                </button>
+              </>
             )}
           </div>
         </div>

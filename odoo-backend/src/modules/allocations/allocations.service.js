@@ -192,7 +192,7 @@ async function bulkApproveAllocations(ids) {
   let targetIds = ids;
   if (!targetIds || targetIds.length === 0) {
     const pending = await prisma.leaveAllocation.findMany({
-      where: { status: { in: ['PENDING', 'DRAFT'] } },
+      where: { status: { in: ['SUBMITTED', 'DRAFT', 'PENDING'] } },
       select: { id: true },
     });
     targetIds = pending.map((p) => p.id);
@@ -211,7 +211,7 @@ async function bulkRefuseAllocations(ids) {
   let targetIds = ids;
   if (!targetIds || targetIds.length === 0) {
     const pending = await prisma.leaveAllocation.findMany({
-      where: { status: { in: ['PENDING', 'DRAFT'] } },
+      where: { status: { in: ['SUBMITTED', 'DRAFT', 'PENDING'] } },
       select: { id: true },
     });
     targetIds = pending.map((p) => p.id);
