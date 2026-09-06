@@ -41,7 +41,8 @@ async function getPayslipPdf(req, res, next) {
 
 async function sendPayslipEmail(req, res, next) {
   try {
-    const result = await payslipsService.sendSinglePayslipEmail(req.params.id);
+    const customRecipient = req.body?.recipientEmail || req.body?.email;
+    const result = await payslipsService.sendSinglePayslipEmail(req.params.id, customRecipient);
     return res.status(200).json(result);
   } catch (error) {
     next(error);

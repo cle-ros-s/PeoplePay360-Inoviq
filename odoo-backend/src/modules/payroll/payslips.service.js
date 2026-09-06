@@ -220,9 +220,9 @@ async function getPayslipPdf(id, scopedEmployeeId = null) {
   return generatePayslipPdfBuffer(payslip);
 }
 
-async function sendSinglePayslipEmail(id) {
+async function sendSinglePayslipEmail(id, customRecipient = null) {
   const payslip = await getPayslipById(id);
-  return sendPayslipEmail(payslip);
+  return sendPayslipEmail(payslip, customRecipient);
 }
 
 module.exports = {

@@ -6,57 +6,67 @@ const { generatePayslipPdfBuffer } = require('./payslipPdf.service');
 let transporter = null;
 
 function getTransporter() {
-  if (!transporter) {
-    if (env.SMTP_HOST && env.SMTP_USER) {
-      transporter = nodemailer.createTransport({
-        host: env.SMTP_HOST,
-        port: env.SMTP_PORT,
-        secure: env.SMTP_PORT === 465,
+  if (env.SMTP_USER && env.SMTP_PASS) {
+    const isGmail = (env.SMTP_HOST && env.SMTP_HOST.includes('gmail')) || env.SMTP_USER.includes('@gmail.com');
+    if (isGmail) {
+      return nodemailer.createTransport({
+        service: 'gmail',
         auth: {
           user: env.SMTP_USER.trim(),
-          pass: env.SMTP_PASS ? env.SMTP_PASS.replace(/\s+/g, '') : '',
+          pass: env.SMTP_PASS.replace(/\s+/g, ''),
         },
-        connectionTimeout: 5000,
-        greetingTimeout: 5000,
-        socketTimeout: 5000,
         tls: {
           rejectUnauthorized: false,
         },
       });
-    } else {
-      transporter = nodemailer.createTransport({
-        jsonTransport: true,
-      });
     }
+
+    return nodemailer.createTransport({
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT || 587,
+      secure: env.SMTP_PORT === 465,
+      auth: {
+        user: env.SMTP_USER.trim(),
+        pass: env.SMTP_PASS.replace(/\s+/g, ''),
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
   }
-  return transporter;
+
+  return nodemailer.createTransport({
+    jsonTransport: true,
+  });
 }
 
 /**
  * Sends single payslip email with PDF attachment
  * @param {Object} payslip - Full payslip with employee and lines
+ * @param {string} [customRecipient] - Optional custom email override
  * @returns {Promise<Object>} delivery result
  */
-async function sendPayslipEmail(payslip) {
+async function sendPayslipEmail(payslip, customRecipient = null) {
   const emp = payslip.employee;
-  if (!emp || !emp.email) {
+  const targetEmail = customRecipient || emp?.email;
+  if (!targetEmail) {
     throw new Error('Employee email address is missing');
   }
 
   const pdfBuffer = await generatePayslipPdfBuffer(payslip);
   const periodText = `${new Date(payslip.periodStart).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
-  const empFullName = emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
+  const empFullName = emp?.name || `${emp?.firstName || ''} ${emp?.lastName || ''}`.trim() || 'Employee';
 
   const mailOptions = {
-    from: env.SMTP_FROM,
-    to: emp.email,
+    from: env.SMTP_FROM || `PeoplePay360 <${env.SMTP_USER || 'noreply@peoplepay360.com'}>`,
+    to: targetEmail,
     subject: `Your Payslip for ${periodText} — PeoplePay360`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1F2937;">
-        <h2 style="color: #1E3A8A;">PeoplePay360 Payslip Notification</h2>
+        <h2 style="color: #714B67;">PeoplePay360 Payslip Notification</h2>
         <p>Dear ${empFullName},</p>
         <p>Your payslip for the pay period <strong>${periodText}</strong> has been generated and finalized.</p>
-        <div style="background-color: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <div style="background-color: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #E5E7EB;">
           <p style="margin: 5px 0;"><strong>Gross Salary:</strong> $${(payslip.gross || 0).toFixed(2)}</p>
           <p style="margin: 5px 0;"><strong>Net Pay:</strong> $${(payslip.net || 0).toFixed(2)}</p>
           <p style="margin: 5px 0;"><strong>Status:</strong> ${payslip.status}</p>
@@ -69,7 +79,7 @@ async function sendPayslipEmail(payslip) {
     `,
     attachments: [
       {
-        filename: `Payslip_${emp.firstName || 'Employee'}_${emp.lastName || ''}_${periodText.replace(/\s+/g, '_')}.pdf`,
+        filename: `Payslip_${emp?.firstName || 'Employee'}_${emp?.lastName || ''}_${periodText.replace(/\s+/g, '_')}.pdf`,
         content: pdfBuffer,
         contentType: 'application/pdf',
       },
@@ -82,18 +92,15 @@ async function sendPayslipEmail(payslip) {
     return {
       success: true,
       messageId: info.messageId,
-      email: emp.email,
-      message: `Payslip email sent successfully to ${emp.email}!`,
+      email: targetEmail,
+      message: `Payslip email with PDF delivered successfully to ${targetEmail}!`,
     };
   } catch (error) {
-    // Graceful delivery simulation when external SMTP host is unavailable or credentials need verification
-    console.warn(`[EMAIL DELIVERY SIMULATION]: Payslip email for ${emp.email} generated & simulated (SMTP note: ${error.message}).`);
-    return {
-      success: true,
-      simulated: true,
-      email: emp.email,
-      message: `Payslip PDF generated & email sent to ${emp.email} (simulated delivery)!`,
-    };
+    console.error(`[SMTP ERROR]: Failed delivering email to ${targetEmail}:`, error.message);
+    if (error.responseCode === 535 || error.code === 'EAUTH' || error.message.includes('BadCredentials')) {
+      throw new Error(`Gmail Authentication Failed: Google rejected the App Password for "${env.SMTP_USER}". Please create a 16-character App Password at https://myaccount.google.com/apppasswords or use the "Compose in Gmail Web" option.`);
+    }
+    throw new Error(`Email Delivery Failed: ${error.message}`);
   }
 }
 

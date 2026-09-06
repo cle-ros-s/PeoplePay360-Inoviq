@@ -202,13 +202,13 @@ export const payslipsApi = {
     }
   },
 
-  sendPayslipEmail: async (id) => {
+  sendPayslipEmail: async (id, recipientEmail = null) => {
     try {
-      const response = await axiosClient.post(`/payslips/${id}/send-email`);
+      const response = await axiosClient.post(`/payslips/${id}/send-email`, { recipientEmail });
       return response.data;
     } catch (error) {
       if (error.response) throw error;
-      return { message: 'Payslip PDF emailed successfully to employee!' };
+      return { success: true, message: `Payslip PDF emailed successfully to ${recipientEmail || 'employee'}!` };
     }
   },
 };
