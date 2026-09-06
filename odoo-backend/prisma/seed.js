@@ -1,7 +1,9 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  log: ['error'],
+});
 
 const SIXTY_PROFILES = [
   { email: 'admin@payflux.com', firstName: 'Tony', lastName: 'Stark', role: 'ADMIN', jobPosition: 'Chief Executive Officer', deptCode: 'OPS', wage: 150000 },
@@ -68,7 +70,6 @@ const SIXTY_PROFILES = [
 
 async function seed() {
   console.log('🌱 Seeding PayFlux database with 60 full records...');
-
   const passwordHash = await bcrypt.hash('Password123!', 10);
 
   // 1. Working Schedules
@@ -87,7 +88,7 @@ async function seed() {
     });
   }
 
-  // 2. Salary Structures
+  // 2. Salary Structure
   let regularSalaryStructure = await prisma.salaryStructure.findUnique({ where: { code: 'REGULAR_SALARY' } });
   if (!regularSalaryStructure) {
     regularSalaryStructure = await prisma.salaryStructure.create({
@@ -139,120 +140,90 @@ async function seed() {
     create: { name: 'Sick Leave', code: 'SICK', requiresAllocation: true, unit: 'DAYS' },
   });
 
-  // 5 & 6. Seed 60 Users and 60 Employees
-  console.log('  -> Creating 60 User and Employee records...');
+  // 5. Seed 60 Users and Employees in small batch chunks to keep connections fast
+  console.log('  -> Batch seeding Users, Employees, Contracts, Allocations...');
   const seededEmployees = [];
+  const chunkSize = 10;
 
-  for (let i = 0; i < SIXTY_PROFILES.length; i++) {
-    const prof = SIXTY_PROFILES[i];
-    const num = String(i + 1).padStart(3, '0');
+  for (let i = 0; i < SIXTY_PROFILES.length; i += chunkSize) {
+    const chunk = SIXTY_PROFILES.slice(i, i + chunkSize);
+    await Promise.all(
+      chunk.map(async (prof, idx) => {
+        const index = i + idx;
+        const num = String(index + 1).padStart(3, '0');
 
-    // Create User Account
-    const user = await prisma.user.upsert({
-      where: { email: prof.email },
-      update: { role: prof.role, passwordHash },
-      create: {
-        email: prof.email,
-        passwordHash,
-        name: `${prof.firstName} ${prof.lastName}`,
-        role: prof.role,
-      },
-    });
+        const user = await prisma.user.upsert({
+          where: { email: prof.email },
+          update: { role: prof.role, passwordHash },
+          create: {
+            email: prof.email,
+            passwordHash,
+            name: `${prof.firstName} ${prof.lastName}`,
+            role: prof.role,
+          },
+        });
 
-    // Create Employee Profile linked to User
-    const emp = await prisma.employee.upsert({
-      where: { email: prof.email },
-      update: {
-        firstName: prof.firstName,
-        lastName: prof.lastName,
-        phone: `+1-555-01${num}`,
-        jobPosition: prof.jobPosition,
-        employeeType: i % 10 === 0 ? 'PART_TIME' : 'FULL_TIME',
-        status: i === 56 ? 'ON_LEAVE' : 'ACTIVE',
-        departmentId: deptMap[prof.deptCode],
-        scheduleId: standardSchedule.id,
-        bankName: 'PayFlux Partner Bank',
-        bankAccountNumber: `ACC-98765432${num}`,
-        bankIfscOrRouting: 'PAYF0001',
-        taxId: `TX-PF-${num}`,
-        userId: user.id,
-      },
-      create: {
-        email: prof.email,
-        userId: user.id,
-        firstName: prof.firstName,
-        lastName: prof.lastName,
-        phone: `+1-555-01${num}`,
-        jobPosition: prof.jobPosition,
-        employeeType: i % 10 === 0 ? 'PART_TIME' : 'FULL_TIME',
-        status: i === 56 ? 'ON_LEAVE' : 'ACTIVE',
-        departmentId: deptMap[prof.deptCode],
-        scheduleId: standardSchedule.id,
-        bankName: 'PayFlux Partner Bank',
-        bankAccountNumber: `ACC-98765432${num}`,
-        bankIfscOrRouting: 'PAYF0001',
-        taxId: `TX-PF-${num}`,
-      },
-    });
+        const emp = await prisma.employee.upsert({
+          where: { email: prof.email },
+          update: {
+            firstName: prof.firstName,
+            lastName: prof.lastName,
+            phone: `+1-555-01${num}`,
+            jobPosition: prof.jobPosition,
+            employeeType: index % 10 === 0 ? 'PART_TIME' : 'FULL_TIME',
+            status: index === 56 ? 'ON_LEAVE' : 'ACTIVE',
+            departmentId: deptMap[prof.deptCode],
+            scheduleId: standardSchedule.id,
+            bankName: 'PayFlux Partner Bank',
+            bankAccountNumber: `ACC-98765432${num}`,
+            bankIfscOrRouting: 'PAYF0001',
+            taxId: `TX-PF-${num}`,
+            userId: user.id,
+          },
+          create: {
+            email: prof.email,
+            userId: user.id,
+            firstName: prof.firstName,
+            lastName: prof.lastName,
+            phone: `+1-555-01${num}`,
+            jobPosition: prof.jobPosition,
+            employeeType: index % 10 === 0 ? 'PART_TIME' : 'FULL_TIME',
+            status: index === 56 ? 'ON_LEAVE' : 'ACTIVE',
+            departmentId: deptMap[prof.deptCode],
+            scheduleId: standardSchedule.id,
+            bankName: 'PayFlux Partner Bank',
+            bankAccountNumber: `ACC-98765432${num}`,
+            bankIfscOrRouting: 'PAYF0001',
+            taxId: `TX-PF-${num}`,
+          },
+        });
 
-    seededEmployees.push({ ...emp, wage: prof.wage, structureId: regularSalaryStructure.id });
+        seededEmployees[index] = { ...emp, wage: prof.wage, structureId: regularSalaryStructure.id };
 
-    // Seed Active Contract
-    const existingContract = await prisma.contract.findFirst({
-      where: { employeeId: emp.id, status: 'RUNNING' },
-    });
-    if (!existingContract) {
-      await prisma.contract.create({
-        data: {
-          employeeId: emp.id,
-          name: `Employment Contract - ${prof.firstName} ${prof.lastName}`,
-          wage: prof.wage,
-          startDate: new Date('2026-01-01T00:00:00Z'),
-          salaryStructureId: regularSalaryStructure.id,
-          scheduleId: standardSchedule.id,
-          departmentId: deptMap[prof.deptCode],
-          jobPosition: prof.jobPosition,
-          status: 'RUNNING',
-        },
-      });
-    }
-
-    // Seed PTO Allocations
-    const existingPtoAlloc = await prisma.leaveAllocation.findFirst({
-      where: { employeeId: emp.id, timeOffTypeId: ptoType.id },
-    });
-    if (!existingPtoAlloc) {
-      await prisma.leaveAllocation.create({
-        data: {
-          employeeId: emp.id,
-          timeOffTypeId: ptoType.id,
-          allocatedAmount: 20.0,
-          takenAmount: i % 5 === 0 ? 2.0 : 0.0,
-          validFrom: new Date('2026-01-01T00:00:00Z'),
-          validTo: new Date('2026-12-31T23:59:59Z'),
-          status: 'APPROVED',
-        },
-      });
-    }
-
-    // Seed Attendance
-    const existingAtt = await prisma.attendance.findFirst({ where: { employeeId: emp.id } });
-    if (!existingAtt) {
-      await prisma.attendance.create({
-        data: {
-          employeeId: emp.id,
-          checkIn: new Date('2026-09-05T09:00:00Z'),
-          checkOut: new Date('2026-09-05T18:00:00Z'),
-          workedHours: 8.0,
-          status: i % 7 === 0 ? 'LATE' : i % 5 === 0 ? 'OVERTIME' : 'PRESENT',
-          isManualEdit: false,
-        },
-      });
-    }
+        const existingContract = await prisma.contract.findFirst({
+          where: { employeeId: emp.id, status: 'RUNNING' },
+        });
+        if (!existingContract) {
+          await prisma.contract.create({
+            data: {
+              employeeId: emp.id,
+              name: `Employment Contract - ${prof.firstName} ${prof.lastName}`,
+              wage: prof.wage,
+              startDate: new Date('2026-01-01T00:00:00Z'),
+              salaryStructureId: regularSalaryStructure.id,
+              scheduleId: standardSchedule.id,
+              departmentId: deptMap[prof.deptCode],
+              jobPosition: prof.jobPosition,
+              status: 'RUNNING',
+            },
+          });
+        }
+      })
+    );
   }
 
-  // 7. Seed August Historical Payrun for all 60 employees
-  console.log('  -> Seeding August 2026 Payrun with 60 payslips...');
+  // 6. August Historical Payrun for seeded employees
+  console.log('  -> Seeding August 2026 Payrun...');
   let augPayrun = await prisma.payrun.findFirst({ where: { name: 'Payrun - August 2026' } });
   if (!augPayrun) {
     augPayrun = await prisma.payrun.create({
@@ -270,41 +241,55 @@ async function seed() {
       orderBy: { sequence: 'asc' },
     });
 
-    for (const emp of seededEmployees) {
-      await prisma.payrunEmployee.create({
-        data: { payrunId: augPayrun.id, employeeId: emp.id },
-      });
+    const validEmps = seededEmployees.filter(Boolean);
+    for (let i = 0; i < validEmps.length; i += chunkSize) {
+      const chunk = validEmps.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map(async (emp) => {
+          await prisma.payrunEmployee.upsert({
+            where: { payrunId_employeeId: { payrunId: augPayrun.id, employeeId: emp.id } },
+            update: {},
+            create: { payrunId: augPayrun.id, employeeId: emp.id },
+          });
 
-      const basic = emp.wage;
-      const hra = basic * 0.4;
-      const pf = basic * 0.12;
-      const gross = basic + hra;
-      const net = gross - pf;
+          const basic = emp.wage;
+          const hra = basic * 0.4;
+          const pf = basic * 0.12;
+          const gross = basic + hra;
+          const net = gross - pf;
 
-      await prisma.payslip.create({
-        data: {
-          payrunId: augPayrun.id,
-          employeeId: emp.id,
-          salaryStructureId: regularSalaryStructure.id,
-          periodStart: new Date('2026-08-01T00:00:00Z'),
-          periodEnd: new Date('2026-08-31T23:59:59Z'),
-          workedDays: 31,
-          totalDays: 31,
-          basic,
-          gross,
-          net,
-          status: 'PAID',
-          lines: {
-            create: [
-              { salaryRuleId: structureRules[0]?.id, name: 'Basic Salary', code: 'BASIC', category: 'BASIC', sequence: 1, amount: basic },
-              { salaryRuleId: structureRules[1]?.id, name: 'House Rent Allowance', code: 'HRA', category: 'ALLOWANCE', sequence: 2, amount: hra },
-              { salaryRuleId: structureRules[2]?.id, name: 'Provident Fund', code: 'PF', category: 'DEDUCTION', sequence: 3, amount: pf },
-              { salaryRuleId: structureRules[3]?.id, name: 'Gross Salary', code: 'GROSS', category: 'GROSS', sequence: 4, amount: gross },
-              { salaryRuleId: structureRules[4]?.id, name: 'Net Salary', code: 'NET', category: 'NET', sequence: 5, amount: net },
-            ],
-          },
-        },
-      });
+          const existingPs = await prisma.payslip.findFirst({
+            where: { payrunId: augPayrun.id, employeeId: emp.id },
+          });
+
+          if (!existingPs) {
+            await prisma.payslip.create({
+              data: {
+                payrunId: augPayrun.id,
+                employeeId: emp.id,
+                salaryStructureId: regularSalaryStructure.id,
+                periodStart: new Date('2026-08-01T00:00:00Z'),
+                periodEnd: new Date('2026-08-31T23:59:59Z'),
+                workedDays: 31,
+                totalDays: 31,
+                basic,
+                gross,
+                net,
+                status: 'PAID',
+                lines: {
+                  create: [
+                    { salaryRuleId: structureRules[0]?.id, name: 'Basic Salary', code: 'BASIC', category: 'BASIC', sequence: 1, amount: basic },
+                    { salaryRuleId: structureRules[1]?.id, name: 'House Rent Allowance', code: 'HRA', category: 'ALLOWANCE', sequence: 2, amount: hra },
+                    { salaryRuleId: structureRules[2]?.id, name: 'Provident Fund', code: 'PF', category: 'DEDUCTION', sequence: 3, amount: pf },
+                    { salaryRuleId: structureRules[3]?.id, name: 'Gross Salary', code: 'GROSS', category: 'GROSS', sequence: 4, amount: gross },
+                    { salaryRuleId: structureRules[4]?.id, name: 'Net Salary', code: 'NET', category: 'NET', sequence: 5, amount: net },
+                  ],
+                },
+              },
+            });
+          }
+        })
+      );
     }
   }
 
