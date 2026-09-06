@@ -40,10 +40,15 @@ export default function PayslipDetailPage() {
 
   const lines = (payslip.lines || []).sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
 
+  const employeeName =
+    payslip.employee?.name ||
+    `${payslip.employee?.firstName || ''} ${payslip.employee?.lastName || ''}`.trim() ||
+    'Employee';
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Payslip — ${payslip.employee?.name || 'Employee'}`}
+        title={`Payslip — ${employeeName}`}
         description={`Period: ${formatDate(payslip.periodStart)} to ${formatDate(payslip.periodEnd)}`}
         actions={
           <div className="flex items-center gap-3">
@@ -90,7 +95,7 @@ export default function PayslipDetailPage() {
       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div>
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">Employee</span>
-          <div className="font-bold text-gray-900 text-base">{payslip.employee?.name}</div>
+          <div className="font-bold text-gray-900 text-base">{employeeName}</div>
           <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
             <Briefcase className="w-3 h-3 text-gray-400" />
             {payslip.employee?.jobPosition}

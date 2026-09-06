@@ -17,6 +17,19 @@ const router = express.Router();
 router.use(authenticate);
 
 router.get('/', scopeEmployee, validate(listTimeOffRequestsSchema), timeOffRequestsController.listTimeOffRequests);
+
+router.post(
+  '/bulk-approve',
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
+  timeOffRequestsController.bulkApproveTimeOffRequests
+);
+
+router.post(
+  '/bulk-refuse',
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
+  timeOffRequestsController.bulkRefuseTimeOffRequests
+);
+
 router.get('/:id', scopeEmployee, validate(getTimeOffRequestByIdSchema), timeOffRequestsController.getTimeOffRequestById);
 router.post('/', scopeEmployee, validate(createTimeOffRequestSchema), timeOffRequestsController.createTimeOffRequest);
 

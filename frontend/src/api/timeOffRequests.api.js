@@ -63,15 +63,33 @@ export const timeOffRequestsApi = {
       return req;
     }
   },
-  refuseTimeOffRequest: async (id) => {
+  refuseTimeOffRequest: async (id, data = {}) => {
     try {
-      const response = await axiosClient.patch(`/time-off-requests/${id}/refuse`);
+      const response = await axiosClient.patch(`/time-off-requests/${id}/refuse`, data);
       return response.data;
     } catch (error) {
       if (error.response) throw error;
       const req = DEMO_REQUESTS.find((r) => r.id === id);
       if (req) req.status = TimeOffReqStatus.REFUSED;
       return req;
+    }
+  },
+  bulkApprove: async (ids = []) => {
+    try {
+      const response = await axiosClient.post('/time-off-requests/bulk-approve', { ids });
+      return response.data;
+    } catch (error) {
+      if (error.response) throw error;
+      return { approved: ids.length };
+    }
+  },
+  bulkRefuse: async (ids = [], reason = 'Bulk refused by manager') => {
+    try {
+      const response = await axiosClient.post('/time-off-requests/bulk-refuse', { ids, reason });
+      return response.data;
+    } catch (error) {
+      if (error.response) throw error;
+      return { refused: ids.length };
     }
   },
 };

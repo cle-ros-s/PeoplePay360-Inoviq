@@ -12,10 +12,12 @@ const createSalaryRuleSchema = {
     category: categoryEnum,
     sequence: z.coerce.number().int().positive().default(1),
     computationType: computationTypeEnum.default('FIXED'),
+    computationMethod: computationTypeEnum.optional(),
     amount: optionalNumber,
     percentage: optionalNumber,
     percentageBasisCode: z.string().nullable().optional(),
     formula: z.string().nullable().optional(),
+    isActive: z.boolean().optional(),
   }),
 };
 
@@ -29,10 +31,12 @@ const updateSalaryRuleSchema = {
     category: categoryEnum.optional(),
     sequence: z.coerce.number().int().positive().optional(),
     computationType: computationTypeEnum.optional(),
+    computationMethod: computationTypeEnum.optional(),
     amount: optionalNumber,
     percentage: optionalNumber,
     percentageBasisCode: z.string().nullable().optional(),
     formula: z.string().nullable().optional(),
+    isActive: z.boolean().optional(),
   }),
 };
 

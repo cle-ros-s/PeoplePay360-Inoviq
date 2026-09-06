@@ -16,6 +16,19 @@ const router = express.Router();
 router.use(authenticate);
 
 router.get('/', scopeEmployee, validate(listAllocationsSchema), allocationsController.listAllocations);
+
+router.post(
+  '/bulk-approve',
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
+  allocationsController.bulkApproveAllocations
+);
+
+router.post(
+  '/bulk-refuse',
+  requireRole('ADMIN', 'HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
+  allocationsController.bulkRefuseAllocations
+);
+
 router.get('/:id', scopeEmployee, validate(getAllocationByIdSchema), allocationsController.getAllocationById);
 
 router.post(

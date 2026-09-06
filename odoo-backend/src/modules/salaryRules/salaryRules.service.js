@@ -76,11 +76,12 @@ async function createSalaryRule(data) {
     throw new AppError('SALARY_STRUCTURE_NOT_FOUND', 'Salary structure not found', 404);
   }
 
+  const code = (data.code || '').toUpperCase().trim();
   const existing = await prisma.salaryRule.findUnique({
     where: {
       salaryStructureId_code: {
         salaryStructureId: data.salaryStructureId,
-        code: data.code.toUpperCase(),
+        code,
       },
     },
   });
@@ -89,18 +90,20 @@ async function createSalaryRule(data) {
     throw new AppError('DUPLICATE_RULE_CODE', 'A rule with this code already exists in the selected salary structure', 409);
   }
 
+  const compType = data.computationType || data.computationMethod || 'FIXED';
+
   const result = await prisma.salaryRule.create({
     data: {
       salaryStructureId: data.salaryStructureId,
       name: data.name,
-      code: data.code.toUpperCase(),
+      code,
       category: data.category,
-      sequence: data.sequence !== undefined ? data.sequence : 1,
-      computationType: data.computationType || 'FIXED',
-      amount: data.amount !== undefined ? data.amount : null,
-      percentage: data.percentage !== undefined ? data.percentage : null,
-      percentageBasisCode: data.percentageBasisCode ? data.percentageBasisCode.toUpperCase() : null,
-      formula: data.formula || null,
+      sequence: data.sequence !== undefined ? Number(data.sequence) : 1,
+      computationType: compType,
+      amount: compType === 'FIXED' ? (data.amount !== null && data.amount !== undefined ? Number(data.amount) : 0) : null,
+      percentage: compType === 'PERCENTAGE' ? (data.percentage !== null && data.percentage !== undefined ? Number(data.percentage) : 0) : null,
+      percentageBasisCode: compType === 'PERCENTAGE' && data.percentageBasisCode ? data.percentageBasisCode.toUpperCase().trim() : null,
+      formula: compType === 'FORMULA' ? (data.formula || null) : null,
     },
     include: {
       salaryStructure: { select: { id: true, name: true, code: true } },
@@ -117,9 +120,36 @@ async function updateSalaryRule(id, data) {
     throw new AppError('SALARY_RULE_NOT_FOUND', 'Salary rule not found', 404);
   }
 
-  const updateData = { ...data };
-  if (updateData.code) updateData.code = updateData.code.toUpperCase();
-  if (updateData.percentageBasisCode) updateData.percentageBasisCode = updateData.percentageBasisCode.toUpperCase();
+  const updateData = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.code !== undefined) updateData.code = data.code.toUpperCase().trim();
+  if (data.category !== undefined) updateData.category = data.category;
+  if (data.sequence !== undefined) updateData.sequence = Number(data.sequence);
+
+  const compType = data.computationType || data.computationMethod || (data.amount !== undefined || data.percentage !== undefined || data.formula !== undefined ? rule.computationType : undefined);
+  if (compType !== undefined) {
+    updateData.computationType = compType;
+  }
+
+  const effectiveType = updateData.computationType || rule.computationType;
+  if (effectiveType === 'FIXED') {
+    if (data.amount !== undefined) updateData.amount = data.amount !== null ? Number(data.amount) : 0;
+    updateData.percentage = null;
+    updateData.percentageBasisCode = null;
+    updateData.formula = null;
+  } else if (effectiveType === 'PERCENTAGE') {
+    if (data.percentage !== undefined) updateData.percentage = data.percentage !== null ? Number(data.percentage) : 0;
+    if (data.percentageBasisCode !== undefined) {
+      updateData.percentageBasisCode = data.percentageBasisCode ? data.percentageBasisCode.toUpperCase().trim() : 'BASIC';
+    }
+    updateData.amount = null;
+    updateData.formula = null;
+  } else if (effectiveType === 'FORMULA') {
+    if (data.formula !== undefined) updateData.formula = data.formula || '';
+    updateData.amount = null;
+    updateData.percentage = null;
+    updateData.percentageBasisCode = null;
+  }
 
   const result = await prisma.salaryRule.update({
     where: { id },

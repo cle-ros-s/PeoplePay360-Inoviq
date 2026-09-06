@@ -204,4 +204,24 @@ export const payrunsApi = {
       return { success: true };
     }
   },
+
+  resolveWarning: async (payrunId, warningId) => {
+    try {
+      const response = await axiosClient.patch(`/payruns/${payrunId}/warnings/${warningId}/resolve`);
+      return response.data;
+    } catch (error) {
+      if (error.response) throw error;
+      return { id: warningId, isResolved: true };
+    }
+  },
+
+  removePayslip: async (payrunId, payslipId) => {
+    try {
+      const response = await axiosClient.delete(`/payruns/${payrunId}/payslips/${payslipId}`);
+      return response.data;
+    } catch (error) {
+      if (error.response) throw error;
+      return { success: true };
+    }
+  },
 };

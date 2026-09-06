@@ -85,4 +85,16 @@ router.delete(
   payrunsController.deletePayrun
 );
 
+router.delete(
+  '/:id/payslips/:payslipId',
+  requireRole('ADMIN', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
+  payrunsController.removePayslip
+);
+
+router.patch(
+  '/:id/warnings/:warningId/resolve',
+  requireRole('ADMIN', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'),
+  payrunsController.resolveWarning
+);
+
 module.exports = router;

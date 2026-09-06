@@ -75,4 +75,22 @@ export const allocationsApi = {
       return { id, ...data };
     }
   },
+  bulkApprove: async (ids = []) => {
+    try {
+      const response = await axiosClient.post('/allocations/bulk-approve', { ids });
+      return response.data;
+    } catch (error) {
+      if (error.response) throw error;
+      return { approved: ids.length };
+    }
+  },
+  bulkRefuse: async (ids = []) => {
+    try {
+      const response = await axiosClient.post('/allocations/bulk-refuse', { ids });
+      return response.data;
+    } catch (error) {
+      if (error.response) throw error;
+      return { refused: ids.length };
+    }
+  },
 };

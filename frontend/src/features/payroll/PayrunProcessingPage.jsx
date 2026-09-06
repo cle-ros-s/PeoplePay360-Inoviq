@@ -10,7 +10,7 @@ import LoadingState from '../../components/common/LoadingState';
 import ErrorState from '../../components/common/ErrorState';
 import { PayrunStatus, WarningSeverity } from '../../utils/constants';
 import { formatDate, formatCurrency, formatEnumLabel } from '../../utils/formatters';
-import { Play, CheckCircle2, DollarSign, Mail, AlertTriangle, ArrowLeft, Eye, ShieldAlert } from 'lucide-react';
+import { Play, CheckCircle2, DollarSign, Mail, AlertTriangle, ArrowLeft, Eye, ShieldAlert, Trash2 } from 'lucide-react';
 
 export default function PayrunProcessingPage() {
   const { id } = useParams();
@@ -77,11 +77,38 @@ export default function PayrunProcessingPage() {
     },
   });
 
+  // Resolve Warning Mutation
+  const resolveWarningMutation = useMutation({
+    mutationFn: (warningId) => payrunsApi.resolveWarning(id, warningId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payrun', id] });
+      setFeedbackMessage({ type: 'success', text: 'Warning resolved & acknowledged. Validation unblocked!' });
+    },
+    onError: (err) => {
+      setFeedbackMessage({ type: 'error', text: err.response?.data?.error?.message || 'Failed to resolve warning.' });
+    },
+  });
+
+  // Remove Payslip Mutation
+  const removePayslipMutation = useMutation({
+    mutationFn: (payslipId) => payrunsApi.removePayslip(id, payslipId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payrun', id] });
+      queryClient.invalidateQueries({ queryKey: ['payruns'] });
+      setFeedbackMessage({ type: 'success', text: 'Employee and payslip removed from this payrun batch.' });
+    },
+    onError: (err) => {
+      setFeedbackMessage({ type: 'error', text: err.response?.data?.error?.message || 'Failed to remove employee.' });
+    },
+  });
+
   if (isLoading) return <LoadingState message="Loading payrun processing batch..." />;
   if (isError || !payrun) return <ErrorState message="Unable to load payrun details." onRetry={refetch} />;
 
   const warnings = payrun.warnings || [];
-  const hasCriticalWarnings = warnings.some((w) => w.severity === WarningSeverity.CRITICAL);
+  const hasCriticalWarnings = warnings.some(
+    (w) => (w.severity === WarningSeverity.CRITICAL || w.severity === 'CRITICAL') && !w.isResolved
+  );
   const payslips = payrun.payslips || [];
 
   const columns = [
@@ -163,13 +190,30 @@ export default function PayrunProcessingPage() {
     {
       header: 'Actions',
       render: (p) => (
-        <button
-          onClick={() => navigate(`/payroll/payslips/${p.id}`)}
-          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg"
-        >
-          <Eye className="w-3.5 h-3.5" />
-          View Payslip
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => navigate(`/payroll/payslips/${p.id}`)}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            View Payslip
+          </button>
+          {can('MANAGE_PAYROLL') && payrun.status !== 'PAID' && (
+            <button
+              onClick={() => {
+                if (window.confirm(`Exclude and remove ${p.employee?.name || 'this employee'} from this payrun batch?`)) {
+                  removePayslipMutation.mutate(p.id);
+                }
+              }}
+              disabled={removePayslipMutation.isPending}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-lg transition-colors"
+              title="Remove employee from this payrun"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Remove
+            </button>
+          )}
+        </div>
       ),
     },
   ];
@@ -289,12 +333,33 @@ export default function PayrunProcessingPage() {
 
           <div className="space-y-2">
             {warnings.map((w) => (
-              <div key={w.id} className="p-3 bg-white rounded-lg border border-gray-200 shadow-2xs flex items-start justify-between text-xs">
-                <div>
-                  <span className="font-mono text-gray-500 uppercase text-[10px] mr-2">{w.type}</span>
-                  <span className="font-medium text-gray-900">{w.message}</span>
+              <div
+                key={w.id}
+                className={`p-3 bg-white rounded-lg border shadow-2xs flex items-center justify-between text-xs gap-3 ${
+                  w.isResolved ? 'border-emerald-200 bg-emerald-50/30' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-gray-500 uppercase text-[10px] mr-1">{w.warningType || w.type}</span>
+                    <StatusBadge status={w.isResolved ? 'RESOLVED' : w.severity} />
+                  </div>
+                  <div className={`font-medium mt-1 ${w.isResolved ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                    {w.message}
+                  </div>
                 </div>
-                <StatusBadge status={w.severity} />
+                {!w.isResolved && can('MANAGE_PAYROLL') && payrun.status !== 'PAID' && (
+                  <button
+                    type="button"
+                    onClick={() => resolveWarningMutation.mutate(w.id)}
+                    disabled={resolveWarningMutation.isPending}
+                    className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-colors shadow-xs disabled:opacity-50"
+                    title="Acknowledge & Resolve this warning"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Resolve / Acknowledge
+                  </button>
+                )}
               </div>
             ))}
           </div>

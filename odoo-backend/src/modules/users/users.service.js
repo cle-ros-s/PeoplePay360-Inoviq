@@ -104,6 +104,13 @@ async function createUser(data) {
     },
   });
 
+  if (data.employeeId) {
+    await prisma.employee.update({
+      where: { id: data.employeeId },
+      data: { userId: user.id },
+    });
+  }
+
   invalidateUserCache();
   return user;
 }
@@ -129,6 +136,21 @@ async function updateUser(id, data) {
   }
   if (data.password) {
     updateData.passwordHash = await hashPassword(data.password);
+  }
+
+  if (data.employeeId !== undefined) {
+    // Unlink any currently linked employee for this user
+    await prisma.employee.updateMany({
+      where: { userId: id },
+      data: { userId: null },
+    });
+    // Link new employee if provided
+    if (data.employeeId) {
+      await prisma.employee.update({
+        where: { id: data.employeeId },
+        data: { userId: id },
+      });
+    }
   }
 
   const updated = await prisma.user.update({

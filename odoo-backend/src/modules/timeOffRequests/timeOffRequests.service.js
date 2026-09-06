@@ -238,7 +238,7 @@ async function approveTimeOffRequest(id, user) {
     }
 
     // Type does not require allocation
-    return tx.timeOffRequest.update({
+    const approved = await tx.timeOffRequest.update({
       where: { id },
       data: {
         status: 'APPROVED',
@@ -250,6 +250,8 @@ async function approveTimeOffRequest(id, user) {
         timeOffType: { select: { id: true, name: true, code: true } },
       },
     });
+    invalidateTimeOffRequestCache();
+    return approved;
   });
 
   invalidateTimeOffRequestCache();
@@ -293,6 +295,56 @@ async function refuseTimeOffRequest(id, refusalReason, user) {
 
   invalidateTimeOffRequestCache();
   return result;
+}
+
+async function bulkApproveTimeOffRequests(ids, user) {
+  let targetIds = ids;
+  if (!targetIds || targetIds.length === 0) {
+    const pending = await prisma.timeOffRequest.findMany({
+      where: { status: { in: ['PENDING', 'SUBMITTED', 'DRAFT'] } },
+      select: { id: true },
+    });
+    targetIds = pending.map((p) => p.id);
+  }
+
+  const results = { approved: 0, failed: 0, errors: [] };
+  for (const reqId of targetIds) {
+    try {
+      await approveTimeOffRequest(reqId, user);
+      results.approved++;
+    } catch (err) {
+      results.failed++;
+      results.errors.push({ id: reqId, message: err.message });
+    }
+  }
+
+  invalidateTimeOffRequestCache();
+  return results;
+}
+
+async function bulkRefuseTimeOffRequests(ids, reason, user) {
+  let targetIds = ids;
+  if (!targetIds || targetIds.length === 0) {
+    const pending = await prisma.timeOffRequest.findMany({
+      where: { status: { in: ['PENDING', 'SUBMITTED', 'DRAFT'] } },
+      select: { id: true },
+    });
+    targetIds = pending.map((p) => p.id);
+  }
+
+  const results = { refused: 0, failed: 0, errors: [] };
+  for (const reqId of targetIds) {
+    try {
+      await refuseTimeOffRequest(reqId, reason || 'Bulk refused by manager', user);
+      results.refused++;
+    } catch (err) {
+      results.failed++;
+      results.errors.push({ id: reqId, message: err.message });
+    }
+  }
+
+  invalidateTimeOffRequestCache();
+  return results;
 }
 
 async function updateTimeOffRequest(id, data, scopedEmployeeId = null) {
@@ -351,6 +403,8 @@ module.exports = {
   createTimeOffRequest,
   approveTimeOffRequest,
   refuseTimeOffRequest,
+  bulkApproveTimeOffRequests,
+  bulkRefuseTimeOffRequests,
   updateTimeOffRequest,
   deleteTimeOffRequest,
   invalidateTimeOffRequestCache,

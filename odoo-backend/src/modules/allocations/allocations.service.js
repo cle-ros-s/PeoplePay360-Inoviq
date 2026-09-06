@@ -188,6 +188,44 @@ async function deleteAllocation(id) {
   return { message: 'Allocation deleted successfully' };
 }
 
+async function bulkApproveAllocations(ids) {
+  let targetIds = ids;
+  if (!targetIds || targetIds.length === 0) {
+    const pending = await prisma.leaveAllocation.findMany({
+      where: { status: { in: ['PENDING', 'DRAFT'] } },
+      select: { id: true },
+    });
+    targetIds = pending.map((p) => p.id);
+  }
+
+  const result = await prisma.leaveAllocation.updateMany({
+    where: { id: { in: targetIds } },
+    data: { status: 'APPROVED' },
+  });
+
+  invalidateAllocationCache();
+  return { approved: result.count };
+}
+
+async function bulkRefuseAllocations(ids) {
+  let targetIds = ids;
+  if (!targetIds || targetIds.length === 0) {
+    const pending = await prisma.leaveAllocation.findMany({
+      where: { status: { in: ['PENDING', 'DRAFT'] } },
+      select: { id: true },
+    });
+    targetIds = pending.map((p) => p.id);
+  }
+
+  const result = await prisma.leaveAllocation.updateMany({
+    where: { id: { in: targetIds } },
+    data: { status: 'REFUSED' },
+  });
+
+  invalidateAllocationCache();
+  return { refused: result.count };
+}
+
 module.exports = {
   listAllocations,
   getAllocationById,
@@ -195,5 +233,7 @@ module.exports = {
   updateAllocation,
   deleteAllocation,
   invalidateAllocationCache,
+  bulkApproveAllocations,
+  bulkRefuseAllocations,
 };
 

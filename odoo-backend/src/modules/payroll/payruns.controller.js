@@ -91,6 +91,25 @@ async function deletePayrun(req, res, next) {
   }
 }
 
+async function removePayslip(req, res, next) {
+  try {
+    const result = await payrunsService.removePayslipFromPayrun(req.params.id, req.params.payslipId);
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function resolveWarning(req, res, next) {
+  try {
+    const payrollWarningsService = require('./payrollWarnings.service');
+    const result = await payrollWarningsService.resolveWarning(req.params.warningId);
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getEligibleEmployees,
   listPayruns,
@@ -101,4 +120,6 @@ module.exports = {
   markPayrunAsPaid,
   sendPayrunPayslips,
   deletePayrun,
+  removePayslip,
+  resolveWarning,
 };

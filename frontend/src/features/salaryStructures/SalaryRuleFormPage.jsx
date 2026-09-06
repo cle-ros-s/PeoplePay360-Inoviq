@@ -122,6 +122,7 @@ export default function SalaryRuleFormPage({ isOpen, onClose, structureId, rule,
       category: values.category,
       sequence: Number(values.sequence) || 1,
       computationType: method,
+      computationMethod: method,
       salaryStructureId: structureId,
       isActive: values.isActive ?? true,
     };

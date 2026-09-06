@@ -1,5 +1,7 @@
 const { z } = require('zod');
 
+const { optionalUuid } = require('../../utils/schemaTypes');
+
 const roleEnum = z.enum(['ADMIN', 'HR_MANAGER', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER', 'EMPLOYEE']);
 
 const createUserSchema = {
@@ -8,6 +10,7 @@ const createUserSchema = {
     password: z.string().min(6, 'Password must be at least 6 characters'),
     name: z.string().min(1, 'Name is required'),
     role: roleEnum.default('EMPLOYEE'),
+    employeeId: optionalUuid,
   }),
 };
 
@@ -20,6 +23,7 @@ const updateUserSchema = {
     password: z.string().min(6, 'Password must be at least 6 characters').optional(),
     name: z.string().min(1).optional(),
     role: roleEnum.optional(),
+    employeeId: optionalUuid,
   }),
 };
 

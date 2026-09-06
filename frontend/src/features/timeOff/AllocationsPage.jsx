@@ -10,7 +10,7 @@ import DataTable from '../../components/common/DataTable';
 import FilterBar from '../../components/common/FilterBar';
 import StatusBadge from '../../components/common/StatusBadge';
 import AllocationFormPage from './AllocationFormPage';
-import { Plus, CheckCircle, XCircle, PieChart, Shield } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, PieChart, Shield, CheckCheck } from 'lucide-react';
 import { formatDate, formatEnumLabel } from '../../utils/formatters';
 import { AllocationStatus } from '../../utils/constants';
 
@@ -47,6 +47,9 @@ export default function AllocationsPage() {
   const roleFilter = searchParams.get('role') || '';
   const [page, setPage] = useState(1);
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [feedback, setFeedback] = useState(null);
 
   // Fetch employees
   const { data: empData } = useQuery({
@@ -74,14 +77,72 @@ export default function AllocationsPage() {
   }
   const totalRecords = roleFilter ? allocationsList.length : (allocationsData?.total || allocationsList.length);
 
-  // Approve / Refuse mutation
+  const pendingAllocations = allocationsList.filter(
+    (a) => a.status === AllocationStatus.PENDING || a.status === 'PENDING' || a.status === 'DRAFT'
+  );
+
+  // Approve / Refuse single row mutation with isolated per-row loading
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }) => allocationsApi.updateAllocation(id, { status }),
-    onSuccess: () => {
+    mutationFn: ({ id, status }) => {
+      setActionLoadingId(id);
+      return allocationsApi.updateAllocation(id, { status });
+    },
+    onSettled: () => {
+      setActionLoadingId(null);
+    },
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['allocations'] });
+      queryClient.invalidateQueries({ queryKey: ['time-off-requests'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-timeoff-overview'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      setFeedback({
+        type: 'success',
+        text: `Allocation successfully ${variables.status === AllocationStatus.APPROVED ? 'approved' : 'refused'}!`,
+      });
+    },
+    onError: (err) => {
+      setFeedback({ type: 'error', text: err.response?.data?.error?.message || 'Failed to update allocation' });
+    },
+  });
+
+  // Bulk Approve mutation
+  const bulkApproveMutation = useMutation({
+    mutationFn: (ids) => allocationsApi.bulkApprove(ids),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['allocations'] });
+      queryClient.invalidateQueries({ queryKey: ['time-off-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-timeoff-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      setSelectedIds([]);
+      setFeedback({
+        type: 'success',
+        text: `Approved ${res?.approved ?? 'all'} pending allocation(s) in one click!`,
+      });
+    },
+    onError: (err) => {
+      setFeedback({ type: 'error', text: err.response?.data?.error?.message || 'Bulk allocation approval failed' });
+    },
+  });
+
+  // Bulk Refuse mutation
+  const bulkRefuseMutation = useMutation({
+    mutationFn: (ids) => allocationsApi.bulkRefuse(ids),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['allocations'] });
+      queryClient.invalidateQueries({ queryKey: ['time-off-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-timeoff-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      setSelectedIds([]);
+      setFeedback({
+        type: 'success',
+        text: `Refused ${res?.refused ?? 'all'} pending allocation(s) in one click!`,
+      });
+    },
+    onError: (err) => {
+      setFeedback({ type: 'error', text: err.response?.data?.error?.message || 'Bulk allocation refusal failed' });
     },
   });
 
@@ -96,6 +157,41 @@ export default function AllocationsPage() {
   };
 
   const columns = [
+    {
+      header: (
+        <input
+          type="checkbox"
+          aria-label="Select all pending allocations"
+          checked={selectedIds.length > 0 && selectedIds.length === pendingAllocations.length}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setSelectedIds(pendingAllocations.map((a) => a.id));
+            } else {
+              setSelectedIds([]);
+            }
+          }}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+        />
+      ),
+      accessorKey: 'selection',
+      render: (a) => {
+        const isPending = a.status === AllocationStatus.PENDING || a.status === 'PENDING' || a.status === 'DRAFT';
+        if (!isPending) return null;
+        return (
+          <input
+            type="checkbox"
+            checked={selectedIds.includes(a.id)}
+            onChange={(e) => {
+              e.stopPropagation();
+              setSelectedIds((prev) =>
+                prev.includes(a.id) ? prev.filter((id) => id !== a.id) : [...prev, a.id]
+              );
+            }}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+          />
+        );
+      },
+    },
     {
       header: 'Employee & Role',
       accessorKey: 'employee',
@@ -166,58 +262,68 @@ export default function AllocationsPage() {
     },
     {
       header: 'Actions',
-      render: (a) => (
-        (can('MANAGE_ALLOCATIONS') || !isEmployee) && (
+      render: (a) => {
+        if (!can('MANAGE_ALLOCATIONS') && isEmployee) return null;
+        const isThisRowLoading = actionLoadingId === a.id;
+        const isPending = a.status === AllocationStatus.PENDING || a.status === 'PENDING' || a.status === 'DRAFT';
+        const isApproved = a.status === AllocationStatus.APPROVED;
+        const isRefused = a.status === AllocationStatus.REFUSED;
+
+        return (
           <div className="flex items-center gap-2">
-            {(a.status === AllocationStatus.PENDING || a.status === 'PENDING' || a.status === 'DRAFT') && (
+            {isPending && (
               <>
                 <button
+                  type="button"
                   onClick={() => updateStatusMutation.mutate({ id: a.id, status: AllocationStatus.APPROVED })}
-                  disabled={updateStatusMutation.isPending}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
+                  disabled={isThisRowLoading || bulkApproveMutation.isPending || bulkRefuseMutation.isPending}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                   title="Approve Leave Allocation"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
-                  Approve
+                  {isThisRowLoading && updateStatusMutation.variables?.status === AllocationStatus.APPROVED ? 'Approving...' : 'Approve'}
                 </button>
                 <button
+                  type="button"
                   onClick={() => updateStatusMutation.mutate({ id: a.id, status: AllocationStatus.REFUSED })}
-                  disabled={updateStatusMutation.isPending}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
+                  disabled={isThisRowLoading || bulkApproveMutation.isPending || bulkRefuseMutation.isPending}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                   title="Refuse Leave Allocation"
                 >
                   <XCircle className="w-3.5 h-3.5" />
-                  Refuse
+                  {isThisRowLoading && updateStatusMutation.variables?.status === AllocationStatus.REFUSED ? 'Refusing...' : 'Refuse'}
                 </button>
               </>
             )}
 
-            {a.status === AllocationStatus.APPROVED && (
+            {isApproved && (
               <button
+                type="button"
                 onClick={() => updateStatusMutation.mutate({ id: a.id, status: AllocationStatus.REFUSED })}
-                disabled={updateStatusMutation.isPending}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
+                disabled={isThisRowLoading || bulkApproveMutation.isPending || bulkRefuseMutation.isPending}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                 title="Revoke / Refuse Allocation"
               >
                 <XCircle className="w-3.5 h-3.5" />
-                Refuse
+                {isThisRowLoading && updateStatusMutation.variables?.status === AllocationStatus.REFUSED ? 'Refusing...' : 'Refuse'}
               </button>
             )}
 
-            {a.status === AllocationStatus.REFUSED && (
+            {isRefused && (
               <button
+                type="button"
                 onClick={() => updateStatusMutation.mutate({ id: a.id, status: AllocationStatus.APPROVED })}
-                disabled={updateStatusMutation.isPending}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
+                disabled={isThisRowLoading || bulkApproveMutation.isPending || bulkRefuseMutation.isPending}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                 title="Re-Approve Allocation"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
-                Approve
+                {isThisRowLoading && updateStatusMutation.variables?.status === AllocationStatus.APPROVED ? 'Approving...' : 'Approve'}
               </button>
             )}
           </div>
-        )
-      ),
+        );
+      },
     },
   ];
 
@@ -271,6 +377,84 @@ export default function AllocationsPage() {
       />
 
       <FilterBar filters={filterConfigs} onReset={() => setSearchParams({})} />
+
+      {feedback && (
+        <div
+          className={`mb-4 p-3 rounded-lg flex items-center justify-between text-sm ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              : 'bg-rose-50 text-rose-800 border border-rose-200'
+          }`}
+        >
+          <span>{feedback.text}</span>
+          <button
+            onClick={() => setFeedback(null)}
+            className="font-semibold text-xs hover:underline ml-2"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {(can('MANAGE_ALLOCATIONS') || !isEmployee) && pendingAllocations.length > 0 && (
+        <div className="mb-4 p-3 bg-blue-50/80 border border-blue-200 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-sm font-semibold text-gray-800">
+              {selectedIds.length > 0 ? (
+                <span>
+                  {selectedIds.length} allocation(s) selected out of {pendingAllocations.length} pending
+                </span>
+              ) : (
+                <span>{pendingAllocations.length} pending allocation(s) awaiting approval</span>
+              )}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const idsToApprove = selectedIds.length > 0 ? selectedIds : pendingAllocations.map((a) => a.id);
+                bulkApproveMutation.mutate(idsToApprove);
+              }}
+              disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <CheckCheck className="w-4 h-4" />
+              {bulkApproveMutation.isPending
+                ? 'Approving...'
+                : selectedIds.length > 0
+                ? `Approve Selected (${selectedIds.length})`
+                : `Approve All Pending (${pendingAllocations.length})`}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const idsToRefuse = selectedIds.length > 0 ? selectedIds : pendingAllocations.map((a) => a.id);
+                bulkRefuseMutation.mutate(idsToRefuse);
+              }}
+              disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-rose-700 bg-rose-100 hover:bg-rose-200 active:bg-rose-300 border border-rose-300 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <XCircle className="w-4 h-4" />
+              {bulkRefuseMutation.isPending
+                ? 'Refusing...'
+                : selectedIds.length > 0
+                ? `Refuse Selected (${selectedIds.length})`
+                : `Refuse All Pending (${pendingAllocations.length})`}
+            </button>
+            {selectedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedIds([])}
+                className="text-xs text-gray-500 hover:text-gray-700 underline px-1 cursor-pointer"
+              >
+                Clear Selection
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <DataTable
         columns={columns}

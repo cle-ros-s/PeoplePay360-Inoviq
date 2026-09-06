@@ -9,7 +9,7 @@ import DataTable from '../../components/common/DataTable';
 import FilterBar from '../../components/common/FilterBar';
 import StatusBadge from '../../components/common/StatusBadge';
 import TimeOffRequestFormPage from './TimeOffRequestFormPage';
-import { Plus, CheckCircle, XCircle, Palmtree, MessageSquareText, Shield, User, Briefcase } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Palmtree, MessageSquareText, Shield, User, Briefcase, CheckCheck, CheckCircle2 } from 'lucide-react';
 import { formatDate, formatEnumLabel } from '../../utils/formatters';
 import { TimeOffReqStatus } from '../../utils/constants';
 
@@ -46,6 +46,9 @@ export default function TimeOffRequestsPage() {
   const roleFilter = searchParams.get('role') || '';
   const [page, setPage] = useState(1);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [feedback, setFeedback] = useState(null);
 
   // Fetch employees for filter dropdown
   const { data: empData } = useQuery({
@@ -73,25 +76,87 @@ export default function TimeOffRequestsPage() {
   }
   const totalRecords = roleFilter ? requestsList.length : (requestsData?.total || requestsList.length);
 
-  // Approve mutation
+  const pendingRequests = requestsList.filter(
+    (r) => r.status === 'PENDING' || r.status === 'SUBMITTED' || r.status === 'DRAFT'
+  );
+
+  // Individual Approve mutation (isolated to specific row)
   const approveMutation = useMutation({
-    mutationFn: timeOffRequestsApi.approveTimeOffRequest,
-    onSuccess: () => {
+    mutationFn: (id) => {
+      setActionLoadingId(id);
+      return timeOffRequestsApi.approveTimeOffRequest(id);
+    },
+    onSuccess: (res, id) => {
       queryClient.invalidateQueries({ queryKey: ['time-off-requests'] });
       queryClient.invalidateQueries({ queryKey: ['allocations'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      setSelectedIds((prev) => prev.filter((item) => item !== id));
+      setActionLoadingId(null);
+      setFeedback({ type: 'success', text: 'Leave request approved successfully!' });
+    },
+    onError: (err) => {
+      setActionLoadingId(null);
+      setFeedback({ type: 'error', text: err.response?.data?.error?.message || 'Failed to approve request' });
     },
   });
 
-  // Refuse mutation
+  // Individual Refuse mutation (isolated to specific row)
   const refuseMutation = useMutation({
-    mutationFn: (id) => timeOffRequestsApi.refuseTimeOffRequest(id, { refusalReason: 'Refused by manager' }),
-    onSuccess: () => {
+    mutationFn: (id) => {
+      setActionLoadingId(id);
+      return timeOffRequestsApi.refuseTimeOffRequest(id, { refusalReason: 'Refused by manager' });
+    },
+    onSuccess: (res, id) => {
       queryClient.invalidateQueries({ queryKey: ['time-off-requests'] });
       queryClient.invalidateQueries({ queryKey: ['allocations'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      setSelectedIds((prev) => prev.filter((item) => item !== id));
+      setActionLoadingId(null);
+      setFeedback({ type: 'success', text: 'Leave request refused.' });
+    },
+    onError: (err) => {
+      setActionLoadingId(null);
+      setFeedback({ type: 'error', text: err.response?.data?.error?.message || 'Failed to refuse request' });
+    },
+  });
+
+  // Bulk Approve mutation (Approve All or Selected in one click)
+  const bulkApproveMutation = useMutation({
+    mutationFn: (ids) => timeOffRequestsApi.bulkApprove(ids),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['time-off-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['allocations'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      setSelectedIds([]);
+      setFeedback({
+        type: 'success',
+        text: `Approved ${res?.approved ?? 'all'} pending leave request(s) in one click!`,
+      });
+    },
+    onError: (err) => {
+      setFeedback({ type: 'error', text: err.response?.data?.error?.message || 'Bulk approval failed' });
+    },
+  });
+
+  // Bulk Refuse mutation (Refuse All or Selected in one click)
+  const bulkRefuseMutation = useMutation({
+    mutationFn: (ids) => timeOffRequestsApi.bulkRefuse(ids),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['time-off-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['allocations'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      setSelectedIds([]);
+      setFeedback({
+        type: 'success',
+        text: `Refused ${res?.refused ?? 'all'} pending leave request(s) in one click!`,
+      });
+    },
+    onError: (err) => {
+      setFeedback({ type: 'error', text: err.response?.data?.error?.message || 'Bulk refusal failed' });
     },
   });
 
@@ -106,6 +171,41 @@ export default function TimeOffRequestsPage() {
   };
 
   const columns = [
+    {
+      header: (
+        <input
+          type="checkbox"
+          aria-label="Select all pending"
+          checked={selectedIds.length > 0 && selectedIds.length === pendingRequests.length}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setSelectedIds(pendingRequests.map((r) => r.id));
+            } else {
+              setSelectedIds([]);
+            }
+          }}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+        />
+      ),
+      accessorKey: 'selection',
+      render: (r) => {
+        const isPending = r.status === 'PENDING' || r.status === 'SUBMITTED' || r.status === 'DRAFT';
+        if (!isPending) return null;
+        return (
+          <input
+            type="checkbox"
+            checked={selectedIds.includes(r.id)}
+            onChange={(e) => {
+              e.stopPropagation();
+              setSelectedIds((prev) =>
+                prev.includes(r.id) ? prev.filter((id) => id !== r.id) : [...prev, r.id]
+              );
+            }}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+          />
+        );
+      },
+    },
     {
       header: 'Employee & Role',
       accessorKey: 'employee',
@@ -188,53 +288,58 @@ export default function TimeOffRequestsPage() {
         const isApproved = r.status === 'APPROVED';
         const isRefused = r.status === 'REFUSED';
         const hasApprovalRights = can('APPROVE_TIME_OFF') || !isEmployee;
+        const isThisRowLoading = actionLoadingId === r.id;
 
         return (
           <div className="flex items-center gap-2">
             {hasApprovalRights && isPending && (
               <>
                 <button
+                  type="button"
                   onClick={() => approveMutation.mutate(r.id)}
-                  disabled={approveMutation.isPending}
+                  disabled={isThisRowLoading || bulkApproveMutation.isPending || bulkRefuseMutation.isPending}
                   className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
                   title="Approve Leave Request"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
-                  Approve
+                  {isThisRowLoading && approveMutation.isPending ? 'Approving...' : 'Approve'}
                 </button>
                 <button
+                  type="button"
                   onClick={() => refuseMutation.mutate(r.id)}
-                  disabled={refuseMutation.isPending}
+                  disabled={isThisRowLoading || bulkApproveMutation.isPending || bulkRefuseMutation.isPending}
                   className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
                   title="Refuse Leave Request"
                 >
                   <XCircle className="w-3.5 h-3.5" />
-                  Refuse
+                  {isThisRowLoading && refuseMutation.isPending ? 'Refusing...' : 'Refuse'}
                 </button>
               </>
             )}
 
             {hasApprovalRights && isApproved && (
               <button
+                type="button"
                 onClick={() => refuseMutation.mutate(r.id)}
-                disabled={refuseMutation.isPending}
+                disabled={isThisRowLoading || bulkApproveMutation.isPending || bulkRefuseMutation.isPending}
                 className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50"
                 title="Revoke / Refuse Leave Request"
               >
                 <XCircle className="w-3.5 h-3.5" />
-                Refuse
+                {isThisRowLoading && refuseMutation.isPending ? 'Refusing...' : 'Refuse'}
               </button>
             )}
 
             {hasApprovalRights && isRefused && (
               <button
+                type="button"
                 onClick={() => approveMutation.mutate(r.id)}
-                disabled={approveMutation.isPending}
+                disabled={isThisRowLoading || bulkApproveMutation.isPending || bulkRefuseMutation.isPending}
                 className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors disabled:opacity-50"
                 title="Re-Approve Leave Request"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
-                Approve
+                {isThisRowLoading && approveMutation.isPending ? 'Approving...' : 'Approve'}
               </button>
             )}
           </div>
@@ -291,6 +396,84 @@ export default function TimeOffRequestsPage() {
       />
 
       <FilterBar filters={filterConfigs} onReset={() => setSearchParams({})} />
+
+      {feedback && (
+        <div
+          className={`mb-4 p-3 rounded-lg flex items-center justify-between text-sm ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              : 'bg-rose-50 text-rose-800 border border-rose-200'
+          }`}
+        >
+          <span>{feedback.text}</span>
+          <button
+            onClick={() => setFeedback(null)}
+            className="font-semibold text-xs hover:underline ml-2"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {(can('APPROVE_TIME_OFF') || !isEmployee) && pendingRequests.length > 0 && (
+        <div className="mb-4 p-3 bg-blue-50/80 border border-blue-200 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-sm font-semibold text-gray-800">
+              {selectedIds.length > 0 ? (
+                <span>
+                  {selectedIds.length} request(s) selected out of {pendingRequests.length} pending
+                </span>
+              ) : (
+                <span>{pendingRequests.length} pending leave request(s) awaiting action</span>
+              )}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const idsToApprove = selectedIds.length > 0 ? selectedIds : pendingRequests.map((r) => r.id);
+                bulkApproveMutation.mutate(idsToApprove);
+              }}
+              disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <CheckCheck className="w-4 h-4" />
+              {bulkApproveMutation.isPending
+                ? 'Approving...'
+                : selectedIds.length > 0
+                ? `Approve Selected (${selectedIds.length})`
+                : `Approve All Pending (${pendingRequests.length})`}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const idsToRefuse = selectedIds.length > 0 ? selectedIds : pendingRequests.map((r) => r.id);
+                bulkRefuseMutation.mutate(idsToRefuse);
+              }}
+              disabled={bulkApproveMutation.isPending || bulkRefuseMutation.isPending || !!actionLoadingId}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-rose-700 bg-rose-100 hover:bg-rose-200 active:bg-rose-300 border border-rose-300 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <XCircle className="w-4 h-4" />
+              {bulkRefuseMutation.isPending
+                ? 'Refusing...'
+                : selectedIds.length > 0
+                ? `Refuse Selected (${selectedIds.length})`
+                : `Refuse All Pending (${pendingRequests.length})`}
+            </button>
+            {selectedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedIds([])}
+                className="text-xs text-gray-500 hover:text-gray-700 underline px-1 cursor-pointer"
+              >
+                Clear Selection
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <DataTable
         columns={columns}

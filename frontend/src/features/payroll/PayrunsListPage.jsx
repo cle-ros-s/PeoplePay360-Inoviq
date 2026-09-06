@@ -115,7 +115,7 @@ export default function PayrunsListPage() {
             <Eye className="w-3.5 h-3.5" />
             Process / View
           </button>
-          {can('DELETE_PAYRUN') && p.status === PayrunStatus.DRAFT && (
+          {can('DELETE_PAYRUN') && p.status !== PayrunStatus.PAID && p.status !== 'PAID' && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -123,7 +123,7 @@ export default function PayrunsListPage() {
                 setDeleteConfirmOpen(true);
               }}
               className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-              title="Delete Draft Payrun"
+              title="Delete Payrun Batch"
             >
               <Trash2 className="w-4 h-4" />
             </button>

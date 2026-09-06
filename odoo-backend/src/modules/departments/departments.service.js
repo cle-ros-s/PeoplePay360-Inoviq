@@ -121,7 +121,7 @@ async function createDepartment(data) {
     throw new AppError('DUPLICATE_DEPARTMENT', 'A department with this name already exists', 409);
   }
 
-  return prisma.department.create({
+  const created = await prisma.department.create({
     data: {
       name: data.name.trim(),
       code: deptCode,
@@ -133,6 +133,8 @@ async function createDepartment(data) {
       },
     },
   });
+  deptListCache.clear();
+  return created;
 }
 
 async function updateDepartment(id, data) {
@@ -146,7 +148,7 @@ async function updateDepartment(id, data) {
   if (data.code !== undefined) updateData.code = data.code.toUpperCase();
   if (data.managerId !== undefined) updateData.managerId = data.managerId;
 
-  return prisma.department.update({
+  const updated = await prisma.department.update({
     where: { id },
     data: updateData,
     include: {
@@ -158,6 +160,8 @@ async function updateDepartment(id, data) {
       },
     },
   });
+  deptListCache.clear();
+  return updated;
 }
 
 async function deleteDepartment(id) {
@@ -179,6 +183,7 @@ async function deleteDepartment(id) {
   }
 
   await prisma.department.delete({ where: { id } });
+  deptListCache.clear();
   return { message: 'Department deleted successfully' };
 }
 

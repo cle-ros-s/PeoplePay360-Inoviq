@@ -99,6 +99,10 @@ async function getContractById(id, scopedEmployeeId = null) {
     throw new AppError('FORBIDDEN', 'Access denied to this contract record', 403);
   }
 
+  if (contract.employee) {
+    contract.employee.name = `${contract.employee.firstName || ''} ${contract.employee.lastName || ''}`.trim();
+  }
+
   return contract;
 }
 
@@ -184,15 +188,38 @@ async function updateContract(id, data) {
 async function deleteContract(id) {
   const contract = await prisma.contract.findUnique({
     where: { id },
-    include: { payslips: { take: 1 } },
+    include: {
+      payslips: {
+        select: { id: true, status: true },
+      },
+    },
   });
 
   if (!contract) {
     throw new AppError('CONTRACT_NOT_FOUND', 'Contract not found', 404);
   }
 
+  // Check if any linked payslips are finalized/paid
+  const hasPaidPayslips = contract.payslips.some((p) => p.status === 'PAID');
+
+  if (hasPaidPayslips) {
+    // Gracefully cancel and archive the contract to preserve audit integrity
+    await prisma.contract.update({
+      where: { id },
+      data: { status: 'CANCELLED' },
+    });
+    return {
+      message: 'Contract is linked to historical paid payslips; it has been marked as CANCELLED and archived.',
+      status: 'CANCELLED',
+    };
+  }
+
+  // If only linked to draft/computed payslips, unlink them cleanly and delete
   if (contract.payslips.length > 0) {
-    throw new AppError('CONTRACT_HAS_PAYSLIPS', 'Cannot delete contract linked to existing payslips', 400);
+    await prisma.payslip.updateMany({
+      where: { contractId: id },
+      data: { contractId: null },
+    });
   }
 
   await prisma.contract.delete({ where: { id } });

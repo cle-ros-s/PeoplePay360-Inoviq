@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '../../api/dashboard.api';
@@ -44,10 +44,12 @@ import {
   Search,
   Mail,
   Send,
+  ChevronDown,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatEnumLabel } from '../../utils/formatters';
 import { EmployeeStatus, EmployeeType } from '../../utils/constants';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useAuth } from '../../hooks/useAuth';
 
 const deptSchema = z.object({
   name: z.string().min(1, 'Department name is required'),
@@ -58,6 +60,7 @@ export default function PayrollDashboardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { can } = usePermissions();
+  const { user } = useAuth();
 
   const [period, setPeriod] = useState('');
   const [departmentId, setDepartmentId] = useState('');
@@ -78,6 +81,18 @@ export default function PayrollDashboardPage() {
   const [timeOffModalOpen, setTimeOffModalOpen] = useState(false);
   const [timeOffTypeModalOpen, setTimeOffTypeModalOpen] = useState(false);
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const quickActionsRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (quickActionsRef.current && !quickActionsRef.current.contains(event.target)) {
+        setQuickActionsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Email Payslip Quick Modal state
   const [emailModalOpen, setEmailModalOpen] = useState(false);
@@ -558,28 +573,32 @@ export default function PayrollDashboardPage() {
       header: 'Actions',
       render: (emp) => (
         <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/employees/${emp.id}`);
-            }}
-            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-            title="View Details"
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/employees/${emp.id}/edit`);
-            }}
-            className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-colors"
-            title="Edit Employee"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-          </button>
+          {(can('VIEW_ALL_EMPLOYEES') || user?.employeeId === emp.id) && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/employees/${emp.id}`);
+              }}
+              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="View Details"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {can('MANAGE_EMPLOYEES') && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/employees/${emp.id}/edit`);
+              }}
+              className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+              title="Edit Employee"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+          )}
           {can('VIEW_PAYSLIPS') && (
             <button
               type="button"
@@ -608,100 +627,122 @@ export default function PayrollDashboardPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Payroll & Operational Dashboard"
         description="Aggregated real-time metrics across employees, working schedules, attendance, leave allocations, and payroll batches."
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={handleExportAllEmployees}
               disabled={isExporting}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded-xl shadow-2xs transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 active:bg-emerald-200 rounded-lg shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
               title="Extract full details of all 60 employees to CSV"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              {isExporting ? 'Extracting...' : 'Extract All Employees (CSV)'}
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
             </button>
-            {(can('SEND_PAYSLIPS') || can('VIEW_PAYSLIPS')) && (
+
+            {/* Quick Actions Dropdown Menu */}
+            <div className="relative" ref={quickActionsRef}>
               <button
                 type="button"
-                onClick={() => {
-                  setEmailFeedback({ type: '', message: '' });
-                  setSelectedEmpForModal('');
-                  setModalPayslipPreview(null);
-                  setEmailModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 rounded-xl shadow-2xs transition-colors"
-                title="Download or email payslip PDF to employee"
+                onClick={() => setQuickActionsOpen(!quickActionsOpen)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 active:bg-slate-100 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                title="Operational and leave management actions"
               >
-                <FileCheck className="w-4 h-4 text-purple-600" />
-                Payslip Actions (PDF & Email)
+                <Plus className="w-3.5 h-3.5 text-purple-600" />
+                <span>Quick Actions</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
+                    quickActionsOpen ? 'rotate-180' : ''
+                  }`}
+                />
               </button>
-            )}
-            {can('MANAGE_EMPLOYEES') && (
-              <button
-                type="button"
-                onClick={() => navigate('/employees/new')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold text-white bg-gradient-to-r from-[#FF4F81] to-[#7B2FF7] hover:opacity-95 rounded-xl shadow-2xs transition-all"
-              >
-                <UserPlus className="w-4 h-4" />
-                New Employee
-              </button>
-            )}
-            {can('MANAGE_DEPARTMENTS') && (
-              <button
-                type="button"
-                onClick={() => {
-                  resetDept({ name: '', code: '' });
-                  setDeptFeedback({ type: '', message: '' });
-                  setDeptModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl shadow-2xs transition-colors"
-              >
-                <Building className="w-4 h-4 text-slate-500" />
-                Add Department
-              </button>
-            )}
-            {can('VIEW_TIME_OFF_REQUESTS') && (
-              <button
-                type="button"
-                onClick={() => setTimeOffModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl shadow-2xs transition-colors"
-              >
-                <Palmtree className="w-4 h-4 text-amber-500" />
-                Request Time Off
-              </button>
-            )}
-            {can('VIEW_TIME_OFF_TYPES') && (
-              <button
-                type="button"
-                onClick={() => setTimeOffTypeModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl shadow-2xs transition-colors"
-              >
-                <Plus className="w-4 h-4 text-emerald-600" />
-                Add Time Off Type
-              </button>
-            )}
-            {can('MANAGE_ALLOCATIONS') && (
-              <button
-                type="button"
-                onClick={() => setAllocationModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl shadow-2xs transition-colors"
-              >
-                <Plus className="w-4 h-4 text-purple-600" />
-                Grant Allocation
-              </button>
-            )}
+
+              {quickActionsOpen && (
+                <div className="absolute right-0 mt-1.5 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in-50">
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">
+                    Operational Actions
+                  </div>
+                  {can('MANAGE_DEPARTMENTS') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickActionsOpen(false);
+                        resetDept({ name: '', code: '' });
+                        setDeptFeedback({ type: '', message: '' });
+                        setDeptModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+                    >
+                      <Building className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      <span>Add Department</span>
+                    </button>
+                  )}
+                  {can('VIEW_TIME_OFF_REQUESTS') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickActionsOpen(false);
+                        setTimeOffModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+                    >
+                      <Palmtree className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span>Request Time Off</span>
+                    </button>
+                  )}
+                  {can('VIEW_TIME_OFF_TYPES') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickActionsOpen(false);
+                        setTimeOffTypeModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+                    >
+                      <Calendar className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <span>Add Time Off Type</span>
+                    </button>
+                  )}
+                  {can('MANAGE_ALLOCATIONS') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickActionsOpen(false);
+                        setAllocationModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                      <span>Grant Leave Allocation</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
             {can('CREATE_PAYRUN') && (
               <button
                 type="button"
                 onClick={() => navigate('/payroll/payruns/new')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold text-white bg-[#7B2FF7] hover:bg-[#6D28D9] rounded-xl shadow-2xs transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#7B2FF7] hover:bg-[#6D28D9] rounded-lg shadow-2xs transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
-                New Payrun
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Payrun</span>
+              </button>
+            )}
+
+            {can('MANAGE_EMPLOYEES') && (
+              <button
+                type="button"
+                onClick={() => navigate('/employees/new')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-[#FF4F81] to-[#7B2FF7] hover:opacity-95 rounded-lg shadow-2xs transition-all cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>New Employee</span>
               </button>
             )}
           </div>
@@ -818,7 +859,7 @@ export default function PayrollDashboardPage() {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <BarChartCard
             title="Salary Cost Expenditure by Department"
@@ -839,7 +880,7 @@ export default function PayrollDashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <LineChartCard
             title="Monthly Net Salary Disbursement Trend"
@@ -883,7 +924,7 @@ export default function PayrollDashboardPage() {
       </div>
 
       {/* Attendance & Time Off Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Attendance Summary */}
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -1009,7 +1050,7 @@ export default function PayrollDashboardPage() {
       </div>
 
       {/* All 60 Employees Directory & Data Extraction Hub */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
           <div>
             <div className="flex items-center gap-2">

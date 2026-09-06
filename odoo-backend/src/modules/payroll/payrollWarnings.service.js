@@ -118,17 +118,22 @@ async function generatePayrunWarnings(payrunId, tx = prisma) {
       });
     }
 
-    // 4. Check Duplicate Payslip in another payrun (CRITICAL)
+    // 4. Check Duplicate Payslip in another payrun
     const duplicatePayslip = duplicateMap.get(employee.id);
 
     if (duplicatePayslip) {
+      const isLockedOrPaid =
+        duplicatePayslip.payrun?.status === 'PAID' || duplicatePayslip.payrun?.status === 'VALIDATED';
+
       warningsToCreate.push({
         payrunId,
         payslipId: payslip ? payslip.id : null,
         employeeId: employee.id,
         warningType: 'DUPLICATE_PAYSLIP',
-        severity: 'CRITICAL',
-        message: `Employee ${employee.firstName} ${employee.lastName} already has a payslip in payrun "${duplicatePayslip.payrun.name}" for overlapping period`,
+        severity: isLockedOrPaid ? 'CRITICAL' : 'WARNING',
+        message: isLockedOrPaid
+          ? `Employee ${employee.firstName} ${employee.lastName} already has a finalized payslip in payrun "${duplicatePayslip.payrun.name}" for overlapping period`
+          : `Employee ${employee.firstName} ${employee.lastName} has an unvalidated payslip in concurrent draft payrun "${duplicatePayslip.payrun.name}" for overlapping period`,
       });
     }
 
@@ -161,6 +166,28 @@ async function generatePayrunWarnings(payrunId, tx = prisma) {
   });
 }
 
+/**
+ * Resolves an individual payroll warning by ID.
+ */
+async function resolveWarning(warningId) {
+  return prisma.payrollWarning.update({
+    where: { id: warningId },
+    data: { isResolved: true },
+  });
+}
+
+/**
+ * Resolves all payroll warnings for a given payrun.
+ */
+async function resolveAllWarnings(payrunId) {
+  return prisma.payrollWarning.updateMany({
+    where: { payrunId, isResolved: false },
+    data: { isResolved: true },
+  });
+}
+
 module.exports = {
   generatePayrunWarnings,
+  resolveWarning,
+  resolveAllWarnings,
 };

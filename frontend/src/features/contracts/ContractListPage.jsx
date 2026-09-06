@@ -48,11 +48,11 @@ export default function ContractListPage() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: contractsApi.deleteContract,
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       setDeleteConfirmOpen(false);
       setContractToDelete(null);
-      setFeedbackMessage({ type: 'success', message: 'Contract deleted successfully.' });
+      setFeedbackMessage({ type: 'success', message: res?.message || 'Contract deleted successfully.' });
     },
     onError: (err) => {
       setDeleteConfirmOpen(false);

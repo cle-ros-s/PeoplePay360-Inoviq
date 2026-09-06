@@ -127,6 +127,13 @@ async function getPayslipById(id, scopedEmployeeId = null) {
     throw new AppError('FORBIDDEN', 'Access denied to this payslip', 403);
   }
 
+  if (payslip.employee) {
+    payslip.employee = {
+      ...payslip.employee,
+      name: `${payslip.employee.firstName || ''} ${payslip.employee.lastName || ''}`.trim(),
+    };
+  }
+
   return payslip;
 }
 

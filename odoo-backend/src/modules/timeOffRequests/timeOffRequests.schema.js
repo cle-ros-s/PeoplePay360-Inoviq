@@ -52,12 +52,20 @@ const refuseRequestSchema = {
   params: z.object({
     id: requiredUuid('Invalid request ID'),
   }),
-  body: z.object({
-    refusalReason: z.string().optional(),
-    reason: z.string().optional(),
-  }).transform((d) => ({
-    refusalReason: d.refusalReason || d.reason || 'Request refused by manager',
-  })),
+  body: z
+    .object({
+      refusalReason: z.string().optional(),
+      reason: z.string().optional(),
+    })
+    .optional()
+    .default({})
+    .transform((d = {}) => {
+      const reason = d?.refusalReason || d?.reason || 'Request refused by manager';
+      return {
+        refusalReason: reason,
+        reason,
+      };
+    }),
 };
 
 module.exports = {

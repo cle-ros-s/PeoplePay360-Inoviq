@@ -36,6 +36,7 @@ const updateAttendanceSchema = {
     status: attendanceStatusEnum.optional(),
     workedHours: flexibleNonNegativeNumber().nullable().optional(),
     note: z.string().nullable().optional(),
+    notes: z.string().nullable().optional(),
   }),
 };
 

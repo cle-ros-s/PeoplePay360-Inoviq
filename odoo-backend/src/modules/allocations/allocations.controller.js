@@ -45,10 +45,30 @@ async function deleteAllocation(req, res, next) {
   }
 }
 
+async function bulkApproveAllocations(req, res, next) {
+  try {
+    const result = await allocationsService.bulkApproveAllocations(req.body?.ids);
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function bulkRefuseAllocations(req, res, next) {
+  try {
+    const result = await allocationsService.bulkRefuseAllocations(req.body?.ids);
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   listAllocations,
   getAllocationById,
   createAllocation,
   updateAllocation,
   deleteAllocation,
+  bulkApproveAllocations,
+  bulkRefuseAllocations,
 };

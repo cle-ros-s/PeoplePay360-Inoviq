@@ -78,7 +78,12 @@ async function executeTx(fn) {
   try {
     return await prisma.$transaction(fn, { maxWait: 20000, timeout: 60000 });
   } catch (err) {
-    if (err.code === 'P2028' || err.message?.includes('Transaction')) {
+    if (
+      err.code === 'P2028' ||
+      err.code === 'P1017' ||
+      err.message?.includes('Transaction') ||
+      err.message?.includes('closed the connection')
+    ) {
       return await prisma.$transaction(fn, { maxWait: 20000, timeout: 60000 });
     }
     throw err;
@@ -562,7 +567,7 @@ async function getPayrunById(id, db = prisma) {
   const cacheKey = `payruns:detail:${id}`;
 
   return globalCache.getOrFetch(cacheKey, async () => {
-    const payrun = await db.payrun.findUnique({
+    const queryPayload = {
       where: { id },
       include: {
         salaryStructure: {
@@ -611,7 +616,18 @@ async function getPayrunById(id, db = prisma) {
           },
         },
       },
-    });
+    };
+
+    let payrun;
+    try {
+      payrun = await db.payrun.findUnique(queryPayload);
+    } catch (err) {
+      if (err.code === 'P1017' || err.message?.includes('closed the connection')) {
+        payrun = await prisma.payrun.findUnique(queryPayload);
+      } else {
+        throw err;
+      }
+    }
 
     if (!payrun) {
       throw new AppError('PAYRUN_NOT_FOUND', 'Payrun not found', 404);
@@ -678,6 +694,47 @@ async function deletePayrun(id) {
   return { message: 'Payrun deleted successfully' };
 }
 
+/**
+ * Removes an individual payslip & employee from a draft/computed payrun.
+ */
+async function removePayslipFromPayrun(payrunId, payslipId) {
+  const payrun = await prisma.payrun.findUnique({ where: { id: payrunId } });
+  if (!payrun) {
+    throw new AppError('PAYRUN_NOT_FOUND', 'Payrun not found', 404);
+  }
+
+  if (payrun.status === 'PAID') {
+    throw new AppError('CANNOT_MODIFY_PAID_PAYRUN', 'Cannot modify payslips in a paid payrun', 400);
+  }
+
+  const payslip = await prisma.payslip.findUnique({
+    where: { id: payslipId },
+  });
+
+  if (!payslip || payslip.payrunId !== payrunId) {
+    throw new AppError('PAYSLIP_NOT_FOUND', 'Payslip not found in this payrun', 404);
+  }
+
+  await executeTx(async (tx) => {
+    await tx.payslipLine.deleteMany({ where: { payslipId } });
+    await tx.payrollWarning.deleteMany({
+      where: {
+        payrunId,
+        OR: [{ payslipId }, { employeeId: payslip.employeeId }],
+      },
+    });
+    await tx.payslip.delete({ where: { id: payslipId } });
+    await tx.payrunEmployee.deleteMany({
+      where: { payrunId, employeeId: payslip.employeeId },
+    });
+  });
+
+  invalidatePayslipCache();
+  invalidateDashboardCache();
+
+  return getPayrunById(payrunId);
+}
+
 module.exports = {
   getEligibleEmployees,
   createPayrun,
@@ -687,5 +744,6 @@ module.exports = {
   listPayruns,
   getPayrunById,
   deletePayrun,
+  removePayslipFromPayrun,
   sendBulkPayrunPayslips,
 };

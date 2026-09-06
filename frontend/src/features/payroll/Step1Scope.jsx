@@ -73,7 +73,7 @@ export default function Step1Scope({ onScopeSubmitted, scopeData }) {
 
   const onSubmit = (values) => {
     const payload = {
-      name: values.name.trim(),
+      name: values.name?.trim() || values.name,
       salaryStructureId: values.salaryStructureId,
       periodStart: new Date(values.periodStart).toISOString(),
       periodEnd: new Date(values.periodEnd).toISOString(),
