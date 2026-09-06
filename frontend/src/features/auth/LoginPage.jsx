@@ -35,50 +35,29 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-// Modern P-shaped PayFlux Brand Logo Vector
+// PayFlux Brand Logo using new logo image
 function PayFluxLogo({ className = 'w-9 h-9', showText = true, isLight = true }) {
   return (
     <div className="flex items-center gap-3 select-none">
       <div className={`relative flex items-center justify-center shrink-0 ${className}`}>
-        <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-md">
-          <defs>
-            <linearGradient id="pGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FF4F81" />
-              <stop offset="100%" stopColor="#7B2FF7" />
-            </linearGradient>
-            <linearGradient id="pGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#7B2FF7" />
-              <stop offset="100%" stopColor="#FF4F81" />
-            </linearGradient>
-          </defs>
-          {/* Stylized Modern P Ribbon Folds */}
-          <path
-            d="M8 8C8 5.79086 9.79086 4 12 4H26C33.732 4 40 10.268 40 18C40 25.732 33.732 32 26 32H16V38C16 40.2091 14.2091 42 12 42C9.79086 42 8 40.2091 8 38V8Z"
-            fill="url(#pGrad1)"
-          />
-          <path
-            d="M16 12H25C28.3137 12 31 14.6863 31 18C31 21.3137 28.3137 24 25 24H16V12Z"
-            fill="#FFFFFF"
-            fillOpacity="0.95"
-          />
-          <path
-            d="M8 20L20 32H12C9.79086 32 8 30.2091 8 28V20Z"
-            fill="url(#pGrad2)"
-            fillOpacity="0.8"
-          />
-        </svg>
+        <img
+          src="/payflux-logo.png"
+          alt="PayFlux Logo"
+          className="w-full h-full object-contain drop-shadow-md"
+          draggable={false}
+        />
       </div>
       {showText && (
         <div className="flex flex-col">
           <div className="flex items-center leading-none">
-            <span className={`text-2xl font-black tracking-tight ${isLight ? 'text-white' : 'text-slate-900'}`}>
+            <span className={`text-2xl font-black tracking-tight ${isLight ? 'text-white' : 'text-[#0d2b6e]'}`}>
               Pay
             </span>
-            <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-[#FF4F81] to-[#7B2FF7] bg-clip-text text-transparent">
+            <span className={`text-2xl font-black tracking-tight ${isLight ? 'text-[#00d4ff]' : 'text-[#00aadd]'}`}>
               Flux
             </span>
           </div>
-          <span className={`text-[11px] font-bold tracking-wider uppercase mt-1 ${isLight ? 'text-purple-200' : 'text-purple-800'}`}>
+          <span className={`text-[11px] font-bold tracking-wider uppercase mt-1 ${isLight ? 'text-blue-200' : 'text-blue-700'}`}>
             HR &amp; Payroll Simplified
           </span>
         </div>
@@ -398,8 +377,8 @@ export default function LoginPage() {
         <div className="relative z-10 w-full max-w-[560px] bg-white/95 backdrop-blur-xl rounded-[26px] sm:rounded-[32px] p-8 sm:p-12 lg:p-14 shadow-[0_25px_70px_rgba(20,10,70,0.14)] border border-white/80 ring-1 ring-purple-100">
           {/* Card Top Branding Header */}
           <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-purple-50 to-pink-50 border border-purple-200/80 flex items-center justify-center shadow-xs mb-4">
-              <PayFluxLogo className="w-10 h-10 sm:w-11 sm:h-11" showText={false} />
+            <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center mb-4">
+              <PayFluxLogo className="w-full h-full" showText={false} />
             </div>
             <h2 className="text-2xl sm:text-3xl lg:text-[32px] font-black text-slate-900 tracking-tight">
               Welcome back!
