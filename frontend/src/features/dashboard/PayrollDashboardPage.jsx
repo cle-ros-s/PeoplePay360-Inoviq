@@ -5,6 +5,7 @@ import { dashboardApi } from '../../api/dashboard.api';
 import { departmentsApi } from '../../api/departments.api';
 import { employeesApi } from '../../api/employees.api';
 import { allocationsApi } from '../../api/allocations.api';
+import { payslipsApi } from '../../api/payslips.api';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import KpiCard from '../../components/charts/KpiCard';
@@ -41,6 +42,8 @@ import {
   Eye,
   Edit2,
   Search,
+  Mail,
+  Send,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatEnumLabel } from '../../utils/formatters';
 import { EmployeeStatus, EmployeeType } from '../../utils/constants';
@@ -75,6 +78,17 @@ export default function PayrollDashboardPage() {
   const [timeOffModalOpen, setTimeOffModalOpen] = useState(false);
   const [timeOffTypeModalOpen, setTimeOffTypeModalOpen] = useState(false);
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
+
+  // Email Payslip Quick Modal state
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState({ type: '', message: '' });
+  const [sendingEmpEmailId, setSendingEmpEmailId] = useState(null);
+  const [downloadingEmpId, setDownloadingEmpId] = useState(null);
+  const [selectedEmpForModal, setSelectedEmpForModal] = useState('');
+  const [modalPayslipPreview, setModalPayslipPreview] = useState(null);
+  const [loadingModalPreview, setLoadingModalPreview] = useState(false);
+  const [sendingModalEmail, setSendingModalEmail] = useState(false);
+  const [downloadingModalPdf, setDownloadingModalPdf] = useState(false);
 
   const params = {
     period: period || undefined,
@@ -189,6 +203,136 @@ export default function PayrollDashboardPage() {
       setDeptFeedback({ type: 'error', message: msg });
     },
   });
+
+  const handleSelectEmpForEmail = async (empId) => {
+    setSelectedEmpForModal(empId);
+    setModalPayslipPreview(null);
+    if (!empId) return;
+    try {
+      setLoadingModalPreview(true);
+      const res = await payslipsApi.getPayslips({ employeeId: empId, pageSize: 1 });
+      const list = res?.data || (Array.isArray(res) ? res : []);
+      if (list.length > 0) {
+        setModalPayslipPreview(list[0]);
+      } else {
+        setModalPayslipPreview(null);
+      }
+    } catch (err) {
+      console.error('Failed to load payslip preview:', err);
+    } finally {
+      setLoadingModalPreview(false);
+    }
+  };
+
+  const handleSendModalEmail = async () => {
+    if (!modalPayslipPreview?.id) return;
+    try {
+      setSendingModalEmail(true);
+      const res = await payslipsApi.sendPayslipEmail(modalPayslipPreview.id);
+      setEmailFeedback({
+        type: 'success',
+        message: res?.message || 'Payslip email sent successfully!',
+      });
+      setEmailModalOpen(false);
+      setSelectedEmpForModal('');
+      setModalPayslipPreview(null);
+    } catch (err) {
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to dispatch email.';
+      setEmailFeedback({ type: 'error', message: msg });
+    } finally {
+      setSendingModalEmail(false);
+    }
+  };
+
+  const handleDownloadModalPayslip = async () => {
+    if (!modalPayslipPreview?.id) return;
+    try {
+      setDownloadingModalPdf(true);
+      const emp = modalPayslipPreview.employee || employeesList.find((e) => e.id === selectedEmpForModal) || {};
+      const empName = emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
+      const cleanEmpName = empName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const periodStr = modalPayslipPreview.periodStart ? modalPayslipPreview.periodStart.slice(0, 10) : 'latest';
+      const fileName = `Payslip_${cleanEmpName}_${periodStr}.pdf`;
+      await payslipsApi.downloadPayslipPdf(modalPayslipPreview.id, fileName);
+      setEmailFeedback({
+        type: 'success',
+        message: `Payslip PDF for ${empName} downloaded successfully!`,
+      });
+    } catch (err) {
+      console.error('Failed to download payslip PDF from modal:', err);
+      setEmailFeedback({
+        type: 'error',
+        message: 'Failed to download payslip PDF.',
+      });
+    } finally {
+      setDownloadingModalPdf(false);
+    }
+  };
+
+  const handleDownloadEmployeePayslip = async (e, emp) => {
+    e.stopPropagation();
+    try {
+      setDownloadingEmpId(emp.id);
+      setEmailFeedback({ type: '', message: '' });
+      const res = await payslipsApi.getPayslips({ employeeId: emp.id, pageSize: 1 });
+      const list = res?.data || (Array.isArray(res) ? res : []);
+      if (!list.length) {
+        setEmailFeedback({
+          type: 'error',
+          message: `No generated payslip found for ${emp.name || emp.firstName || 'this employee'} yet. Please create/compute a payrun first.`,
+        });
+        setDownloadingEmpId(null);
+        return;
+      }
+      const latestPayslip = list[0];
+      const empName = emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
+      const cleanEmpName = empName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const periodStr = latestPayslip.periodStart ? latestPayslip.periodStart.slice(0, 10) : 'latest';
+      const fileName = `Payslip_${cleanEmpName}_${periodStr}.pdf`;
+      await payslipsApi.downloadPayslipPdf(latestPayslip.id, fileName);
+      setEmailFeedback({
+        type: 'success',
+        message: `Payslip PDF for ${empName} downloaded successfully!`,
+      });
+    } catch (err) {
+      console.error('Failed to download payslip PDF:', err);
+      setEmailFeedback({
+        type: 'error',
+        message: 'Failed to download payslip PDF. Please try again.',
+      });
+    } finally {
+      setDownloadingEmpId(null);
+    }
+  };
+
+  const handleQuickEmailEmployee = async (e, emp) => {
+    e.stopPropagation();
+    try {
+      setSendingEmpEmailId(emp.id);
+      setEmailFeedback({ type: '', message: '' });
+      const res = await payslipsApi.getPayslips({ employeeId: emp.id, pageSize: 1 });
+      const list = res?.data || (Array.isArray(res) ? res : []);
+      if (!list.length) {
+        setEmailFeedback({
+          type: 'error',
+          message: `No generated payslip found for ${emp.name || emp.firstName || 'this employee'} yet. Please create/compute a payrun first.`,
+        });
+        setSendingEmpEmailId(null);
+        return;
+      }
+      const latestPayslip = list[0];
+      const sendRes = await payslipsApi.sendPayslipEmail(latestPayslip.id);
+      setEmailFeedback({
+        type: 'success',
+        message: sendRes?.message || `Payslip sent successfully to ${emp.email}!`,
+      });
+    } catch (err) {
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to send payslip email.';
+      setEmailFeedback({ type: 'error', message: msg });
+    } finally {
+      setSendingEmpEmailId(null);
+    }
+  };
 
   const onDeptFormSubmit = (values) => {
     setDeptFeedback({ type: '', message: '' });
@@ -413,7 +557,7 @@ export default function PayrollDashboardPage() {
     {
       header: 'Actions',
       render: (emp) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             onClick={(e) => {
@@ -436,6 +580,28 @@ export default function PayrollDashboardPage() {
           >
             <Edit2 className="w-3.5 h-3.5" />
           </button>
+          {can('VIEW_PAYSLIPS') && (
+            <button
+              type="button"
+              onClick={(e) => handleDownloadEmployeePayslip(e, emp)}
+              disabled={downloadingEmpId === emp.id}
+              className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition-colors disabled:opacity-50"
+              title="Download Latest Payslip (PDF)"
+            >
+              <Download className={`w-3.5 h-3.5 ${downloadingEmpId === emp.id ? 'animate-bounce text-emerald-800' : ''}`} />
+            </button>
+          )}
+          {can('SEND_PAYSLIPS') && (
+            <button
+              type="button"
+              onClick={(e) => handleQuickEmailEmployee(e, emp)}
+              disabled={sendingEmpEmailId === emp.id}
+              className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
+              title="Email Latest Payslip PDF to Employee"
+            >
+              <Mail className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -458,6 +624,22 @@ export default function PayrollDashboardPage() {
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               {isExporting ? 'Extracting...' : 'Extract All Employees (CSV)'}
             </button>
+            {(can('SEND_PAYSLIPS') || can('VIEW_PAYSLIPS')) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEmailFeedback({ type: '', message: '' });
+                  setSelectedEmpForModal('');
+                  setModalPayslipPreview(null);
+                  setEmailModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 rounded-xl shadow-2xs transition-colors"
+                title="Download or email payslip PDF to employee"
+              >
+                <FileCheck className="w-4 h-4 text-purple-600" />
+                Payslip Actions (PDF & Email)
+              </button>
+            )}
             {can('MANAGE_EMPLOYEES') && (
               <button
                 type="button"
@@ -525,6 +707,35 @@ export default function PayrollDashboardPage() {
           </div>
         }
       />
+
+      {/* Quick feedback banner for dashboard email actions */}
+      {emailFeedback.message && (
+        <div
+          className={`p-4 rounded-xl border flex items-start justify-between gap-3 text-sm shadow-sm ${
+            emailFeedback.type === 'error'
+              ? 'bg-red-50 border-red-200 text-red-700'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {emailFeedback.type === 'error' ? (
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            )}
+            <div>
+              <p className="font-semibold">{emailFeedback.type === 'error' ? 'Email Payslip Notice' : 'Payslip Email Sent'}</p>
+              <p className="text-xs mt-0.5">{emailFeedback.message}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setEmailFeedback({ type: '', message: '' })}
+            className="text-xs font-semibold underline opacity-80 hover:opacity-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Quick feedback banner for dashboard actions */}
       {deptFeedback.message && (
@@ -1011,6 +1222,119 @@ export default function PayrollDashboardPage() {
           isOpen={allocationModalOpen}
           onClose={() => setAllocationModalOpen(false)}
         />
+      )}
+
+      {/* Email Payslip Modal Directly Accessible from Dashboard */}
+      {emailModalOpen && (
+        <Modal
+          isOpen={emailModalOpen}
+          onClose={() => {
+            setEmailModalOpen(false);
+            setSelectedEmpForModal('');
+            setModalPayslipPreview(null);
+          }}
+          title="Email Payslip to Employee"
+          description="Select an employee to verify their latest computed payslip breakdown and dispatch the PDF directly to their work email."
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                Select Staff Member
+              </label>
+              <select
+                value={selectedEmpForModal}
+                onChange={(e) => handleSelectEmpForEmail(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-gray-50 focus:bg-white border border-gray-300 rounded-lg text-gray-800"
+              >
+                <option value="">-- Choose an employee --</option>
+                {employeesList.map((emp) => {
+                  const name = emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
+                  return (
+                    <option key={emp.id} value={emp.id}>
+                      {name} ({emp.email || 'No email'}) — {emp.jobPosition || 'Staff'}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {loadingModalPreview && (
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-500">
+                Fetching employee's latest payslip record...
+              </div>
+            )}
+
+            {!loadingModalPreview && selectedEmpForModal && !modalPayslipPreview && (
+              <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800">
+                No computed payslip records were found for this employee yet. Please ensure a payrun has been generated for them.
+              </div>
+            )}
+
+            {!loadingModalPreview && modalPayslipPreview && (
+              <div className="p-4 bg-purple-50/50 rounded-xl border border-purple-100 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-purple-100">
+                  <div>
+                    <span className="text-xs font-bold text-gray-900 block">
+                      {modalPayslipPreview.payrun?.name || 'Latest Payrun Batch'}
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      Period: {formatDate(modalPayslipPreview.periodStart)} — {formatDate(modalPayslipPreview.periodEnd)}
+                    </span>
+                  </div>
+                  <StatusBadge status={modalPayslipPreview.status} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-white p-2.5 rounded-lg border border-purple-100">
+                    <span className="text-gray-400 block text-[10px] uppercase font-semibold">Gross Salary</span>
+                    <span className="text-gray-900 font-bold">{formatCurrency(modalPayslipPreview.gross)}</span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-lg border border-purple-100">
+                    <span className="text-gray-400 block text-[10px] uppercase font-semibold">Net Pay</span>
+                    <span className="text-emerald-700 font-extrabold">{formatCurrency(modalPayslipPreview.net)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmailModalOpen(false);
+                  setSelectedEmpForModal('');
+                  setModalPayslipPreview(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              {can('VIEW_PAYSLIPS') && (
+                <button
+                  type="button"
+                  onClick={handleDownloadModalPayslip}
+                  disabled={!modalPayslipPreview || downloadingModalPdf}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded-lg shadow-sm disabled:opacity-50 transition-colors"
+                  title="Download payslip PDF"
+                >
+                  <Download className="w-4 h-4 text-emerald-600" />
+                  {downloadingModalPdf ? 'Downloading PDF...' : 'Download PDF'}
+                </button>
+              )}
+              {can('SEND_PAYSLIPS') && (
+                <button
+                  type="button"
+                  onClick={handleSendModalEmail}
+                  disabled={!modalPayslipPreview || sendingModalEmail}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg shadow-sm disabled:opacity-50 transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                  {sendingModalEmail ? 'Sending Email...' : 'Send Payslip Email'}
+                </button>
+              )}
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

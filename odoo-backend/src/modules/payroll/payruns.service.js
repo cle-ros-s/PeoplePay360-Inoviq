@@ -124,46 +124,117 @@ async function createPayrun(data) {
     }
   }
 
-  const createdPayrunId = await executeTx(async (tx) => {
-    const payrun = await tx.payrun.create({
-      data: {
-        name: data.name,
-        periodStart: pStart,
-        periodEnd: pEnd,
-        salaryStructureId: data.salaryStructureId,
-        status: 'DRAFT',
+  // Pre-compute calculation lines and initial amounts for every payslip
+  const payslipsToCreate = [];
+  for (const empId of data.employeeIds) {
+    const contract = contractByEmp.get(empId) || null;
+    let basic = 0;
+    let gross = 0;
+    let net = 0;
+
+    if (contract && structure.rules && structure.rules.length > 0) {
+      try {
+        const calc = computePayslip({
+          contract,
+          salaryStructureRules: structure.rules,
+          periodStart: pStart,
+          periodEnd: pEnd,
+          workedDays: totalDays,
+          totalDays,
+        });
+        basic = calc.basic;
+        gross = calc.gross;
+        net = calc.net;
+      } catch (e) {
+        basic = contract.wage || 0;
+        gross = basic;
+        net = basic;
+      }
+    } else if (contract) {
+      basic = contract.wage || 0;
+      gross = basic;
+      net = basic;
+    }
+
+    payslipsToCreate.push({
+      employeeId: empId,
+      contractId: contract ? contract.id : null,
+      salaryStructureId: data.salaryStructureId,
+      periodStart: pStart,
+      periodEnd: pEnd,
+      workedDays: totalDays,
+      totalDays,
+      basic,
+      gross,
+      net,
+      status: 'DRAFT',
+    });
+  }
+
+  const payrun = await prisma.payrun.create({
+    data: {
+      name: data.name,
+      periodStart: pStart,
+      periodEnd: pEnd,
+      salaryStructureId: data.salaryStructureId,
+      status: 'DRAFT',
+      payrunEmployees: {
+        createMany: {
+          data: data.employeeIds.map((empId) => ({
+            employeeId: empId,
+          })),
+        },
       },
-    });
-
-    await tx.payrunEmployee.createMany({
-      data: data.employeeIds.map((empId) => ({
-        payrunId: payrun.id,
-        employeeId: empId,
-      })),
-    });
-
-    await tx.payslip.createMany({
-      data: data.employeeIds.map((empId) => ({
-        payrunId: payrun.id,
-        employeeId: empId,
-        contractId: contractByEmp.has(empId) ? contractByEmp.get(empId).id : null,
-        salaryStructureId: data.salaryStructureId,
-        periodStart: pStart,
-        periodEnd: pEnd,
-        workedDays: totalDays,
-        totalDays,
-        basic: 0,
-        gross: 0,
-        net: 0,
-        status: 'DRAFT',
-      })),
-    });
-
-    return payrun.id;
+      payslips: {
+        createMany: {
+          data: payslipsToCreate,
+        },
+      },
+    },
   });
 
-  // Generate initial warnings after transaction commit
+  const createdPayrunId = payrun.id;
+
+  // Create payslip lines for all payslips in batch
+  const createdPayslips = await prisma.payslip.findMany({
+    where: { payrunId: createdPayrunId },
+  });
+
+  const allLinesToCreate = [];
+  for (const ps of createdPayslips) {
+    const contract = contractByEmp.get(ps.employeeId);
+    if (contract && structure.rules && structure.rules.length > 0) {
+      try {
+        const calc = computePayslip({
+          contract,
+          salaryStructureRules: structure.rules,
+          periodStart: pStart,
+          periodEnd: pEnd,
+          workedDays: totalDays,
+          totalDays,
+        });
+        for (const l of calc.lines) {
+          allLinesToCreate.push({
+            payslipId: ps.id,
+            salaryRuleId: l.salaryRuleId,
+            name: l.name,
+            code: l.code,
+            category: l.category,
+            sequence: l.sequence,
+            amount: l.amount,
+          });
+        }
+      } catch (e) {}
+    }
+  }
+
+  if (allLinesToCreate.length > 0) {
+    await prisma.payslipLine.createMany({ data: allLinesToCreate });
+  }
+
+  // Generate initial warnings after payrun creation
   await generatePayrunWarnings(createdPayrunId);
+  invalidatePayrunCache();
 
   return getPayrunById(createdPayrunId);
 }
@@ -182,6 +253,7 @@ async function computePayrun(id) {
       },
       payslips: {
         include: {
+          contract: true,
           employee: {
             include: {
               contracts: {
@@ -239,13 +311,17 @@ async function computePayrun(id) {
   for (const payslip of payrun.payslips) {
     const employee = payslip.employee;
 
-    const contract = employee.contracts.find((c) => {
-      const cStart = new Date(c.startDate);
-      const cEnd = c.endDate ? new Date(c.endDate) : null;
-      return cStart <= new Date(payrun.periodEnd) && (!cEnd || cEnd >= new Date(payrun.periodStart));
-    });
+    const contract =
+      payslip.contract ||
+      employee.contracts.find((c) => c.status === 'RUNNING') ||
+      employee.contracts.find((c) => {
+        const cStart = new Date(c.startDate);
+        const cEnd = c.endDate ? new Date(c.endDate) : null;
+        return cStart <= new Date(payrun.periodEnd) && (!cEnd || cEnd >= new Date(payrun.periodStart));
+      }) ||
+      employee.contracts[0];
 
-    if (!contract) {
+    if (!contract || typeof contract.wage !== 'number' || contract.wage <= 0) {
       payslipUpdates.push({
         id: payslip.id,
         contractId: null,
@@ -259,14 +335,7 @@ async function computePayrun(id) {
       continue;
     }
 
-    const attendancesInPeriod = attendanceMap.get(employee.id) || [];
     let workedDays = totalDays;
-    if (attendancesInPeriod.length > 0) {
-      const uniqueDates = new Set(
-        attendancesInPeriod.map((a) => new Date(a.checkIn).toISOString().slice(0, 10))
-      );
-      workedDays = Math.min(totalDays, uniqueDates.size);
-    }
 
     const calculation = computePayslip({
       contract,
@@ -303,32 +372,32 @@ async function computePayrun(id) {
 
   const payslipIds = payrun.payslips.map((p) => p.id);
 
-  await executeTx(async (tx) => {
-    await tx.payslipLine.deleteMany({ where: { payslipId: { in: payslipIds } } });
+  await prisma.payslipLine.deleteMany({ where: { payslipId: { in: payslipIds } } });
 
-    if (allLinesToCreate.length > 0) {
-      await tx.payslipLine.createMany({ data: allLinesToCreate });
-    }
+  if (allLinesToCreate.length > 0) {
+    await prisma.payslipLine.createMany({ data: allLinesToCreate });
+  }
 
+  const CHUNK_SIZE = 5;
+  for (let i = 0; i < payslipUpdates.length; i += CHUNK_SIZE) {
+    const chunk = payslipUpdates.slice(i, i + CHUNK_SIZE);
     await Promise.all(
-      payslipUpdates.map((update) => {
+      chunk.map((update) => {
         const { id: psId, ...data } = update;
-        return tx.payslip.update({
+        return prisma.payslip.update({
           where: { id: psId },
           data,
         });
       })
     );
+  }
 
-    await tx.payrun.update({
-      where: { id: payrun.id },
-      data: { status: 'COMPUTED' },
-    });
-
-    return payrun.id;
+  await prisma.payrun.update({
+    where: { id: payrun.id },
+    data: { status: 'COMPUTED' },
   });
 
-  // Regenerate warnings after compute transaction commits
+  // Regenerate warnings after compute
   await generatePayrunWarnings(id);
   invalidatePayslipCache();
   invalidateDashboardCache();
@@ -366,21 +435,18 @@ async function validatePayrun(id) {
     );
   }
 
-  const updatedId = await executeTx(async (tx) => {
-    await tx.payslip.updateMany({
-      where: { payrunId: id },
-      data: { status: 'VALIDATED' },
-    });
-
-    const updated = await tx.payrun.update({
-      where: { id },
-      data: { status: 'VALIDATED' },
-    });
-
-    return updated.id;
+  await prisma.payslip.updateMany({
+    where: { payrunId: id },
+    data: { status: 'VALIDATED' },
   });
 
-  return getPayrunById(updatedId);
+  const updated = await prisma.payrun.update({
+    where: { id },
+    data: { status: 'VALIDATED' },
+  });
+
+  invalidatePayrunCache();
+  return getPayrunById(updated.id);
 }
 
 /**
@@ -405,21 +471,18 @@ async function markPayrunAsPaid(id) {
     );
   }
 
-  const updatedId = await executeTx(async (tx) => {
-    await tx.payslip.updateMany({
-      where: { payrunId: id },
-      data: { status: 'PAID' },
-    });
-
-    const updated = await tx.payrun.update({
-      where: { id },
-      data: { status: 'PAID' },
-    });
-
-    return updated.id;
+  await prisma.payslip.updateMany({
+    where: { payrunId: id },
+    data: { status: 'PAID' },
   });
 
-  return getPayrunById(updatedId);
+  const updated = await prisma.payrun.update({
+    where: { id },
+    data: { status: 'PAID' },
+  });
+
+  invalidatePayrunCache();
+  return getPayrunById(updated.id);
 }
 
 async function listPayruns(query) {
@@ -471,8 +534,13 @@ async function listPayruns(query) {
         salaryStructureId: p.salaryStructureId,
         salaryStructure: p.salaryStructure,
         status: p.status,
-        employeeCount: p._count.payrunEmployees,
-        payslipCount: p._count.payslips,
+        employeeCount: p._count.payrunEmployees || p._count.payslips || 0,
+        payslipCount: p._count.payslips || 0,
+        _count: {
+          employees: p._count.payrunEmployees || p._count.payslips || 0,
+          payrunEmployees: p._count.payrunEmployees,
+          payslips: p._count.payslips,
+        },
         totalBasic: Math.round(totalBasic * 100) / 100,
         totalGross: Math.round(totalGross * 100) / 100,
         totalNet: Math.round(totalNet * 100) / 100,

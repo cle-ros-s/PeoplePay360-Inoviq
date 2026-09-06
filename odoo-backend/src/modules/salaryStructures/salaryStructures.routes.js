@@ -45,7 +45,7 @@ router.patch(
 
 router.patch(
   '/:id/reorder-rules',
-  requireRole('ADMIN', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER', 'HR_MANAGER'),
   validate(reorderRulesSchema),
   salaryStructuresController.reorderRules
 );
@@ -58,13 +58,13 @@ router.get(
 
 router.post(
   '/:id/rules',
-  requireRole('ADMIN', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER', 'HR_MANAGER'),
   salaryStructuresController.createRuleForStructure
 );
 
 router.delete(
   '/:id',
-  requireRole('ADMIN', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER', 'HR_MANAGER'),
   validate(getSalaryStructureByIdSchema),
   salaryStructuresController.deleteSalaryStructure
 );

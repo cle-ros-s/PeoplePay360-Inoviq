@@ -5,13 +5,28 @@ const payrunStatusEnum = z.enum(['DRAFT', 'COMPUTED', 'VALIDATED', 'PAID']);
 const employeeTypeEnum = z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN']);
 
 const getEligibleEmployeesSchema = {
-  query: z.object({
-    periodStart: flexibleDate,
-    periodEnd: flexibleDate,
-    salaryStructureId: optionalUuid,
-    departmentId: optionalUuid,
-    employeeType: employeeTypeEnum.optional(),
-  }),
+  query: z
+    .object({
+      periodStart: flexibleDate.optional(),
+      periodEnd: flexibleDate.optional(),
+      salaryStructureId: optionalUuid,
+      departmentId: optionalUuid,
+      departmentFilterId: optionalUuid,
+      employeeType: employeeTypeEnum.optional(),
+      employeeTypeFilter: employeeTypeEnum.optional(),
+    })
+    .optional(),
+  body: z
+    .object({
+      periodStart: flexibleDate.optional(),
+      periodEnd: flexibleDate.optional(),
+      salaryStructureId: optionalUuid,
+      departmentId: optionalUuid,
+      departmentFilterId: optionalUuid,
+      employeeType: employeeTypeEnum.optional(),
+      employeeTypeFilter: employeeTypeEnum.optional(),
+    })
+    .optional(),
 };
 
 const createPayrunSchema = {

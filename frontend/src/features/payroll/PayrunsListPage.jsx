@@ -77,12 +77,22 @@ export default function PayrunsListPage() {
     {
       header: 'Staff Count',
       accessorKey: 'employees',
-      render: (p) => (
-        <span className="text-xs font-bold px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded inline-flex items-center gap-1">
-          <Users className="w-3 h-3 text-blue-600" />
-          {p.employees ? p.employees.length : p._count?.employees || 0} staff
-        </span>
-      ),
+      render: (p) => {
+        const count =
+          p.employeeCount ??
+          p.payslipCount ??
+          (p.employees ? p.employees.length : null) ??
+          p._count?.payrunEmployees ??
+          p._count?.payslips ??
+          p._count?.employees ??
+          0;
+        return (
+          <span className="text-xs font-bold px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg inline-flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5 text-indigo-600" />
+            {count} staff
+          </span>
+        );
+      },
     },
     {
       header: 'Status',

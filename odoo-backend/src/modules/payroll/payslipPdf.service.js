@@ -22,14 +22,26 @@ function generatePayslipPdfBuffer(payslip) {
       const successColor = '#059669';
       const borderColor = '#E5E7EB';
 
+      const emp = payslip.employee || {};
+      const empName = emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
+      const formatDateStr = (dateVal) => {
+        if (!dateVal) return 'N/A';
+        try {
+          const d = new Date(dateVal);
+          return isNaN(d.getTime()) ? String(dateVal) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        } catch {
+          return String(dateVal);
+        }
+      };
+
       // --- HEADER ---
       doc.fillColor(primaryColor).fontSize(22).font('Helvetica-Bold').text('PeoplePay360', 50, 50);
       doc.fillColor(mutedColor).fontSize(10).font('Helvetica').text('Human Resource & Payroll Management Platform', 50, 75);
 
       doc.fillColor(primaryColor).fontSize(16).font('Helvetica-Bold').text('PAYSLIP', 400, 50, { align: 'right' });
-      const periodText = `${new Date(payslip.periodStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${new Date(payslip.periodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      const periodText = `${formatDateStr(payslip.periodStart)} - ${formatDateStr(payslip.periodEnd)}`;
       doc.fillColor(mutedColor).fontSize(9).font('Helvetica').text(`Period: ${periodText}`, 350, 72, { align: 'right' });
-      doc.text(`Status: ${payslip.status}`, 350, 85, { align: 'right' });
+      doc.text(`Status: ${payslip.status || 'COMPUTED'}`, 350, 85, { align: 'right' });
 
       // Horizontal Rule
       doc.strokeColor(borderColor).lineWidth(1).moveTo(50, 105).lineTo(545, 105).stroke();
@@ -39,22 +51,22 @@ function generatePayslipPdfBuffer(payslip) {
       doc.fillColor(primaryColor).fontSize(11).font('Helvetica-Bold').text('EMPLOYEE DETAILS', 50, y);
       y += 18;
 
-      const emp = payslip.employee;
       const leftColX = 50;
       const rightColX = 300;
 
       doc.font('Helvetica-Bold').fontSize(9).fillColor(textColor).text('Name: ', leftColX, y);
-      doc.font('Helvetica').fillColor(mutedColor).text(`${emp.firstName} ${emp.lastName}`, leftColX + 70, y);
+      doc.font('Helvetica').fillColor(mutedColor).text(empName, leftColX + 70, y);
 
       doc.font('Helvetica-Bold').fillColor(textColor).text('Designation: ', rightColX, y);
       doc.font('Helvetica').fillColor(mutedColor).text(emp.jobPosition || 'N/A', rightColX + 80, y);
       y += 16;
 
       doc.font('Helvetica-Bold').fillColor(textColor).text('Email: ', leftColX, y);
-      doc.font('Helvetica').fillColor(mutedColor).text(emp.email, leftColX + 70, y);
+      doc.font('Helvetica').fillColor(mutedColor).text(emp.email || 'N/A', leftColX + 70, y);
 
       doc.font('Helvetica-Bold').fillColor(textColor).text('Department: ', rightColX, y);
-      doc.font('Helvetica').fillColor(mutedColor).text(emp.department ? emp.department.name : 'N/A', rightColX + 80, y);
+      const deptName = emp.department ? (typeof emp.department === 'string' ? emp.department : emp.department.name || 'N/A') : 'N/A';
+      doc.font('Helvetica').fillColor(mutedColor).text(deptName, rightColX + 80, y);
       y += 16;
 
       doc.font('Helvetica-Bold').fillColor(textColor).text('Bank Name: ', leftColX, y);
@@ -65,10 +77,11 @@ function generatePayslipPdfBuffer(payslip) {
       y += 16;
 
       doc.font('Helvetica-Bold').fillColor(textColor).text('Worked Days: ', leftColX, y);
-      doc.font('Helvetica').fillColor(mutedColor).text(`${payslip.workedDays} / ${payslip.totalDays} Days`, leftColX + 70, y);
+      doc.font('Helvetica').fillColor(mutedColor).text(`${payslip.workedDays ?? 0} / ${payslip.totalDays ?? 0} Days`, leftColX + 70, y);
 
       doc.font('Helvetica-Bold').fillColor(textColor).text('Structure: ', rightColX, y);
-      doc.font('Helvetica').fillColor(mutedColor).text(payslip.salaryStructure ? payslip.salaryStructure.name : 'Standard', rightColX + 80, y);
+      const structName = payslip.salaryStructure ? (typeof payslip.salaryStructure === 'string' ? payslip.salaryStructure : payslip.salaryStructure.name || 'Standard') : 'Standard';
+      doc.font('Helvetica').fillColor(mutedColor).text(structName, rightColX + 80, y);
       y += 24;
 
       // Horizontal Rule

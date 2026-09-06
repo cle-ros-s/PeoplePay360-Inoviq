@@ -8,31 +8,9 @@ export default function PayslipPdfButton({ payslipId, className = '' }) {
   const handleDownloadPdf = async () => {
     try {
       setIsDownloading(true);
-      const pdfUrl = payslipsApi.getPayslipPdfUrl(payslipId);
-      const token = localStorage.getItem('peoplepay360_token');
-
-      const response = await fetch(pdfUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to download PDF bill (status ${response.status})`);
-      }
-
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `payslip-bill-${payslipId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
+      await payslipsApi.downloadPayslipPdf(payslipId);
     } catch (err) {
       console.error('PDF download error:', err);
-      // Fallback open window
       const pdfUrl = payslipsApi.getPayslipPdfUrl(payslipId);
       window.open(pdfUrl, '_blank', 'noopener,noreferrer');
     } finally {

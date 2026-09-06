@@ -71,7 +71,14 @@ const DEMO_PAYRUNS = [
 export const payrunsApi = {
   getEligibleEmployees: async (params) => {
     try {
-      const response = await axiosClient.post('/payruns/eligible-employees', params);
+      const queryParams = {
+        periodStart: params.periodStart,
+        periodEnd: params.periodEnd,
+        salaryStructureId: params.salaryStructureId || undefined,
+        departmentId: params.departmentId || params.departmentFilterId || undefined,
+        employeeType: params.employeeType || params.employeeTypeFilter || undefined,
+      };
+      const response = await axiosClient.get('/payruns/eligible-employees', { params: queryParams });
       return response.data;
     } catch (error) {
       if (error.response) throw error;

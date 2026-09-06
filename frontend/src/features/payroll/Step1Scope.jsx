@@ -58,11 +58,14 @@ export default function Step1Scope({ onScopeSubmitted, scopeData }) {
   });
 
   const fetchEligibleMutation = useMutation({
-    mutationFn: payrunsApi.getEligibleEmployees,
+    mutationFn: (params) => payrunsApi.getEligibleEmployees(params),
     onSuccess: (data, variables) => {
-      const eligibleList = data.eligibleEmployees || (Array.isArray(data) ? data : []);
+      const eligibleList = Array.isArray(data)
+        ? data
+        : data?.eligibleEmployees || data?.data || [];
       onScopeSubmitted({
         ...variables,
+        name: variables.name,
         eligibleEmployees: eligibleList,
       });
     },
@@ -70,11 +73,14 @@ export default function Step1Scope({ onScopeSubmitted, scopeData }) {
 
   const onSubmit = (values) => {
     const payload = {
+      name: values.name.trim(),
       salaryStructureId: values.salaryStructureId,
       periodStart: new Date(values.periodStart).toISOString(),
       periodEnd: new Date(values.periodEnd).toISOString(),
-      employeeTypeFilter: values.employeeTypeFilter || undefined,
+      departmentId: values.departmentFilterId || undefined,
+      employeeType: values.employeeTypeFilter || undefined,
       departmentFilterId: values.departmentFilterId || undefined,
+      employeeTypeFilter: values.employeeTypeFilter || undefined,
     };
     fetchEligibleMutation.mutate(payload);
   };
@@ -112,6 +118,14 @@ export default function Step1Scope({ onScopeSubmitted, scopeData }) {
           <SelectField label="Department Filter" name="departmentFilterId" options={departmentOptions} register={register} error={errors.departmentFilterId} placeholder="All Departments" />
         </div>
       </div>
+
+      {fetchEligibleMutation.isError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium">
+          {fetchEligibleMutation.error?.response?.data?.error?.message ||
+            fetchEligibleMutation.error?.message ||
+            'Failed to fetch eligible employees for selected scope.'}
+        </div>
+      )}
 
       <div className="flex items-center justify-end pt-4">
         <button

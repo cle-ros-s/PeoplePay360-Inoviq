@@ -2,7 +2,17 @@ const payrunsService = require('./payruns.service');
 
 async function getEligibleEmployees(req, res, next) {
   try {
-    const result = await payrunsService.getEligibleEmployees(req.query);
+    const params = {
+      ...(req.query || {}),
+      ...(req.body || {}),
+    };
+    if (params.departmentFilterId && !params.departmentId) {
+      params.departmentId = params.departmentFilterId;
+    }
+    if (params.employeeTypeFilter && !params.employeeType) {
+      params.employeeType = params.employeeTypeFilter;
+    }
+    const result = await payrunsService.getEligibleEmployees(params);
     return res.status(200).json(result);
   } catch (error) {
     next(error);

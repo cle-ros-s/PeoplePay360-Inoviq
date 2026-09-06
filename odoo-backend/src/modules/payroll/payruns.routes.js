@@ -14,8 +14,15 @@ const router = express.Router();
 
 router.use(authenticate);
 
-// Eligible employees endpoint (before parameterized routes)
+// Eligible employees endpoint (supports GET with query and POST with body)
 router.get(
+  '/eligible-employees',
+  requireRole('ADMIN', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER'),
+  validate(getEligibleEmployeesSchema),
+  payrunsController.getEligibleEmployees
+);
+
+router.post(
   '/eligible-employees',
   requireRole('ADMIN', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER'),
   validate(getEligibleEmployeesSchema),

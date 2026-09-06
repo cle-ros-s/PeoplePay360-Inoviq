@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { payslipsApi } from '../../api/payslips.api';
 import { employeesApi } from '../../api/employees.api';
@@ -9,13 +9,13 @@ import DataTable from '../../components/common/DataTable';
 import FilterBar from '../../components/common/FilterBar';
 import StatusBadge from '../../components/common/StatusBadge';
 import PayslipPdfButton from './PayslipPdfButton';
-import { Eye, FileText, Calendar } from 'lucide-react';
+import { Eye, FileText, Calendar, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
 import { formatDate, formatCurrency, formatEnumLabel } from '../../utils/formatters';
 import { PayslipStatus } from '../../utils/constants';
 
 export default function PayslipsListPage() {
   const navigate = useNavigate();
-  const { isEmployee, employeeId: currentEmpId } = usePermissions();
+  const { can, isEmployee, employeeId: currentEmpId } = usePermissions();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const payrunIdFilter = searchParams.get('payrunId') || '';
@@ -23,6 +23,8 @@ export default function PayslipsListPage() {
   const statusFilter = searchParams.get('status') || '';
   const periodFilter = searchParams.get('period') || '';
   const [page, setPage] = useState(1);
+  const [sendingId, setSendingId] = useState(null);
+  const [feedback, setFeedback] = useState(null);
 
   // Fetch employees for dropdown filter
   const { data: empData } = useQuery({
@@ -48,6 +50,21 @@ export default function PayslipsListPage() {
 
   const payslipsList = payslipsData?.data || (Array.isArray(payslipsData) ? payslipsData : []);
   const totalRecords = payslipsData?.total || payslipsList.length;
+
+  const sendEmailMutation = useMutation({
+    mutationFn: (id) => payslipsApi.sendPayslipEmail(id),
+    onMutate: (id) => {
+      setSendingId(id);
+    },
+    onSuccess: (res) => {
+      setSendingId(null);
+      setFeedback({ type: 'success', text: res?.message || 'Payslip email dispatched successfully!' });
+    },
+    onError: (err) => {
+      setSendingId(null);
+      setFeedback({ type: 'error', text: err.response?.data?.error?.message || err.message || 'Failed to dispatch payslip email.' });
+    },
+  });
 
   const handleFilterChange = (key, val) => {
     const newParams = new URLSearchParams(searchParams);
@@ -109,15 +126,26 @@ export default function PayslipsListPage() {
     {
       header: 'Actions',
       render: (p) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => navigate(`/payroll/payslips/${p.id}`)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg"
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg transition-colors"
           >
             <Eye className="w-3.5 h-3.5" />
-            View Detail
+            View
           </button>
           <PayslipPdfButton payslipId={p.id} className="px-2 py-1 text-xs" />
+          {can('SEND_PAYSLIPS') && (
+            <button
+              onClick={() => sendEmailMutation.mutate(p.id)}
+              disabled={sendingId === p.id}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 rounded-lg transition-colors disabled:opacity-50"
+              title="Send payslip PDF to employee email"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              {sendingId === p.id ? 'Sending...' : 'Email'}
+            </button>
+          )}
         </div>
       ),
     },
@@ -140,11 +168,33 @@ export default function PayslipsListPage() {
   });
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Employee Payslips"
         description="View calculated payslip breakdowns, category lines (Basic, Allowances, Deductions, Gross, Net), and PDF copies."
       />
+
+      {feedback && (
+        <div
+          className={`p-4 rounded-xl border flex items-center justify-between text-xs font-semibold ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+              : 'bg-rose-50 text-rose-900 border-rose-200'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {feedback.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600" />
+            )}
+            <span>{feedback.text}</span>
+          </div>
+          <button onClick={() => setFeedback(null)} className="text-gray-400 hover:text-gray-600">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <FilterBar filters={filterConfigs} onReset={() => setSearchParams({})} />
 

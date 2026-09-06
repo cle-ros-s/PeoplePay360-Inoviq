@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,12 +12,15 @@ import { formatEnumLabel } from '../../utils/formatters';
 
 const ruleSchema = z.object({
   name: z.string().min(1, 'Rule name is required'),
-  code: z.string().min(1, 'Rule code is required').transform((val) => val.toUpperCase().replace(/\s+/g, '_')),
+  code: z
+    .string()
+    .min(1, 'Rule code is required')
+    .transform((val) => val.toUpperCase().replace(/\s+/g, '_')),
   category: z.nativeEnum(SalaryCategory),
-  sequence: z.preprocess((v) => parseInt(v, 10), z.number().min(1)),
-  computationMethod: z.nativeEnum(ComputationMethod),
-  amount: z.preprocess((v) => (v ? parseFloat(v) : null), z.number().nullable().optional()),
-  percentage: z.preprocess((v) => (v ? parseFloat(v) : null), z.number().nullable().optional()),
+  sequence: z.preprocess((v) => parseInt(v, 10) || 1, z.number().min(1)),
+  computationMethod: z.string().min(1, 'Computation method is required'),
+  amount: z.preprocess((v) => (v !== '' && v !== null && v !== undefined ? parseFloat(v) : null), z.number().nullable().optional()),
+  percentage: z.preprocess((v) => (v !== '' && v !== null && v !== undefined ? parseFloat(v) : null), z.number().nullable().optional()),
   percentageBasisCode: z.string().nullable().optional(),
   formula: z.string().nullable().optional(),
   isActive: z.boolean().default(true),
@@ -26,6 +29,7 @@ const ruleSchema = z.object({
 export default function SalaryRuleFormPage({ isOpen, onClose, structureId, rule, existingRulesCount = 0 }) {
   const queryClient = useQueryClient();
   const isEditing = !!rule;
+  const [formError, setFormError] = useState('');
 
   const {
     register,
@@ -52,13 +56,15 @@ export default function SalaryRuleFormPage({ isOpen, onClose, structureId, rule,
   const selectedMethod = watch('computationMethod');
 
   useEffect(() => {
+    setFormError('');
     if (rule) {
+      const method = rule.computationType || rule.computationMethod || ComputationMethod.FIXED;
       reset({
         name: rule.name || '',
         code: rule.code || '',
         category: rule.category || SalaryCategory.BASIC,
         sequence: rule.sequence || 1,
-        computationMethod: rule.computationMethod || ComputationMethod.FIXED,
+        computationMethod: method,
         amount: rule.amount !== null && rule.amount !== undefined ? parseFloat(rule.amount) : 0,
         percentage: rule.percentage !== null && rule.percentage !== undefined ? parseFloat(rule.percentage) : 0,
         percentageBasisCode: rule.percentageBasisCode || 'BASIC',
@@ -88,6 +94,10 @@ export default function SalaryRuleFormPage({ isOpen, onClose, structureId, rule,
       queryClient.invalidateQueries({ queryKey: ['salary-structures'] });
       onClose();
     },
+    onError: (err) => {
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to create salary rule.';
+      setFormError(msg);
+    },
   });
 
   const updateMutation = useMutation({
@@ -97,24 +107,40 @@ export default function SalaryRuleFormPage({ isOpen, onClose, structureId, rule,
       queryClient.invalidateQueries({ queryKey: ['salary-structures'] });
       onClose();
     },
+    onError: (err) => {
+      const msg = err.response?.data?.error?.message || err.message || 'Failed to update salary rule.';
+      setFormError(msg);
+    },
   });
 
   const onSubmit = (values) => {
+    setFormError('');
+    const method = values.computationMethod || values.computationType || 'FIXED';
     const payload = {
-      ...values,
-      computationType: values.computationMethod || values.computationType || 'FIXED',
+      name: values.name.trim(),
+      code: values.code.trim().toUpperCase(),
+      category: values.category,
+      sequence: Number(values.sequence) || 1,
+      computationType: method,
+      salaryStructureId: structureId,
+      isActive: values.isActive ?? true,
     };
-    if (payload.computationMethod === ComputationMethod.FIXED) {
+
+    if (method === ComputationMethod.FIXED || method === 'FIXED') {
+      payload.amount = parseFloat(values.amount) || 0;
       payload.percentage = null;
       payload.percentageBasisCode = null;
       payload.formula = null;
-    } else if (payload.computationMethod === ComputationMethod.PERCENTAGE) {
+    } else if (method === ComputationMethod.PERCENTAGE || method === 'PERCENTAGE') {
       payload.amount = null;
+      payload.percentage = parseFloat(values.percentage) || 0;
+      payload.percentageBasisCode = (values.percentageBasisCode || 'BASIC').trim().toUpperCase();
       payload.formula = null;
-    } else if (payload.computationMethod === ComputationMethod.FORMULA) {
+    } else if (method === ComputationMethod.FORMULA || method === 'FORMULA') {
       payload.amount = null;
       payload.percentage = null;
       payload.percentageBasisCode = null;
+      payload.formula = (values.formula || '').trim();
     }
 
     if (isEditing) {
@@ -135,6 +161,11 @@ export default function SalaryRuleFormPage({ isOpen, onClose, structureId, rule,
       description="Configure calculation sequence, category, and computation algorithm."
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {formError && (
+          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold">
+            {formError}
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="Rule Name" name="name" register={register} error={errors.name} required placeholder="e.g. House Rent Allowance" />
           <FormField label="Rule Code (Unique)" name="code" register={register} error={errors.code} required placeholder="e.g. HRA" />

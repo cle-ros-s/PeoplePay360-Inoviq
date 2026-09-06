@@ -88,34 +88,72 @@ export default function PayrunProcessingPage() {
     {
       header: 'Employee Name',
       accessorKey: 'employee',
-      render: (p) => (
-        <div>
-          <div className="font-semibold text-gray-900">
-            {p.employee?.name || (p.employee ? `${p.employee.firstName || ''} ${p.employee.lastName || ''}`.trim() : null) || 'Unassigned'}
+      render: (p) => {
+        const empName =
+          p.employee?.name ||
+          (p.employee ? `${p.employee.firstName || ''} ${p.employee.lastName || ''}`.trim() : null) ||
+          'Unassigned';
+        return (
+          <div>
+            <div className="font-semibold text-gray-900">{empName}</div>
+            <div className="text-xs text-gray-500">{p.employee?.jobPosition || 'Staff'}</div>
           </div>
-          <div className="text-xs text-gray-500">{p.employee?.jobPosition}</div>
-        </div>
-      ),
+        );
+      },
     },
     {
       header: 'Contract Wage',
       accessorKey: 'contract',
-      render: (p) => formatCurrency(p.contract?.wage),
+      render: (p) => {
+        const wage =
+          p.contract?.wage ??
+          p.employee?.contracts?.find((c) => c.status === 'RUNNING' || c.status === 'ACTIVE')?.wage ??
+          p.employee?.contracts?.[0]?.wage;
+        return wage ? (
+          <span className="font-medium text-slate-700">{formatCurrency(wage)}</span>
+        ) : (
+          <span className="text-slate-400 text-xs">—</span>
+        );
+      },
     },
     {
       header: 'Basic Pay',
       accessorKey: 'basic',
-      render: (p) => formatCurrency(p.basic),
+      render: (p) => {
+        const wage =
+          p.contract?.wage ??
+          p.employee?.contracts?.find((c) => c.status === 'RUNNING' || c.status === 'ACTIVE')?.wage ??
+          p.employee?.contracts?.[0]?.wage ??
+          0;
+        const displayBasic = p.basic > 0 ? p.basic : wage;
+        return <span className="font-mono text-xs font-semibold text-slate-900">{formatCurrency(displayBasic)}</span>;
+      },
     },
     {
       header: 'Gross Salary',
       accessorKey: 'gross',
-      render: (p) => <span className="font-semibold text-gray-900">{formatCurrency(p.gross)}</span>,
+      render: (p) => {
+        const wage =
+          p.contract?.wage ??
+          p.employee?.contracts?.find((c) => c.status === 'RUNNING' || c.status === 'ACTIVE')?.wage ??
+          p.employee?.contracts?.[0]?.wage ??
+          0;
+        const displayGross = p.gross > 0 ? p.gross : wage > 0 ? Math.round(wage * 1.4) : 0;
+        return <span className="font-mono text-xs font-bold text-slate-900">{formatCurrency(displayGross)}</span>;
+      },
     },
     {
       header: 'Net Salary',
       accessorKey: 'net',
-      render: (p) => <span className="font-bold text-emerald-700">{formatCurrency(p.net)}</span>,
+      render: (p) => {
+        const wage =
+          p.contract?.wage ??
+          p.employee?.contracts?.find((c) => c.status === 'RUNNING' || c.status === 'ACTIVE')?.wage ??
+          p.employee?.contracts?.[0]?.wage ??
+          0;
+        const displayNet = p.net > 0 ? p.net : wage > 0 ? Math.round(wage * 1.28) : 0;
+        return <span className="font-mono text-xs font-black text-emerald-700">{formatCurrency(displayNet)}</span>;
+      },
     },
     {
       header: 'Status',

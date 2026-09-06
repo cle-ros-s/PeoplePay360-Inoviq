@@ -30,21 +30,21 @@ router.get(
 
 router.post(
   '/',
-  requireRole('ADMIN', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER', 'HR_MANAGER'),
   validate(createSalaryRuleSchema),
   salaryRulesController.createSalaryRule
 );
 
 router.patch(
   '/:id',
-  requireRole('ADMIN', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER', 'HR_MANAGER'),
   validate(updateSalaryRuleSchema),
   salaryRulesController.updateSalaryRule
 );
 
 router.delete(
   '/:id',
-  requireRole('ADMIN', 'HR_PAYROLL_MANAGER'),
+  requireRole('ADMIN', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER', 'HR_MANAGER'),
   validate(getSalaryRuleByIdSchema),
   salaryRulesController.deleteSalaryRule
 );

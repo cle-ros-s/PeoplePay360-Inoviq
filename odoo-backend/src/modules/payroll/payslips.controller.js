@@ -31,8 +31,9 @@ async function getPayslipPdf(req, res, next) {
   try {
     const pdfBuffer = await payslipsService.getPayslipPdf(req.params.id, req.scopedEmployeeId);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=payslip-${req.params.id}.pdf`);
-    return res.status(200).send(pdfBuffer);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.setHeader('Content-Disposition', `inline; filename="payslip-${req.params.id}.pdf"`);
+    return res.status(200).end(pdfBuffer);
   } catch (error) {
     next(error);
   }

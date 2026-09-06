@@ -11,13 +11,19 @@ export default function Step2SelectEmployees({ scopeData, onBack }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const eligibleEmployees = scopeData.eligibleEmployees || [];
-  const [selectedEmpIds, setSelectedEmpIds] = useState(() => eligibleEmployees.map((e) => e.id));
+  const eligibleEmployees = scopeData?.eligibleEmployees || [];
+  const defaultSelected = eligibleEmployees
+    .filter((e) => e.hasActiveContract !== false)
+    .map((e) => e.id);
+  const [selectedEmpIds, setSelectedEmpIds] = useState(() =>
+    defaultSelected.length > 0 ? defaultSelected : eligibleEmployees.map((e) => e.id)
+  );
 
   const createPayrunMutation = useMutation({
     mutationFn: payrunsApi.createPayrun,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['payruns'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       navigate(`/payroll/payruns/${data.id}`);
     },
   });
@@ -36,12 +42,10 @@ export default function Step2SelectEmployees({ scopeData, onBack }) {
 
   const handleCreate = () => {
     const payload = {
-      name: scopeData.name,
+      name: scopeData?.name || `Payrun Batch ${new Date().toLocaleDateString()}`,
       salaryStructureId: scopeData.salaryStructureId,
       periodStart: scopeData.periodStart,
       periodEnd: scopeData.periodEnd,
-      employeeTypeFilter: scopeData.employeeTypeFilter || undefined,
-      departmentFilterId: scopeData.departmentFilterId || undefined,
       employeeIds: selectedEmpIds,
     };
     createPayrunMutation.mutate(payload);
@@ -84,13 +88,20 @@ export default function Step2SelectEmployees({ scopeData, onBack }) {
     },
     {
       header: 'Department',
-      render: (emp) => emp.department?.name || 'Unassigned',
+      render: (emp) => (typeof emp.department === 'string' ? emp.department : emp.department?.name) || 'Unassigned',
     },
     {
       header: 'Active Contract Wage',
       render: (emp) => {
-        const activeContract = emp.contracts?.find((c) => c.status === 'ACTIVE') || emp.contracts?.[0];
-        return <span className="font-bold text-gray-900">{activeContract ? formatCurrency(activeContract.wage) : 'No Wage'}</span>;
+        const wage =
+          emp.contract?.wage ??
+          emp.contracts?.find((c) => c.status === 'RUNNING' || c.status === 'ACTIVE')?.wage ??
+          emp.contracts?.[0]?.wage;
+        return wage ? (
+          <span className="font-bold text-gray-900">{formatCurrency(wage)}</span>
+        ) : (
+          <span className="text-xs text-amber-600 font-medium">No Active Contract</span>
+        );
       },
     },
   ];
