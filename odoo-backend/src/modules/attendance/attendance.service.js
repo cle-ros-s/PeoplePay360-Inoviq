@@ -110,12 +110,13 @@ async function checkIn(data, user) {
     throw new AppError('EMPLOYEE_REQUIRED', 'Employee ID is required for check-in', 400);
   }
 
-  // Prevent multiple open check-ins without checkout
+  // Prevent multiple open check-ins without checkout - select only id
   const activeCheckIn = await prisma.attendance.findFirst({
     where: {
       employeeId: targetEmployeeId,
       checkOut: null,
     },
+    select: { id: true },
   });
 
   if (activeCheckIn) {
@@ -147,11 +148,19 @@ async function checkIn(data, user) {
 async function checkOut(id, data, user) {
   const record = await prisma.attendance.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      employeeId: true,
+      checkIn: true,
+      checkOut: true,
       employee: {
-        include: {
+        select: {
+          id: true,
           schedule: {
-            include: { lines: true },
+            select: {
+              id: true,
+              lines: true,
+            },
           },
         },
       },
@@ -179,7 +188,7 @@ async function checkOut(id, data, user) {
   const { workedHours, status } = deriveAttendanceStatus(
     record.checkIn,
     checkOutTime,
-    record.employee.schedule
+    record.employee?.schedule
   );
 
   const result = await prisma.attendance.update({
