@@ -1,4 +1,5 @@
 const payslipsService = require('./payslips.service');
+const emailSenderService = require('./emailSender.service');
 
 async function listPayslips(req, res, next) {
   try {
@@ -49,10 +50,43 @@ async function sendPayslipEmail(req, res, next) {
   }
 }
 
+async function getSmtpConfig(req, res, next) {
+  try {
+    const config = emailSenderService.getSmtpConfig();
+    return res.status(200).json({ success: true, data: config });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateSmtpConfig(req, res, next) {
+  try {
+    const updated = emailSenderService.updateSmtpConfig(req.body);
+    return res.status(200).json({ success: true, data: updated, message: 'SMTP settings updated successfully.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function testSmtpConnection(req, res, next) {
+  try {
+    const result = await emailSenderService.testSmtpConnection(req.body);
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      error: { message: error.message },
+    });
+  }
+}
+
 module.exports = {
   listPayslips,
   getPayslipById,
   updatePayslip,
   getPayslipPdf,
   sendPayslipEmail,
+  getSmtpConfig,
+  updateSmtpConfig,
+  testSmtpConnection,
 };

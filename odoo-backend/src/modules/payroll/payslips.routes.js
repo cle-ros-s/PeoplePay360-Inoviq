@@ -14,6 +14,11 @@ const router = express.Router();
 
 router.use(authenticate);
 
+// SMTP configuration endpoints
+router.get('/smtp-config', requireRole('ADMIN', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'), payslipsController.getSmtpConfig);
+router.post('/smtp-config', requireRole('ADMIN', 'HR_PAYROLL_MANAGER'), payslipsController.updateSmtpConfig);
+router.post('/test-smtp', requireRole('ADMIN', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER'), payslipsController.testSmtpConnection);
+
 router.get('/', scopeEmployee, validate(listPayslipsSchema), payslipsController.listPayslips);
 router.get('/:id', scopeEmployee, validate(getPayslipByIdSchema), payslipsController.getPayslipById);
 router.get('/:id/pdf', scopeEmployee, validate(getPayslipByIdSchema), payslipsController.getPayslipPdf);
