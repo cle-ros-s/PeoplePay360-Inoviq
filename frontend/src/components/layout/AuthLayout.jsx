@@ -26,15 +26,19 @@ export default function AuthLayout({ children }) {
 
       {/* Brand header */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center relative z-10 animate-fadeInUp">
-        <div
-          className="inline-flex items-center justify-center w-16 h-16 rounded-2xl text-white font-extrabold text-xl shadow-glass-lg mb-5 relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #714B67 0%, #017E84 100%)' }}
-        >
-          <span className="relative z-10">P360</span>
-          <div className="absolute inset-0 opacity-30" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 60%)' }} />
+        <div className="flex flex-col items-center gap-3 mb-5">
+          <img
+            src="/payflux-logo.png"
+            alt="PayFlux Logo"
+            className="w-20 h-20 object-contain drop-shadow-lg"
+            draggable={false}
+          />
+          <div className="flex items-center leading-none">
+            <span className="font-black text-3xl tracking-tight text-white">Pay</span>
+            <span className="font-black text-3xl tracking-tight text-[#00d4ff]">Flux</span>
+          </div>
         </div>
-        <h1 className="text-4xl font-extrabold text-white tracking-tight">PeoplePay360</h1>
-        <p className="mt-2 text-sm font-medium" style={{ color: 'rgba(255,255,255,0.70)' }}>
+        <p className="mt-1 text-sm font-medium" style={{ color: 'rgba(255,255,255,0.70)' }}>
           Integrated HR &amp; Payroll Operations Platform
         </p>
       </div>

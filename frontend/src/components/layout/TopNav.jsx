@@ -21,31 +21,20 @@ export default function TopNav({ onMobileMenuToggle }) {
           </button>
 
           <div className="flex items-center gap-3">
-            {/* PayFlux Modern Vector Logo */}
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-              <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-xs">
-                <defs>
-                  <linearGradient id="pNavGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#FF4F81" />
-                    <stop offset="100%" stopColor="#7B2FF7" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M8 8C8 5.79086 9.79086 4 12 4H26C33.732 4 40 10.268 40 18C40 25.732 33.732 32 26 32H16V38C16 40.2091 14.2091 42 12 42C9.79086 42 8 40.2091 8 38V8Z"
-                  fill="url(#pNavGrad)"
-                />
-                <path
-                  d="M16 12H25C28.3137 12 31 14.6863 31 18C31 21.3137 28.3137 24 25 24H16V12Z"
-                  fill="#FFFFFF"
-                  fillOpacity="0.95"
-                />
-              </svg>
+            {/* PayFlux Logo */}
+            <div className="w-8 h-8 shrink-0">
+              <img
+                src="/payflux-logo.png"
+                alt="PayFlux Logo"
+                className="w-full h-full object-contain"
+                draggable={false}
+              />
             </div>
             <div className="flex items-center leading-none">
-              <span className="font-black text-xl tracking-tight text-slate-900">
+              <span className="font-black text-xl tracking-tight text-[#0d2b6e]">
                 Pay
               </span>
-              <span className="font-black text-xl tracking-tight bg-gradient-to-r from-[#FF4F81] to-[#7B2FF7] bg-clip-text text-transparent">
+              <span className="font-black text-xl tracking-tight text-[#00aadd]">
                 Flux
               </span>
             </div>
