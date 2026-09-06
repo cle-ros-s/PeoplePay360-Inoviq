@@ -850,6 +850,7 @@ export default function PayrollDashboardPage() {
           subtext="Presence health score"
           icon={Clock}
           color="indigo"
+          onClick={() => navigate('/attendance')}
         />
       </div>
 

@@ -57,19 +57,29 @@ export default function EmployeeAttendanceAlertBanner() {
 
         <div className="flex flex-wrap items-center gap-2.5 flex-shrink-0">
           <button
-            onClick={() => navigate('/attendance')}
-            className="px-3.5 py-2 bg-white text-slate-800 hover:bg-slate-50 text-xs font-bold rounded-xl border border-slate-200 shadow-2xs flex items-center gap-1.5 transition"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate('/attendance');
+            }}
+            className="px-3.5 py-2 bg-white text-slate-800 hover:bg-slate-50 text-xs font-bold rounded-xl border border-slate-200 shadow-2xs flex items-center gap-1.5 transition cursor-pointer hover:border-purple-300"
           >
             <Clock className="w-3.5 h-3.5 text-slate-500" />
-            View My Attendance
+            <span>View My Attendance</span>
           </button>
 
           <button
-            onClick={() => navigate('/time-off/requests')}
-            className="px-3.5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white hover:from-amber-700 hover:to-orange-700 text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 transition"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate('/time-off/requests');
+            }}
+            className="px-3.5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white hover:from-amber-700 hover:to-orange-700 text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 transition cursor-pointer hover:shadow-md"
           >
             <Calendar className="w-3.5 h-3.5" />
-            Request Time Off
+            <span>Request Time Off</span>
           </button>
         </div>
       </div>

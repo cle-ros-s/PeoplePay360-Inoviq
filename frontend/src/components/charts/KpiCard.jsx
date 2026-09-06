@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function KpiCard({ title, value, subtext, icon: Icon, color = 'purple', isLoading = false }) {
+export default function KpiCard({ title, value, subtext, icon: Icon, color = 'purple', isLoading = false, onClick }) {
   const colorMap = {
     purple:  { bg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE' },
     teal:    { bg: '#ECFDF5', color: '#059669', border: '#A7F3D0' },
@@ -15,7 +15,12 @@ export default function KpiCard({ title, value, subtext, icon: Icon, color = 'pu
   const isSkeleton = isLoading || value === '...';
 
   return (
-    <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-200 flex items-start justify-between">
+    <div
+      onClick={onClick}
+      className={`p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-200 flex items-start justify-between ${
+        onClick ? 'cursor-pointer hover:border-purple-300 hover:scale-[1.01]' : ''
+      }`}
+    >
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{title}</p>
         {isSkeleton ? (
