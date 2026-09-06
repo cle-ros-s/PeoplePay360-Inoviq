@@ -28,9 +28,9 @@ export default function AuthLayout({ children }) {
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center relative z-10 animate-fadeInUp">
         <div className="flex flex-col items-center gap-3 mb-5">
           <img
-            src="/payflux-logo.png"
+            src="/payflux-icon-white.png"
             alt="PayFlux Logo"
-            className="w-20 h-20 object-contain drop-shadow-lg"
+            className="w-20 h-20 object-contain drop-shadow-[0_0_15px_rgba(0,212,255,0.4)]"
             draggable={false}
           />
           <div className="flex items-center leading-none">

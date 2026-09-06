@@ -35,16 +35,15 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-// PayFlux Brand Logo using new logo image
+// PayFlux Brand Logo with adaptive icon for light & dark backgrounds
 function PayFluxLogo({ className = 'w-9 h-9', showText = true, isLight = true }) {
   return (
     <div className="flex items-center gap-3 select-none">
       <div className={`relative flex items-center justify-center shrink-0 ${className}`}>
         <img
-          src="/payflux-logo.png"
+          src={isLight ? '/payflux-icon-white.png' : '/payflux-icon.png'}
           alt="PayFlux Logo"
           className="w-full h-full object-contain filter drop-shadow-md"
-          style={{ mixBlendMode: 'multiply' }}
           draggable={false}
         />
       </div>
@@ -377,20 +376,18 @@ export default function LoginPage() {
         {/* Centered White Login Card with Glassmorphic Shadow & Background Logo Shade */}
         <div className="relative z-10 w-full max-w-[560px] bg-white/95 backdrop-blur-xl rounded-[26px] sm:rounded-[32px] p-8 sm:p-12 lg:p-14 shadow-[0_25px_70px_rgba(20,10,70,0.14)] border border-white/80 ring-1 ring-purple-100 overflow-hidden">
           {/* Subtle PayFlux Logo Watermark Shades in Background Whitespace */}
-          <div className="absolute -right-16 -bottom-16 w-80 h-80 opacity-[0.07] pointer-events-none select-none overflow-hidden rotate-[-12deg] z-0">
+          <div className="absolute -right-16 -bottom-16 w-80 h-80 opacity-[0.08] pointer-events-none select-none overflow-hidden rotate-[-12deg] z-0">
             <img
-              src="/payflux-logo.png"
+              src="/payflux-icon.png"
               alt=""
               className="w-full h-full object-contain"
-              style={{ mixBlendMode: 'multiply' }}
             />
           </div>
-          <div className="absolute -left-20 -top-10 w-72 h-72 opacity-[0.05] pointer-events-none select-none overflow-hidden rotate-[15deg] z-0">
+          <div className="absolute -left-20 -top-10 w-72 h-72 opacity-[0.06] pointer-events-none select-none overflow-hidden rotate-[15deg] z-0">
             <img
-              src="/payflux-logo.png"
+              src="/payflux-icon.png"
               alt=""
               className="w-full h-full object-contain"
-              style={{ mixBlendMode: 'multiply' }}
             />
           </div>
 
@@ -403,10 +400,9 @@ export default function LoginPage() {
               {/* Shaded Logo Badge Box */}
               <div className="relative w-20 h-20 sm:w-24 sm:h-24 p-3.5 rounded-2xl bg-gradient-to-b from-blue-50/60 via-slate-50/80 to-cyan-50/50 shadow-[0_10px_25px_-5px_rgba(13,43,110,0.12),0_4px_10px_-2px_rgba(0,0,0,0.04)] border border-blue-100/60 flex items-center justify-center backdrop-blur-md transition-transform duration-300 group-hover:scale-105">
                 <img
-                  src="/payflux-logo.png"
+                  src="/payflux-icon.png"
                   alt="PayFlux Logo"
                   className="w-full h-full object-contain filter drop-shadow-[0_4px_8px_rgba(13,43,110,0.2)]"
-                  style={{ mixBlendMode: 'multiply' }}
                   draggable={false}
                 />
               </div>

@@ -24,7 +24,7 @@ export default function TopNav({ onMobileMenuToggle }) {
             {/* PayFlux Logo */}
             <div className="w-8 h-8 shrink-0">
               <img
-                src="/payflux-logo.png"
+                src="/payflux-icon.png"
                 alt="PayFlux Logo"
                 className="w-full h-full object-contain"
                 draggable={false}
