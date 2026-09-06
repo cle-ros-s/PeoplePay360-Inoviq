@@ -110,21 +110,6 @@ export default function AttendanceListPage() {
         </div>
       ),
     },
-    {
-      header: 'Actions',
-      render: (a) => (
-        can('MANUAL_ATTENDANCE_CORRECTION') && (
-          <button
-            onClick={() => handleOpenCorrection(a)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/60 rounded-lg transition-all shadow-xs"
-            title="Manual Correction"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-            <span>Edit</span>
-          </button>
-        )
-      ),
-    },
   ];
 
   const filterConfigs = [];
@@ -182,6 +167,7 @@ export default function AttendanceListPage() {
         data={attendanceList}
         isLoading={isLoading}
         emptyMessage="No attendance records found for the selected date range and filters."
+        onRowClick={!isEmployee && can('MANUAL_ATTENDANCE_CORRECTION') ? handleOpenCorrection : undefined}
         pagination={{
           page,
           pageSize: 20,
