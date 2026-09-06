@@ -97,6 +97,7 @@ enum WarningType {
   MISSING_CONTRACT
   DUPLICATE_PAYSLIP
   NEGATIVE_NET
+  ATTENDANCE_RISK
 }
 
 enum WarningSeverity {
@@ -104,27 +105,37 @@ enum WarningSeverity {
   CRITICAL
 }
 
+enum AttendanceAlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String
-  name         String
-  role         Role      @default(EMPLOYEE)
-  employee     Employee?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id             String            @id @default(uuid())
+  email          String            @unique
+  passwordHash   String
+  name           String
+  role           Role              @default(EMPLOYEE)
+  employee       Employee?
+  resolvedAlerts AttendanceAlert[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 }
 
 model Department {
-  id          String     @id @default(uuid())
-  name        String     @unique
-  code        String     @unique
-  managerId   String?
-  manager     Employee?  @relation("DepartmentManager", fields: [managerId], references: [id])
-  employees   Employee[] @relation("DepartmentEmployees")
-  contracts   Contract[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id               String            @id @default(uuid())
+  name             String            @unique
+  code             String            @unique
+  managerId        String?
+  manager          Employee?         @relation("DepartmentManager", fields: [managerId], references: [id])
+  employees        Employee[]        @relation("DepartmentEmployees")
+  contracts        Contract[]
+  attendanceAlerts AttendanceAlert[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model WorkingSchedule {
@@ -185,6 +196,7 @@ model Employee {
   payslips           Payslip[]
   payrunEmployees    PayrunEmployee[]
   warnings           PayrollWarning[]
+  attendanceAlerts   AttendanceAlert[]
 
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
@@ -194,24 +206,25 @@ model Employee {
 }
 
 model Contract {
-  id                String           @id @default(uuid())
+  id                String            @id @default(uuid())
   employeeId        String
-  employee          Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee          Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   name              String
   wage              Float
   startDate         DateTime
   endDate           DateTime?
   salaryStructureId String
-  salaryStructure   SalaryStructure  @relation(fields: [salaryStructureId], references: [id])
+  salaryStructure   SalaryStructure   @relation(fields: [salaryStructureId], references: [id])
   scheduleId        String?
-  schedule          WorkingSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  schedule          WorkingSchedule?  @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
   departmentId      String?
-  department        Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  department        Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   jobPosition       String?
-  status            ContractStatus   @default(DRAFT)
+  status            ContractStatus    @default(DRAFT)
   payslips          Payslip[]
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  attendanceAlerts  AttendanceAlert[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   @@index([employeeId, status])
 }
@@ -409,4 +422,46 @@ model PayrollWarning {
   updatedAt    DateTime        @updatedAt
 
   @@index([isResolved, severity])
+}
+
+model AttendanceAlert {
+  id                    String                @id @default(uuid())
+  employeeId            String
+  employee              Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  departmentId          String?
+  department            Department?           @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  contractId            String?
+  contract              Contract?             @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  alertType             String                @default("CONSECUTIVE_ABSENCE")
+  status                AttendanceAlertStatus @default(OPEN)
+  thresholdDays         Int                   @default(7)
+  consecutiveDaysAbsent Int
+  absenceStartDate      DateTime
+  absenceEndDate        DateTime
+  lastAttendanceDate    DateTime?
+  totalDaysWorked       Int                   @default(0)
+  totalHoursWorked      Float                 @default(0.0)
+  averageHoursPerDay    Float                 @default(0.0)
+  leaveStatus           String                @default("NO_REQUEST") // NO_REQUEST, PENDING_REQUEST, APPROVED_LEAVE
+  payrollImpact         String                @default("REQUIRES_HR_REVIEW") // REQUIRES_HR_REVIEW, NONE, ACTIVE_PAYRUN_INCLUDED
+  activePayrunId        String?
+  historySummary        Json?                 // Stores the 14-day date-by-date breakdown
+  resolutionNote        String?
+  resolvedAt            DateTime?
+  resolvedByUserId      String?
+  resolvedByUser        User?                 @relation(fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@unique([employeeId, absenceStartDate, alertType])
+  @@index([status, absenceStartDate])
+  @@index([employeeId, status])
+  @@index([departmentId, status])
+}
+
+model SystemSetting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
 }

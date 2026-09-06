@@ -15,6 +15,7 @@ const salaryRulesRoutes = require('../modules/salaryRules/salaryRules.routes');
 const payrunsRoutes = require('../modules/payroll/payruns.routes');
 const payslipsRoutes = require('../modules/payroll/payslips.routes');
 const dashboardRoutes = require('../modules/dashboard/dashboard.routes');
+const attendanceAlertsRoutes = require('../modules/attendanceAlerts/attendanceAlerts.routes');
 
 const router = express.Router();
 
@@ -34,6 +35,7 @@ router.use('/employees', employeesRoutes);
 router.use('/contracts', contractsRoutes);
 router.use('/schedules', schedulesRoutes);
 router.use('/attendance', attendanceRoutes);
+router.use('/attendance-alerts', attendanceAlertsRoutes);
 router.use('/time-off-types', timeOffTypesRoutes);
 router.use('/allocations', allocationsRoutes);
 router.use('/time-off-requests', timeOffRequestsRoutes);

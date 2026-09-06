@@ -19,6 +19,7 @@ import FormField from '../../components/common/FormField';
 import TimeOffRequestFormPage from '../timeOff/TimeOffRequestFormPage';
 import TimeOffTypeFormPage from '../timeOff/TimeOffTypeFormPage';
 import AllocationFormPage from '../timeOff/AllocationFormPage';
+import EmployeeAttendanceAlertBanner from '../attendanceAlerts/EmployeeAttendanceAlertBanner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -45,6 +46,7 @@ import {
   Mail,
   Send,
   ChevronDown,
+  ShieldAlert,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatEnumLabel } from '../../utils/formatters';
 import { EmployeeStatus, EmployeeType } from '../../utils/constants';
@@ -173,6 +175,7 @@ export default function PayrollDashboardPage() {
   const attendanceOverview = summaryData?.attendanceOverview;
   const timeOffOverview = summaryData?.timeOffOverview;
   const warningsData = summaryData?.warnings;
+  const attendanceAlerts = summaryData?.attendanceAlerts;
 
   // PayFlux Trend Data aligned with Mockup
   const rawTrendList = netTrend?.data || (Array.isArray(netTrend) ? netTrend : []);
@@ -774,6 +777,42 @@ export default function PayrollDashboardPage() {
           </button>
         )}
       </FilterBar>
+
+      {/* Employee Attendance Risk Reminder Banner */}
+      <EmployeeAttendanceAlertBanner />
+
+      {/* Smart Attendance-to-Payroll Risk Alert Dashboard Widget */}
+      {can('VIEW_ATTENDANCE_ALERTS') && (attendanceAlerts?.count || 0) > 0 && (
+        <div className="bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-purple-500/10 border border-rose-300/80 rounded-2xl p-4.5 shadow-2xs animate-fadeIn">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 bg-rose-600 text-white rounded-xl flex-shrink-0 shadow-sm">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Smart Attendance-to-Payroll Risk Alert
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-200 text-rose-900">
+                    {attendanceAlerts.count} Active Risk{attendanceAlerts.count > 1 ? 's' : ''} Detected
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Employees have ≥ 7 consecutive scheduled working days without recorded attendance or approved time-off requests.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/attendance-alerts')}
+              className="px-4 py-2 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center justify-center gap-1.5 transition self-start md:self-auto shrink-0"
+            >
+              <span>Review Attendance Risks</span>
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 5 Live KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

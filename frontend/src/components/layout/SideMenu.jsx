@@ -14,6 +14,7 @@ import {
   UserCog,
   ChevronDown,
   ChevronRight,
+  ShieldAlert,
 } from 'lucide-react';
 
 export default function SideMenu({ isMobile = false, onCloseMobile }) {
@@ -92,6 +93,13 @@ export default function SideMenu({ isMobile = false, onCloseMobile }) {
               <Clock className="w-4 h-4 flex-shrink-0 text-slate-500 group-hover:text-purple-600" />
               Attendance
             </NavLink>
+
+            {can('VIEW_ATTENDANCE_ALERTS') && (
+              <NavLink to="/attendance-alerts" onClick={onCloseMobile} className={navLinkClass}>
+                <ShieldAlert className="w-4 h-4 flex-shrink-0 text-rose-500 group-hover:text-rose-600" />
+                <span>Attendance Risks</span>
+              </NavLink>
+            )}
           </nav>
         </div>
 

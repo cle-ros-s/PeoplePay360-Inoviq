@@ -27,6 +27,8 @@ import SalaryStructuresPage from '../features/payrollConfig/SalaryStructuresPage
 import SalaryStructureFormPage from '../features/payrollConfig/SalaryStructureFormPage';
 import SalaryRulesPage from '../features/payrollConfig/SalaryRulesPage';
 import PayrollDashboardPage from '../features/dashboard/PayrollDashboardPage';
+import AttendanceAlertsListPage from '../features/attendanceAlerts/AttendanceAlertsListPage';
+import AttendanceAlertDetailPage from '../features/attendanceAlerts/AttendanceAlertDetailPage';
 
 export default function AppRoutes() {
   return (
@@ -84,6 +86,12 @@ export default function AppRoutes() {
 
           {/* Attendance */}
           <Route path="/attendance" element={<AttendanceListPage />} />
+
+          {/* Attendance Risk Alerts */}
+          <Route element={<RoleRoute permissionKey="VIEW_ATTENDANCE_ALERTS" />}>
+            <Route path="/attendance-alerts" element={<AttendanceAlertsListPage />} />
+            <Route path="/attendance-alerts/:id" element={<AttendanceAlertDetailPage />} />
+          </Route>
 
           {/* Time Off */}
           <Route path="/time-off/requests" element={<TimeOffRequestsPage />} />

@@ -183,6 +183,7 @@ async function computeDashboardData(query = {}) {
     activeAllocationsCount,
     manualEditsCount,
     dbWarnings,
+    activeAlerts,
   ] = await Promise.all([
     // Query 1: Active Employees with contract & bank info
     prisma.employee.findMany({
@@ -304,6 +305,25 @@ async function computeDashboardData(query = {}) {
         employee: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
       take: 20,
+    }),
+    // Query 14: Active Attendance Risk Alerts
+    prisma.attendanceAlert.findMany({
+      where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'UNDER_REVIEW'] } },
+      orderBy: [{ consecutiveDaysAbsent: 'desc' }, { createdAt: 'desc' }],
+      take: 10,
+      include: {
+        employee: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            jobPosition: true,
+            employeeType: true,
+            department: { select: { id: true, name: true } },
+          },
+        },
+        department: { select: { id: true, name: true } },
+      },
     }),
   ]);
 
@@ -462,7 +482,27 @@ async function computeDashboardData(query = {}) {
     attendanceRate: attendanceHealth,
     activeEmployeesCount: activeEmployeesCount || 69,
     unresolvedWarningsCount: dbWarnings.length || 0,
+    attendanceAlertsCount: (activeAlerts || []).length,
   };
+
+  // Format active attendance alerts for dashboard quick review
+  const formattedAlerts = (activeAlerts || []).map((a) => ({
+    id: a.id,
+    employeeId: a.employeeId,
+    employeeName: `${a.employee?.firstName || ''} ${a.employee?.lastName || ''}`.trim(),
+    jobPosition: a.employee?.jobPosition || 'Staff',
+    employeeType: a.employee?.employeeType || 'FULL_TIME',
+    departmentName: a.department?.name || a.employee?.department?.name || 'General',
+    consecutiveDaysAbsent: a.consecutiveDaysAbsent,
+    totalHoursWorked: a.totalHoursWorked,
+    totalDaysWorked: a.totalDaysWorked,
+    averageHoursPerDay: a.averageHoursPerDay,
+    leaveStatus: a.leaveStatus,
+    payrollImpact: a.payrollImpact,
+    status: a.status,
+    absenceStartDate: a.absenceStartDate,
+    absenceEndDate: a.absenceEndDate,
+  }));
 
   // Salary Cost Expenditure by Department (changes dynamically per date/period!)
   const deptSlipMap = new Map();
@@ -721,6 +761,10 @@ async function computeDashboardData(query = {}) {
     attendanceOverview,
     timeOffOverview,
     warnings,
+    attendanceAlerts: {
+      count: formattedAlerts.length,
+      items: formattedAlerts,
+    },
   };
 }
 

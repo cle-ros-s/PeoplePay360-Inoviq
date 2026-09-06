@@ -10,6 +10,7 @@ import FilterBar from '../../components/common/FilterBar';
 import StatusBadge from '../../components/common/StatusBadge';
 import AttendanceWidget from './AttendanceWidget';
 import AttendanceFormPage from './AttendanceFormPage';
+import EmployeeAttendanceAlertBanner from '../attendanceAlerts/EmployeeAttendanceAlertBanner';
 import { Clock, Edit2, ShieldAlert } from 'lucide-react';
 import { formatDateTime, formatHours, formatEnumLabel } from '../../utils/formatters';
 import { AttendanceStatus } from '../../utils/constants';
@@ -135,6 +136,10 @@ export default function AttendanceListPage() {
         title="Attendance Tracking"
         description="Daily check-in / check-out records, exception logs, and worked hours tracking."
       />
+
+      <div className="mb-4">
+        <EmployeeAttendanceAlertBanner />
+      </div>
 
       <AttendanceWidget employeeId={employeeIdFilter || currentEmpId} />
 
