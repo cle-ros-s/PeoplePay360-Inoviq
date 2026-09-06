@@ -19,6 +19,7 @@ export default function BrandLogo({ size = 'md', className = '', showText = fals
           src="/payflux-logo.png"
           alt="PayFlux Logo"
           className="w-full h-full object-contain drop-shadow-sm"
+          style={{ mixBlendMode: 'multiply' }}
           draggable={false}
         />
       </div>
