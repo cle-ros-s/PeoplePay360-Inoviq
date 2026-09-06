@@ -74,32 +74,96 @@ function generatePayslipPdfBuffer(payslip) {
 
       doc.font('Helvetica-Bold').fillColor(textColor).text('Account No: ', rightColX, y);
       doc.font('Helvetica').fillColor(mutedColor).text(emp.bankAccountNumber || 'N/A', rightColX + 80, y);
-      y += 16;
+      y += 18;
 
-      doc.font('Helvetica-Bold').fillColor(textColor).text('Worked Days: ', leftColX, y);
-      doc.font('Helvetica').fillColor(mutedColor).text(`${payslip.workedDays ?? 0} / ${payslip.totalDays ?? 0} Days`, leftColX + 70, y);
-
-      doc.font('Helvetica-Bold').fillColor(textColor).text('Structure: ', rightColX, y);
-      const structName = payslip.salaryStructure ? (typeof payslip.salaryStructure === 'string' ? payslip.salaryStructure : payslip.salaryStructure.name || 'Standard') : 'Standard';
-      doc.font('Helvetica').fillColor(mutedColor).text(structName, rightColX + 80, y);
-      y += 24;
+      // --- PAYROLL & ATTENDANCE SUMMARY SECTION ---
+      const attSum = payslip.attendanceSummary || {
+        totalWorkingDays: payslip.totalDays || 0,
+        daysWorked: payslip.workedDays || 0,
+        leaveDays: 0,
+        absentDays: 0,
+        totalHoursWorked: 0,
+      };
+      const paySum = payslip.payrollSummary || {
+        totalEarnings: payslip.gross || 0,
+        totalDeductions: 0,
+        netSalary: payslip.net || 0,
+      };
+      const leaveSum = payslip.leaveSummary || { byType: [], totalLeave: 0 };
 
       // Horizontal Rule
       doc.strokeColor(borderColor).lineWidth(1).moveTo(50, y).lineTo(545, y).stroke();
-      y += 15;
+      y += 12;
+
+      doc.fillColor(primaryColor).fontSize(11).font('Helvetica-Bold').text('PAYROLL & ATTENDANCE SUMMARY', 50, y);
+      y += 16;
+
+      // Summary Card Boxes (2 columns)
+      const boxW = 240;
+      const boxH = 68;
+
+      // Left Box: Attendance Metrics
+      doc.rect(50, y, boxW, boxH).fill('#F8FAFC');
+      doc.rect(50, y, boxW, boxH).strokeColor(borderColor).stroke();
+
+      let boxY = y + 8;
+      doc.fontSize(8.5).fillColor(textColor);
+      doc.font('Helvetica-Bold').text('Working Days:', 60, boxY);
+      doc.font('Helvetica').text(`${attSum.totalWorkingDays} Days`, 135, boxY);
+      doc.font('Helvetica-Bold').text('Days Worked:', 175, boxY);
+      doc.font('Helvetica').text(`${attSum.daysWorked} Days`, 245, boxY);
+
+      boxY += 16;
+      doc.font('Helvetica-Bold').text('Leave Days:', 60, boxY);
+      doc.font('Helvetica').text(`${attSum.leaveDays} Days`, 135, boxY);
+      doc.font('Helvetica-Bold').text('Absent Days:', 175, boxY);
+      doc.font('Helvetica').fillColor(attSum.absentDays > 0 ? '#DC2626' : textColor).text(`${attSum.absentDays} Days`, 245, boxY);
+
+      boxY += 16;
+      doc.fillColor(textColor);
+      doc.font('Helvetica-Bold').text('Total Hours:', 60, boxY);
+      doc.font('Helvetica-Bold').fillColor('#4F46E5').text(`${attSum.totalHoursWorked} hrs`, 135, boxY);
+
+      if (leaveSum.totalLeave > 0) {
+        const leaveDetailStr = leaveSum.byType?.map((b) => `${b.typeName}: ${b.days}d`).join(', ') || `${leaveSum.totalLeave} days`;
+        doc.font('Helvetica').fontSize(7.5).fillColor(mutedColor).text(`(${leaveDetailStr})`, 185, boxY);
+      }
+
+      // Right Box: Payroll Financials
+      doc.rect(305, y, boxW, boxH).fill('#F8FAFC');
+      doc.rect(305, y, boxW, boxH).strokeColor(borderColor).stroke();
+
+      let rBoxY = y + 8;
+      doc.fontSize(8.5).fillColor(textColor);
+      doc.font('Helvetica-Bold').text('Total Earnings:', 315, rBoxY);
+      doc.font('Helvetica-Bold').text(`Rs. ${(paySum.totalEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 425, rBoxY, { align: 'right' });
+
+      rBoxY += 16;
+      doc.font('Helvetica-Bold').text('Total Deductions:', 315, rBoxY);
+      doc.font('Helvetica-Bold').fillColor('#DC2626').text(`Rs. ${(paySum.totalDeductions || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 425, rBoxY, { align: 'right' });
+
+      rBoxY += 16;
+      doc.font('Helvetica-Bold').fillColor(successColor).text('Net Salary:', 315, rBoxY);
+      doc.fontSize(9.5).font('Helvetica-Bold').text(`Rs. ${(paySum.netSalary || payslip.net || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 415, rBoxY, { align: 'right' });
+
+      y += boxH + 14;
+
+      // Horizontal Rule
+      doc.strokeColor(borderColor).lineWidth(1).moveTo(50, y).lineTo(545, y).stroke();
+      y += 14;
 
       // --- SALARY BREAKDOWN TABLE ---
       doc.fillColor(primaryColor).fontSize(11).font('Helvetica-Bold').text('SALARY COMPUTATION BREAKDOWN', 50, y);
-      y += 20;
+      y += 18;
 
       // Table Header
-      doc.rect(50, y, 495, 22).fill('#F3F4F6');
-      doc.fillColor(primaryColor).fontSize(9).font('Helvetica-Bold');
-      doc.text('Rule / Component', 60, y + 6);
-      doc.text('Code', 220, y + 6);
-      doc.text('Category', 320, y + 6);
-      doc.text('Amount (Rs.)', 460, y + 6, { align: 'right' });
-      y += 24;
+      doc.rect(50, y, 495, 20).fill('#F3F4F6');
+      doc.fillColor(primaryColor).fontSize(8.5).font('Helvetica-Bold');
+      doc.text('Rule / Component', 60, y + 5);
+      doc.text('Code', 220, y + 5);
+      doc.text('Category', 320, y + 5);
+      doc.text('Amount (Rs.)', 460, y + 5, { align: 'right' });
+      y += 22;
 
       const lines = payslip.lines || [];
       lines.sort((a, b) => a.sequence - b.sequence);

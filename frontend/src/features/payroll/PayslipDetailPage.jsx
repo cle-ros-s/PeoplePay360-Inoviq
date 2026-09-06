@@ -29,6 +29,12 @@ import {
   ShieldCheck,
   ChevronDown,
   ChevronUp,
+  Clock,
+  Palmtree,
+  IndianRupee,
+  ShieldAlert,
+  FileText,
+  Activity,
 } from 'lucide-react';
 
 export default function PayslipDetailPage() {
@@ -41,6 +47,7 @@ export default function PayslipDetailPage() {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showAttendanceDetails, setShowAttendanceDetails] = useState(false);
 
   // SMTP Configuration State
   const [showSmtpConfig, setShowSmtpConfig] = useState(false);
@@ -293,6 +300,254 @@ export default function PayslipDetailPage() {
             <StatusBadge status={payslip.status} />
           </div>
         </div>
+      </div>
+
+      {/* Attendance Review Required Warning Banner */}
+      {payslip.attendanceRisk?.hasRisk && (
+        <div className="bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-rose-500/10 border border-rose-300/80 rounded-2xl p-4.5 shadow-2xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 bg-rose-600 text-white rounded-xl flex-shrink-0 shadow-sm">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-slate-900">
+                    ⚠️ Attendance Review Required
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-200 text-rose-900">
+                    {payslip.attendanceRisk.consecutiveDaysAbsent} Days Unrecorded
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  {payslip.attendanceRisk.message || 'This employee has an unresolved attendance issue for this payroll period.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(payslip.attendanceRisk.alertId ? `/attendance-alerts/${payslip.attendanceRisk.alertId}` : '/attendance-alerts')}
+              className="px-4 py-2 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center justify-center gap-1.5 transition self-start md:self-auto shrink-0 cursor-pointer"
+            >
+              <span>View Attendance Risk</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Payroll & Attendance Summary */}
+      <div className="glass-card p-6 rounded-2xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-200/80">
+          <div>
+            <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-purple-600" />
+              Payroll &amp; Attendance Summary
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Consolidated working schedule, attendance logs, approved leaves, and salary totals for this pay period.
+            </p>
+          </div>
+        </div>
+
+        {/* 8 Metric Summary Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 1. Total Working Days */}
+          <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Working Days</span>
+              <Calendar className="w-4 h-4 text-slate-400" />
+            </div>
+            <div className="text-2xl font-black text-slate-900 mt-1">
+              {payslip.attendanceSummary?.totalWorkingDays ?? payslip.totalDays ?? 0}
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Scheduled shift days</div>
+          </div>
+
+          {/* 2. Days Worked */}
+          <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200/80 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Days Worked</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div className="text-2xl font-black text-emerald-800 mt-1">
+              {payslip.attendanceSummary?.daysWorked ?? payslip.workedDays ?? 0}
+            </div>
+            <div className="text-[11px] text-emerald-600 mt-0.5">Valid attendance punches</div>
+          </div>
+
+          {/* 3. Leave Days */}
+          <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Leave Days</span>
+              <Palmtree className="w-4 h-4 text-amber-600" />
+            </div>
+            <div className="text-2xl font-black text-amber-800 mt-1">
+              {payslip.attendanceSummary?.leaveDays ?? 0}
+            </div>
+            <div className="text-[11px] text-amber-600 mt-0.5">Approved time off</div>
+          </div>
+
+          {/* 4. Absent Days */}
+          <div className="p-4 rounded-xl bg-rose-50/60 border border-rose-200/80 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700">Absent Days</span>
+              <AlertCircle className="w-4 h-4 text-rose-600" />
+            </div>
+            <div className="text-2xl font-black text-rose-800 mt-1">
+              {payslip.attendanceSummary?.absentDays ?? 0}
+            </div>
+            <div className="text-[11px] text-rose-600 mt-0.5">Unrecorded schedule days</div>
+          </div>
+
+          {/* 5. Total Hours Worked */}
+          <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-200/80 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700">Total Hours Worked</span>
+              <Clock className="w-4 h-4 text-indigo-600" />
+            </div>
+            <div className="text-2xl font-black text-indigo-800 mt-1">
+              {payslip.attendanceSummary?.totalHoursWorked || (Math.round(((payslip.attendanceSummary?.daysWorked || payslip.workedDays || 0) * 8) * 100) / 100)} hrs
+            </div>
+            <div className="text-[11px] text-indigo-600 mt-0.5">Actual punch duration</div>
+          </div>
+
+          {/* 6. Total Earnings */}
+          <div className="p-4 rounded-xl bg-purple-50/60 border border-purple-200/80 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700">Total Earnings</span>
+              <IndianRupee className="w-4 h-4 text-purple-600" />
+            </div>
+            <div className="text-xl font-black text-purple-900 mt-1 truncate" title={formatCurrency(payslip.payrollSummary?.totalEarnings || payslip.gross)}>
+              {formatCurrency(payslip.payrollSummary?.totalEarnings || payslip.gross)}
+            </div>
+            <div className="text-[11px] text-purple-600 mt-0.5">Basic + Allowances</div>
+          </div>
+
+          {/* 7. Total Deductions */}
+          <div className="p-4 rounded-xl bg-red-50/60 border border-red-200/80 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-red-700">Total Deductions</span>
+              <AlertCircle className="w-4 h-4 text-red-600" />
+            </div>
+            <div className="text-xl font-black text-red-900 mt-1 truncate" title={formatCurrency(payslip.payrollSummary?.totalDeductions || payslip.totalDeductions || 0)}>
+              {formatCurrency(payslip.payrollSummary?.totalDeductions || payslip.totalDeductions || 0)}
+            </div>
+            <div className="text-[11px] text-red-600 mt-0.5">PF, Tax &amp; Statutory</div>
+          </div>
+
+          {/* 8. Net Salary */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-100">Final Net Salary</span>
+              <IndianRupee className="w-4 h-4 text-emerald-200" />
+            </div>
+            <div className="text-xl font-black text-white mt-1 truncate" title={formatCurrency(payslip.payrollSummary?.netSalary || payslip.net)}>
+              {formatCurrency(payslip.payrollSummary?.netSalary || payslip.net)}
+            </div>
+            <div className="text-[11px] text-emerald-100 mt-0.5">Final Net Payable</div>
+          </div>
+        </div>
+
+        {/* Time Off Summary Breakdown & View Attendance Toggle */}
+        <div className="p-4.5 bg-slate-50/70 border border-slate-200/70 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Palmtree className="w-3.5 h-3.5 text-amber-600" />
+              Time Off Summary
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 shadow-2xs">
+                Annual Leave: <strong className="ml-1 text-slate-900">{payslip.leaveSummary?.annualLeave ?? 0} days</strong>
+              </span>
+              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 shadow-2xs">
+                Sick Leave: <strong className="ml-1 text-slate-900">{payslip.leaveSummary?.sickLeave ?? 0} days</strong>
+              </span>
+              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 shadow-2xs">
+                Unpaid Leave: <strong className="ml-1 text-slate-900">{payslip.leaveSummary?.unpaidLeave ?? 0} days</strong>
+              </span>
+              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100/80 border border-amber-200 text-amber-900 shadow-2xs">
+                Total Leave: <strong className="ml-1">{payslip.leaveSummary?.totalLeave ?? 0} days</strong>
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAttendanceDetails(!showAttendanceDetails)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition shadow-2xs shrink-0 self-start sm:self-auto cursor-pointer"
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>{showAttendanceDetails ? 'Hide Attendance Details' : 'View Attendance Details'}</span>
+            {showAttendanceDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+
+        {/* Expandable Attendance Details Table */}
+        {showAttendanceDetails && (
+          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs animate-fadeIn">
+            <div className="p-3.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-800">
+                Daily Attendance &amp; Shift Logs ({payslip.attendanceDetails?.length || 0} Days)
+              </span>
+              <span className="text-[11px] text-slate-500 font-medium">
+                Period: {formatDate(payslip.periodStart)} – {formatDate(payslip.periodEnd)}
+              </span>
+            </div>
+            <div className="max-h-72 overflow-y-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                  <tr>
+                    <th className="px-4 py-2.5">Date</th>
+                    <th className="px-4 py-2.5">Day</th>
+                    <th className="px-4 py-2.5">Check In</th>
+                    <th className="px-4 py-2.5">Check Out</th>
+                    <th className="px-4 py-2.5">Total Hours</th>
+                    <th className="px-4 py-2.5 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-800">
+                  {payslip.attendanceDetails?.map((d, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-4 py-2 font-medium">{formatDate(d.date)}</td>
+                      <td className="px-4 py-2 text-slate-500">{d.dayName}</td>
+                      <td className="px-4 py-2 font-mono text-slate-600">{d.checkIn || '--'}</td>
+                      <td className="px-4 py-2 font-mono text-slate-600">{d.checkOut || '--'}</td>
+                      <td className="px-4 py-2 font-bold">{d.workedHours > 0 ? `${d.workedHours} hrs` : '0 hrs'}</td>
+                      <td className="px-4 py-2 text-right">
+                        {d.status === 'PRESENT' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            Present
+                          </span>
+                        )}
+                        {d.status === 'LATE' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                            Late
+                          </span>
+                        )}
+                        {d.status === 'LEAVE' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200" title={d.leaveType}>
+                            Leave: {d.leaveType || 'Approved'}
+                          </span>
+                        )}
+                        {d.status === 'ABSENT' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                            Absent
+                          </span>
+                        )}
+                        {d.status === 'REST_DAY' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-500">
+                            Rest Day
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Salary Computation Lines Table */}
